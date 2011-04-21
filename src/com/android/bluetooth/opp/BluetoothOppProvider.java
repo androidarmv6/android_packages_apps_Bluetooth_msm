@@ -174,12 +174,12 @@ public final class BluetoothOppProvider extends ContentProvider {
                     + " INTEGER PRIMARY KEY AUTOINCREMENT," + BluetoothShare.URI + " TEXT, "
                     + BluetoothShare.FILENAME_HINT + " TEXT, " + BluetoothShare._DATA + " TEXT, "
                     + BluetoothShare.MIMETYPE + " TEXT, " + BluetoothShare.DIRECTION + " INTEGER, "
-                    + BluetoothShare.DESTINATION + " TEXT, " + BluetoothShare.VISIBILITY
-                    + " INTEGER, " + BluetoothShare.USER_CONFIRMATION + " INTEGER, "
-                    + BluetoothShare.STATUS + " INTEGER, " + BluetoothShare.TOTAL_BYTES
-                    + " INTEGER, " + BluetoothShare.CURRENT_BYTES + " INTEGER, "
-                    + BluetoothShare.TIMESTAMP + " INTEGER," + Constants.MEDIA_SCANNED
-                    + " INTEGER); ");
+                    + BluetoothShare.OWNER + " INTEGER, " + BluetoothShare.DESTINATION
+                    + " TEXT, " + BluetoothShare.VISIBILITY + " INTEGER, "
+                    + BluetoothShare.USER_CONFIRMATION + " INTEGER, " + BluetoothShare.STATUS
+                    + " INTEGER, " + BluetoothShare.TOTAL_BYTES + " INTEGER, "
+                    + BluetoothShare.CURRENT_BYTES + " INTEGER, " + BluetoothShare.TIMESTAMP
+                    + " INTEGER," + Constants.MEDIA_SCANNED + " INTEGER); ");
         } catch (SQLException ex) {
             Log.e(TAG, "couldn't create table in downloads database");
             throw ex;
@@ -249,10 +249,14 @@ public final class BluetoothOppProvider extends ContentProvider {
             filteredValues.put(BluetoothShare.VISIBILITY, BluetoothShare.VISIBILITY_VISIBLE);
         }
         Integer dir = values.getAsInteger(BluetoothShare.DIRECTION);
+        Integer owner = values.getAsInteger(BluetoothShare.OWNER);
         Integer con = values.getAsInteger(BluetoothShare.USER_CONFIRMATION);
 
         if (values.getAsInteger(BluetoothShare.DIRECTION) == null) {
             dir = BluetoothShare.DIRECTION_OUTBOUND;
+        }
+        if (values.getAsInteger(BluetoothShare.OWNER) == null) {
+            owner = BluetoothShare.OWNER_OPP;
         }
         if (dir == BluetoothShare.DIRECTION_OUTBOUND && con == null) {
             con = BluetoothShare.USER_CONFIRMATION_AUTO_CONFIRMED;
@@ -262,6 +266,7 @@ public final class BluetoothOppProvider extends ContentProvider {
         }
         filteredValues.put(BluetoothShare.USER_CONFIRMATION, con);
         filteredValues.put(BluetoothShare.DIRECTION, dir);
+        filteredValues.put(BluetoothShare.OWNER, owner);
 
         filteredValues.put(BluetoothShare.STATUS, BluetoothShare.STATUS_PENDING);
         filteredValues.put(Constants.MEDIA_SCANNED, 0);

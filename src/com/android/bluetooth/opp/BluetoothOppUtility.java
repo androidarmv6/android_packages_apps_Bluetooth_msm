@@ -70,6 +70,8 @@ public class BluetoothOppUtility {
                 info.mStatus = cursor.getInt(cursor.getColumnIndexOrThrow(BluetoothShare.STATUS));
                 info.mDirection = cursor.getInt(cursor
                         .getColumnIndexOrThrow(BluetoothShare.DIRECTION));
+                info.mOwner = cursor.getInt(cursor
+                        .getColumnIndexOrThrow(BluetoothShare.OWNER));
                 info.mTotalBytes = cursor.getInt(cursor
                         .getColumnIndexOrThrow(BluetoothShare.TOTAL_BYTES));
                 info.mCurrentBytes = cursor.getInt(cursor
@@ -289,6 +291,42 @@ public class BluetoothOppUtility {
                 || (statusCode == BluetoothShare.STATUS_UNHANDLED_OBEX_CODE)
                 || (statusCode == BluetoothShare.STATUS_OBEX_DATA_ERROR)) {
             ret = context.getString(R.string.status_protocol_error);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_MEDIA_JAM) {
+            ret = context.getString(R.string.status_bpp_media_jam);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_PAUSED) {
+            ret = context.getString(R.string.status_bpp_paused);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_DOOR_OPEN) {
+            ret = context.getString(R.string.status_bpp_door_open);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_MEDIA_LOW) {
+            ret = context.getString(R.string.status_bpp_media_low);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_MEDIA_EMPTY) {
+            ret = context.getString(R.string.status_bpp_media_empty);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_OUTPUT_AREA_ALMOST_FULL) {
+            ret = context.getString(R.string.status_bpp_output_area_almost_full);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_OUTPUT_AREA_FULL) {
+            ret = context.getString(R.string.status_bpp_output_area_full);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_MARKER_SUPPLY_LOW) {
+            ret = context.getString(R.string.status_bpp_marker_supply_low);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_MARKER_SUPPLY_EMPTY) {
+            ret = context.getString(R.string.status_bpp_marker_supply_empty);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_MARKER_FAILURE) {
+            ret = context.getString(R.string.status_bpp_marker_failure);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_STOPPED_BY_PRINTER) {
+            ret = context.getString(R.string.status_bpp_stopped_by_printer);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_ABORTED_BY_PRINTER) {
+            ret = context.getString(R.string.status_bpp_aborted_by_printer);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_CANCELED_BY_PRINTER) {
+            ret = context.getString(R.string.status_bpp_cancelled_by_printer);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_UNKNOWN_ERROR_BY_PRINTER) {
+            ret = context.getString(R.string.status_bpp_unknown_error_by_printer);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_REFUSED_BY_PRINTER) {
+            ret = context.getString(R.string.status_bpp_refused_by_printer);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_CANCELED_BY_USER) {
+            ret = context.getString(R.string.status_bpp_canceled_by_user);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_SUCCESS) {
+            ret = context.getString(R.string.status_bpp_sucess);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_DISCONNECTED) {
+            ret = context.getString(R.string.status_bpp_disconnected);
         } else {
             ret = context.getString(R.string.status_unknown_error);
         }

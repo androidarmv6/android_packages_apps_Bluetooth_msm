@@ -50,6 +50,8 @@ public class BluetoothOppShareInfo {
 
     public int mDirection;
 
+    public int mOwner;
+
     public String mDestination;
 
     public int mVisibility;
@@ -67,7 +69,7 @@ public class BluetoothOppShareInfo {
     public boolean mMediaScanned;
 
     public BluetoothOppShareInfo(int id, String uri, String hint, String filename, String mimetype,
-            int direction, String destination, int visibility, int confirm, int status,
+            int direction, int owner, String destination, int visibility, int confirm, int status,
             int totalBytes, int currentBytes, int timestamp, boolean mediaScanned) {
         mId = id;
         mUri = uri;
@@ -75,6 +77,7 @@ public class BluetoothOppShareInfo {
         mFilename = filename;
         mMimetype = mimetype;
         mDirection = direction;
+        mOwner = owner;
         mDestination = destination;
         mVisibility = visibility;
         mConfirm = confirm;

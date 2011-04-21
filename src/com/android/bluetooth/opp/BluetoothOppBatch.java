@@ -68,6 +68,7 @@ public class BluetoothOppBatch {
 
     public final long mTimestamp;
     public final int mDirection;
+    public int mOwner;
     public final BluetoothDevice mDestination;
 
     private BluetoothOppBatchListener mListener;
@@ -108,6 +109,7 @@ public class BluetoothOppBatch {
         mShares = Lists.newArrayList();
         mTimestamp = info.mTimestamp;
         mDirection = info.mDirection;
+        mOwner = info.mOwner;
         mDestination = adapter.getRemoteDevice(info.mDestination);
         mStatus = Constants.BATCH_STATUS_PENDING;
         mShares.add(info);
@@ -205,7 +207,8 @@ public class BluetoothOppBatch {
     public BluetoothOppShareInfo getPendingShare() {
         for (int i = 0; i < mShares.size(); i++) {
             BluetoothOppShareInfo share = mShares.get(i);
-            if (share.mStatus == BluetoothShare.STATUS_PENDING) {
+            if ( (share.mStatus == BluetoothShare.STATUS_PENDING) ||
+                 (share.mStatus == BluetoothShare.STATUS_QUEUE)) {
                 return share;
             }
         }

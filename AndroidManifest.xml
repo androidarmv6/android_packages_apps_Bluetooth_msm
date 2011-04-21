@@ -125,6 +125,51 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <activity android:name=".bpp.BluetoothBppActivity"
+            android:label="@string/app_name_bpp"
+            android:screenOrientation="portrait"
+            android:excludeFromRecents="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".bpp.BluetoothBppSetting"
+            android:label="@string/app_name_bpp"
+            android:screenOrientation="portrait"
+            android:excludeFromRecents="true" >
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.DEFAULT" />
+                </intent-filter>
+        </activity>
+        <activity android:name=".bpp.BluetoothBppPrintPrefActivity"
+            android:label="@string/app_name_bpp"
+            android:screenOrientation="portrait"
+                android:excludeFromRecents="true" >
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.DEFAULT" />
+                </intent-filter>
+        </activity>
+        <activity android:name=".bpp.BluetoothBppStatusActivity"
+            android:label="@string/app_name_bpp"
+            android:screenOrientation="portrait"
+                android:excludeFromRecents="true" >
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.DEFAULT" />
+                </intent-filter>
+        </activity>
+        <activity android:name=".bpp.BluetoothBppAuthActivity"
+            android:label="@string/app_name_bpp"
+            android:screenOrientation="portrait"
+                android:excludeFromRecents="true" >
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.DEFAULT" />
+                </intent-filter>
+        </activity>
         <service
             android:process="@string/process"
             android:name=".pbap.BluetoothPbapService" >

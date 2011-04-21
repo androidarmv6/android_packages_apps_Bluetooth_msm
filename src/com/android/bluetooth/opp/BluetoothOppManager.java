@@ -218,6 +218,23 @@ public class BluetoothOppManager {
         }
     }
 
+
+    public String getSendingFileTypeInfo() {
+        synchronized (BluetoothOppManager.this) {
+            if (mMultipleFlag == false) {
+                return mMimeTypeOfSendingFile;
+            } else {
+                return mMimeTypeOfSendingFiles;
+            }
+        }
+    }
+
+    public String getSendingFileNameInfo() {
+        synchronized (BluetoothOppManager.this) {
+            return mUriOfSendingFile;
+        }
+    }
+
     /**
      * Get the current status of Bluetooth hardware.
      * @return true if Bluetooth enabled, false otherwise.
