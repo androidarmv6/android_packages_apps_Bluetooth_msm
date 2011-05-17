@@ -32,6 +32,7 @@ import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
+import android.content.ContentProviderClient;
 import android.content.Intent;
 import android.os.Message;
 import android.os.PowerManager;
@@ -278,7 +279,11 @@ public class BluetoothFtpService extends Service {
 
     // process the intent from receiver
     private void parseIntent(final Intent intent) {
-        String action = intent.getStringExtra("action");
+        String action = (intent == null) ? null : intent.getStringExtra("action");
+        if (action == null) {
+            Log.e(TAG, "Unexpected error! action is null");
+            return;
+        }
         if (VERBOSE) Log.v(TAG, "action: " + action);
 
         int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
@@ -646,20 +651,30 @@ public class BluetoothFtpService extends Service {
     }
 
     private void notifyMediaScanner(Bundle obj,int op) {
+        String[] mTypes = obj.getStringArray("mimetypes");
+        String[] fPaths = obj.getStringArray("filepaths");
         if((op == FTP_MEDIA_ADD) || (op == FTP_MEDIA_DELETE)) {
             new FtpMediaScannerNotifier(this,obj.getString("filepath"),
                   obj.getString("mimetype"),mSessionStatusHandler,op);
+        } else if (mTypes != null && fPaths != null) {
+            new FtpMediaScannerNotifier(this,fPaths,
+                  mTypes,mSessionStatusHandler,op);
         } else {
-            new FtpMediaScannerNotifier(this,obj.getStringArray("filepaths"),
-                  obj.getStringArray("mimetypes"),mSessionStatusHandler,op);
+             Log.e(TAG, "Unexpected error! mTypes or fPaths is null");
+            return;
         }
     }
 
     private void notifyContentResolver(Uri uri) {
         if (VERBOSE) Log.v(TAG,"FTP_MEDIA_SCANNED deleting uri "+uri);
+        ContentProviderClient client = getContentResolver()
+                  .acquireContentProviderClient(MediaStore.AUTHORITY);
+        if (client == null) {
+            Log.e(TAG, "Unexpected error! mTypes is null");
+            return;
+        }
         try {
-            getContentResolver()
-                  .acquireContentProviderClient(MediaStore.AUTHORITY).delete(uri, null, null);
+            client.delete(uri, null, null);
         } catch(RemoteException e){
             Log.e(TAG,e.toString());
         }
@@ -900,17 +915,29 @@ public class BluetoothFtpService extends Service {
                 case MSG_INTERNAL_OBEX_RFCOMM_SESSION_UP:
                     if (VERBOSE) Log.v(TAG,"MSG_INTERNAL_OBEX_RFCOMM_SESSION_UP");
                     try {
-                      closeL2capSocket(true, false);
+                        /* Once the FTP is connected over RFCOMM, close the L2CAP socket on the
+                         PSM and RFCOMM socket on the SCN to reject further connection
+                         request */
+                        closeL2capSocket(true, false);
+                        mL2capServerSocket = null;
+                        closeRfcommSocket(true, false);
+                        mRfcommServerSocket = null;
                     } catch (IOException ex) {
-                      Log.e(TAG, "CloseSocket error: " + ex);
+                        Log.e(TAG, "CloseSocket error: " + ex);
                     }
                     break;
                 case MSG_INTERNAL_OBEX_L2CAP_SESSION_UP:
                     if (VERBOSE) Log.v(TAG,"MSG_INTERNAL_OBEX_L2CAP_SESSION_UP");
                     try {
-                      closeRfcommSocket(true, false);
+                        /* Once the FTP is connected over L2CAP, Close the RFCOMM socket on the
+                         SCN and L2CAP socket on the PSM to reject further connection
+                         request */
+                        closeRfcommSocket(true, false);
+                        mRfcommServerSocket = null;
+                        closeL2capSocket(true, false);
+                        mL2capServerSocket = null;
                     } catch (IOException ex) {
-                      Log.e(TAG, "CloseSocket error: " + ex);
+                        Log.e(TAG, "CloseSocket error: " + ex);
                     }
                     break;
                 default:

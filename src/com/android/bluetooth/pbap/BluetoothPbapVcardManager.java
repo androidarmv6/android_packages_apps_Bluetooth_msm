@@ -217,7 +217,7 @@ public class BluetoothPbapVcardManager {
             } else if (orderByWhat == BluetoothPbapObexServer.ORDER_BY_ALPHABETICAL) {
                 if (V) Log.v(TAG, "getPhonebookNameList, order by alpha");
                 contactCursor = mResolver.query(myUri, CONTACTS_PROJECTION, CLAUSE_ONLY_VISIBLE,
-                        null, Contacts.DISPLAY_NAME);
+                        null, Contacts.DISPLAY_NAME+ " COLLATE NOCASE");
             }
             if (contactCursor != null) {
                 for (contactCursor.moveToFirst(); !contactCursor.isAfterLast(); contactCursor
@@ -240,7 +240,14 @@ public class BluetoothPbapVcardManager {
     public final ArrayList<String> getContactNamesByNumber(final String phoneNumber) {
         ArrayList<String> nameList = new ArrayList<String>();
         ArrayList<String> startNameList = new ArrayList<String>();
-
+        StringBuilder onlyphoneNumber = new StringBuilder();
+        for (int j=0; j<phoneNumber.length(); j++) {
+            char c = phoneNumber.charAt(j);
+                if (c >= '0' && c <= '9') {
+                    onlyphoneNumber = onlyphoneNumber.append(c);
+                }
+        }
+        String SearchOnlyNumber = onlyphoneNumber.toString();
         Cursor contactCursor = null;
         Uri uri = Data.CONTENT_URI;
 
@@ -265,7 +272,7 @@ public class BluetoothPbapVcardManager {
                     }
                     String tmpNumber = onlyNumber.toString();
                     if (V) Log.v(TAG, "number: "+number+" onlyNumber:"+onlyNumber+" tmpNumber:"+tmpNumber);
-                    if (tmpNumber.endsWith(phoneNumber)) {
+                    if (tmpNumber.endsWith(SearchOnlyNumber)) {
                         String name = contactCursor.getString(CONTACTS_DISPLAY_NAME_COLUMN_INDEX);
                         if (TextUtils.isEmpty(name)) {
                             name = mContext.getString(android.R.string.unknownName);
@@ -274,7 +281,7 @@ public class BluetoothPbapVcardManager {
                         if (V) Log.v(TAG, "Adding to end name list");
                         nameList.add(name);
                     }
-                    if (tmpNumber.startsWith(phoneNumber)) {
+                    if (tmpNumber.startsWith(SearchOnlyNumber)) {
                         String name = contactCursor.getString(CONTACTS_DISPLAY_NAME_COLUMN_INDEX);
                         if (TextUtils.isEmpty(name)) {
                             name = mContext.getString(android.R.string.unknownName);
@@ -433,7 +440,7 @@ public class BluetoothPbapVcardManager {
         } else if (orderByWhat == BluetoothPbapObexServer.ORDER_BY_ALPHABETICAL) {
             try {
                 contactCursor = mResolver.query(myUri, CONTACTS_PROJECTION, CLAUSE_ONLY_VISIBLE,
-                        null, Contacts.DISPLAY_NAME);
+                        null, Contacts.DISPLAY_NAME+ " COLLATE NOCASE");
                 if (contactCursor != null) {
                     contactCursor.moveToPosition(offset - 1);
                     contactId = contactCursor.getLong(CONTACTS_ID_COLUMN_INDEX);

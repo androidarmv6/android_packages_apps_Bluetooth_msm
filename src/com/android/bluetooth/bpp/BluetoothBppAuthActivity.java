@@ -217,6 +217,7 @@ public class BluetoothBppAuthActivity extends AlertActivity implements
 
     private void onTimeout() {
         mTimeout = true;
+        Button mAlertButton;
         if (mCurrentDialog == DIALOG_YES_NO_AUTH) {
             messageView.setText(getString(R.string.bpp_authentication_timeout_message,
                 bf.getRemoteDeviceName()));
@@ -224,7 +225,12 @@ public class BluetoothBppAuthActivity extends AlertActivity implements
             mKeyView.clearFocus();
             mKeyView.removeTextChangedListener(this);
             mOkButton.setEnabled(true);
-            mAlert.getButton(DialogInterface.BUTTON_NEGATIVE).setVisibility(View.GONE);
+            mAlertButton = mAlert.getButton(DialogInterface.BUTTON_NEGATIVE);
+            if (mAlertButton != null) {
+                mAlertButton.setVisibility(View.GONE);
+            } else {
+                Log.e(TAG, "Error! mAlertButton is null, can't set visibility");
+            }
         }
 
         mTimeoutHandler.sendMessageDelayed(mTimeoutHandler.obtainMessage(DISMISS_TIMEOUT_DIALOG),

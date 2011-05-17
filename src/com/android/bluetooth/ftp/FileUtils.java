@@ -37,6 +37,7 @@ import android.os.Bundle;
 import android.webkit.MimeTypeMap;
 
 import java.io.IOException;
+import java.io.FileNotFoundException;
 import java.io.OutputStream;
 import java.io.InputStream;
 import java.io.File;
@@ -71,6 +72,10 @@ public class FileUtils {
         if (D) Log.d(TAG, "deleteDirectory() +");
         if(dir.exists()) {
             File [] files = dir.listFiles();
+            if (files == null) {
+                Log.e(TAG, "error in listing directory ");
+                return false;
+            }
             for(int i = 0; i < files.length;i++) {
                 if(files[i].isDirectory()) {
                     deleteDirectory(mCallback,files[i]);
@@ -105,6 +110,10 @@ public class FileUtils {
          int ret = 0;
          dest.mkdir();
          File [] files = src.listFiles();
+         if (files == null) {
+             Log.e(TAG, "error in listing directory");
+             return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+         }
          for(int i = 0; i < files.length; i++) {
              if (D) Log.d(TAG,"Files =" + files[i]);
              if(files[i].isDirectory()) {
@@ -143,9 +152,21 @@ public class FileUtils {
         try {
             reader = new FileInputStream(src);
             writer = new FileOutputStream(dest);
+        } catch(FileNotFoundException e) {
+            Log.e(TAG,"copyFile file not found "+ e.toString());
+            return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
         } catch(IOException e) {
             Log.e(TAG,"copyFile open stream failed "+ e.toString());
             return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+        } finally {
+            if (null != reader && null == writer) {
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    Log.e(TAG, "copyFile close stream failed"+ e.toString());
+                    return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+                }
+            }
         }
 
         BufferedInputStream ins = new BufferedInputStream(reader, 0x40000);

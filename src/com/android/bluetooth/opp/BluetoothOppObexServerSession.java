@@ -412,16 +412,31 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             }
 
             if (status == BluetoothShare.STATUS_SUCCESS) {
-                Message msg = Message.obtain(mCallback, BluetoothOppObexSession.MSG_SHARE_COMPLETE);
-                msg.obj = mInfo;
-                msg.sendToTarget();
+                if (mCallback != null) {
+                    Message msg = Message.obtain(mCallback, BluetoothOppObexSession.MSG_SHARE_COMPLETE);
+                    if (msg != null) {
+                        msg.obj = mInfo;
+                        msg.sendToTarget();
+                    } else {
+                        Log.e(TAG, "Could not get message!");
+                    }
+                } else {
+                    Log.e(TAG, "Error! mCallback is null");
+                }
             } else {
                 if (mCallback != null) {
                     Message msg = Message.obtain(mCallback,
                             BluetoothOppObexSession.MSG_SESSION_ERROR);
                     mInfo.mStatus = status;
-                    msg.obj = mInfo;
-                    msg.sendToTarget();
+                    if (msg != null) {
+                        msg.obj = mInfo;
+                        msg.sendToTarget();
+                    } else {
+                        Log.e(TAG, "Could not get message!");
+                        obexResponse = ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+                    }
+                } else {
+                    Log.e(TAG, "Error! mCallback is null");
                 }
             }
         } else if (mAccepted == BluetoothShare.USER_CONFIRMATION_DENIED
@@ -448,11 +463,19 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             Constants.updateShareStatus(mContext, mInfo.mId, status);
             obexResponse = ResponseCodes.OBEX_HTTP_FORBIDDEN;
 
-            Message msg = Message.obtain(mCallback);
-            msg.what = BluetoothOppObexSession.MSG_SHARE_INTERRUPTED;
-            mInfo.mStatus = status;
-            msg.obj = mInfo;
-            msg.sendToTarget();
+            if (mCallback != null) {
+                Message msg = Message.obtain(mCallback);
+                msg.what = BluetoothOppObexSession.MSG_SHARE_INTERRUPTED;
+                mInfo.mStatus = status;
+                if (msg != null) {
+                    msg.obj = mInfo;
+                    msg.sendToTarget();
+                } else {
+                    Log.e(TAG, "Could not get message!");
+                }
+            } else {
+                Log.e(TAG, "Error! mCallback is null");
+            }
         }
         return obexResponse;
     }
@@ -642,9 +665,9 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
         HeaderSet request = null;
         String type = "";
         String name = "";
-        OutputStream outputStream;
-        FileInputStream  fis;
-        BufferedInputStream bis;
+        OutputStream outputStream = null;
+        FileInputStream  fis = null;
+        BufferedInputStream bis = null;
         long fileLength = 0;
         long fileReadPos = 0;
         int readLength;
@@ -684,6 +707,13 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
         } catch(IOException e) {
             Log.e(TAG,"OPP Pull Business Card : open stream Exception"+ e.toString());
             return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+        } finally {
+            if (fis != null && outputStream == null) {
+                try {
+                    fis.close();
+                } catch(IOException e) {}
+                return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+            }
         }
 
         try {

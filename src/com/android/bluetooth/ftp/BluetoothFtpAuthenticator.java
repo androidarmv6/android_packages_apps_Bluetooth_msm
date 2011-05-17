@@ -97,7 +97,6 @@ public class BluetoothFtpAuthenticator implements Authenticator {
 
     // TODO: Reserved for future use only, in case PSE challenge PCE
     public byte[] onAuthenticationResponse(final byte[] userName) {
-        byte[] b = null;
-        return b;
+        return null;
     }
 }

@@ -675,25 +675,45 @@ public class BluetoothOppService extends Service {
                 if (info.mDirection == BluetoothShare.DIRECTION_OUTBOUND) {
                     if (V) Log.v(TAG, "Service start transfer new Batch " + newBatch.mId
                                 + " for info " + info.mId);
-                    if (c.getDeviceClass() == BluetoothClass.Device.IMAGING_PRINTER) {
+                    if ((c != null) && (c.getDeviceClass() == BluetoothClass.Device.IMAGING_PRINTER)) {
                         BluetoothBppTransfer BppTransfer =
                             new BluetoothBppTransfer(this, mPowerManager, newBatch);
-                        mBppTransfer.add(BppTransfer);
-                        mBppTransId++;
-                        BppTransfer.start();
+                        if (BppTransfer != null) {
+                            mBppTransfer.add(BppTransfer);
+                            mBppTransId++;
+                            BppTransfer.start();
+                        } else {
+                            Log.e(TAG, "Unexpected error! BppTransfer is null");
+                            mShares.remove(arrayPos);
+                        }
+
                         if (V) Log.v(TAG, "New BT BPP Transfer(" + mBppTransId
                             + "/" + mBppTransfer.size() + ") Start !!");
                     } else {
                         if (V) Log.v(TAG, "BT OPP Transfer Start");
                         mTransfer = new BluetoothOppTransfer(this, mPowerManager, newBatch);
-                        mTransfer.start();
+                        if (mTransfer != null) {
+                            mTransfer.start();
+                        } else {
+                            Log.e(TAG, "Unexpected error! mTransfer is null");
+                            mShares.remove(arrayPos);
+                            mBatchId--;
+                            mShares.remove(arrayPos);
+                        }
                     }
                 } else if (info.mDirection == BluetoothShare.DIRECTION_INBOUND) {
                     if (V) Log.v(TAG, "Service start server transfer new Batch " + newBatch.mId
                                 + " for info " + info.mId);
                     mServerTransfer = new BluetoothOppTransfer(this, mPowerManager, newBatch,
                             mServerSession);
-                    mServerTransfer.start();
+                    if (mServerTransfer != null) {
+                        mServerTransfer.start();
+                    } else {
+                        Log.e(TAG, "Unexpected error! mServerTransfer is null");
+                        mShares.remove(arrayPos);
+                        mBatchId--;
+                        mShares.remove(arrayPos);
+                    }
                 }
 
             } else {
@@ -720,25 +740,30 @@ public class BluetoothOppService extends Service {
                                     mBppTransfer.add(BppTransfer);
                                     mBppTransId++;
                                     BppTransfer.start();
-                                }else {
+                                } else {
                                     mBppTransfer.add(BppTransfer);
                                     mBppTransId++;
                                 }
-                            } else  {
-                                      Log.e(TAG, "Unexpected error! BppTransfer is null");
-                                      mBatchs.remove(newBatch);
-                                      mBatchId--;
-                                      mShares.remove(arrayPos);
-                                }
+                            } else {
+                                Log.e(TAG, "Unexpected error! BppTransfer is null");
+                                mBatchs.remove(newBatch);
+                                mBatchId--;
+                                mShares.remove(arrayPos);
+                            }
                             if (V) Log.v(TAG, "Additional BT BPP Transfer(" + mBppTransId
-                                + "/" + mBppTransfer.size() + ") Start !!");
-
-
+                                    + "/" + mBppTransfer.size() + ") Start !!");
                         } else {
                             if(mTransfer == null) {
                                 if (V) Log.v(TAG, "BT OPP Transfer Start");
                                 mTransfer = new BluetoothOppTransfer(this, mPowerManager, newBatch);
-                                mTransfer.start();
+                                if (mTransfer != null) {
+                                    mTransfer.start();
+                                } else {
+                                    Log.e(TAG, "Unexpected error! mTransfer is null");
+                                    mBatchs.remove(newBatch);
+                                    mBatchId--;
+                                    mShares.remove(arrayPos);
+                                }
                             }
                         }
                     } else if (info.mDirection == BluetoothShare.DIRECTION_INBOUND) {
@@ -747,7 +772,14 @@ public class BluetoothOppService extends Service {
                                 + newBatch.mId + " for info " + info.mId);
                             mServerTransfer = new BluetoothOppTransfer(this, mPowerManager,
                                 newBatch, mServerSession);
-                            mServerTransfer.start();
+                            if (mServerTransfer != null) {
+                                mServerTransfer.start();
+                            } else {
+                                Log.e(TAG, "Unexpected error! mServerTransfer is null");
+                                mBatchs.remove(newBatch);
+                                mBatchId--;
+                                mShares.remove(arrayPos);
+                            }
                         }
                     }
 
@@ -758,7 +790,11 @@ public class BluetoothOppService extends Service {
                                     newBatch.mId + " for info " + info.mId);
                             mServerTransfer = new BluetoothOppTransfer(this, mPowerManager,
                                     newBatch, mServerSession);
-                            mServerTransfer.start();
+                            if (mServerTransfer != null) {
+                                mServerTransfer.start();
+                            } else {
+                                Log.e(TAG, "Unexpected error! mServerTransfer is null");
+                            }
                         }
                     }
                 }
@@ -844,10 +880,18 @@ public class BluetoothOppService extends Service {
                         if (mBppTransfer.size() > 0) {
                             for (int id=0; id<mBppTransfer.size();id++) {
                                 BluetoothBppTransfer BppTransfer = mBppTransfer.get(id);
-                                if (batch.mId == BppTransfer.getBatchId()) {
+                                if (BppTransfer == null) {
+                                    Log.e(TAG, "Error! BppTransfer is null");
+                                }
+                                if (BppTransfer != null && batch.mId == BppTransfer.getBatchId()) {
                                     Log.d(TAG, "BPP Transfer(" + id + ") + batch("
                                         + batch.mId + ") are removed!!");
-                                    BppTransfer.stop();
+                                    if (BppTransfer != null) {
+                                        BppTransfer.stop();
+                                    } else {
+                                        Log.e(TAG, "Unexpected error! BppTransfer is null");
+                                    }
+
                                     mBppTransfer.remove(BppTransfer);
                                     mBppTransId--;
                                     if(mBppTransfer.size() > 0) {

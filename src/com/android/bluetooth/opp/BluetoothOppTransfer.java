@@ -144,6 +144,7 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
 
         @Override
         public void handleMessage(Message msg) {
+            BluetoothOppPreference INSTANCE = null;
             switch (msg.what) {
                 case SDP_RESULT:
                     if (V) Log.v(TAG, "SDP request returned scn: " + msg.arg1 +
@@ -152,6 +153,7 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                     if (!((BluetoothDevice)msg.obj).equals(mBatch.mDestination)) {
                         return;
                     }
+                    INSTANCE = BluetoothOppPreference.getInstance(mContext);
                     try {
                         mContext.unregisterReceiver(mReceiver);
                     } catch (IllegalArgumentException e) {
@@ -184,16 +186,24 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                         }
                     }
                     if (msg.arg2 > 0) { // OBEX-over-L2CAP
-                        BluetoothOppPreference.getInstance(mContext).setObexVariant(
+                        if (INSTANCE != null) {
+                            INSTANCE.setObexVariant(
                                 mBatch.mDestination, OPUSH_UUID16,
                                 BluetoothOppPreference.OBEX_OVER_L2CAP);
-                        mConnectThread =
-                           new SocketConnectThread(mBatch.mDestination, SocketConnectThread.SOCKET_TYPE_L2CAP, msg.arg2, false);
-                        mConnectThread.start();
+                            mConnectThread =
+                                new SocketConnectThread(mBatch.mDestination, SocketConnectThread.SOCKET_TYPE_L2CAP, msg.arg2, false);
+                            mConnectThread.start();
+                        } else {
+                            Log.e(TAG, "Batch failed!");
+                            markBatchFailed(BluetoothShare.STATUS_CONNECTION_ERROR);
+                            mBatch.mStatus = Constants.BATCH_STATUS_FAILED;
+                        }
                     } else if (msg.arg1 > 0) { // OBEX-over-RFCOMM
-                        BluetoothOppPreference.getInstance(mContext).setObexVariant(
+                        if (INSTANCE != null) {
+                            INSTANCE.setObexVariant(
                                 mBatch.mDestination, OPUSH_UUID16,
                                 BluetoothOppPreference.OBEX_OVER_RFCOMM);
+                        }
                         mConnectThread =
                            new SocketConnectThread(mBatch.mDestination, SocketConnectThread.SOCKET_TYPE_RFCOMM, msg.arg1,false) ;
                         mConnectThread.start();
@@ -559,19 +569,25 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
         if (V) Log.v(TAG, "Do Opush SDP request for address " + mBatch.mDestination);
         mTimestamp = System.currentTimeMillis();
 
+        BluetoothOppPreference INSTANCE = BluetoothOppPreference.getInstance(mContext);
+
         /* Don't use cached OBEX variant if DEBUG 'force' properties are set */
         if (SystemProperties.getBoolean(DEBUG_FORCE_RFCOMM, false) ||
                 SystemProperties.getBoolean(DEBUG_FORCE_L2CAP, false)) {
             if (D) {
                 Log.d(TAG, "DEBUG: forced OBEX variant detected, removing cached variant.");
             }
-            BluetoothOppPreference.getInstance(mContext).setObexVariant(
-                    mBatch.mDestination, OPUSH_UUID16, -1);
+            if (INSTANCE != null) {
+                INSTANCE.setObexVariant(mBatch.mDestination, OPUSH_UUID16, -1);
+            } else {
+                Log.e(TAG, "BluetoothOppPreference.getInstance() failed");
+            }
         }
 
-        int obexVariant = BluetoothOppPreference.getInstance(mContext).getObexVariant(
-                mBatch.mDestination, OPUSH_UUID16);
-
+        int obexVariant = -1;
+        if (INSTANCE != null) {
+            obexVariant = INSTANCE.getObexVariant(mBatch.mDestination, OPUSH_UUID16);
+        }
         if (obexVariant == BluetoothOppPreference.OBEX_OVER_RFCOMM) {
             int channel;
             channel = mBatch.mDestination.getServiceChannel(BluetoothUuid.ObexObjectPush);

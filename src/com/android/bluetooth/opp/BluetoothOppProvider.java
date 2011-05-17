@@ -305,7 +305,10 @@ public final class BluetoothOppProvider extends ContentProvider {
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
             String sortOrder) {
         SQLiteDatabase db = mOpenHelper.getReadableDatabase();
-
+        if (db == null) {
+            Log.e(TAG, "Can't open databse!");
+            return null;
+        }
         SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
 
         int match = sURIMatcher.match(uri);

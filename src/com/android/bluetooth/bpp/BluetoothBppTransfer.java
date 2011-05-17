@@ -198,6 +198,10 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
             }
             else if (action.equals(BluetoothDevice.ACTION_ACL_DISCONNECTED)) {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                if (device == null) {
+                    Log.e(TAG, "Receive ACTION_ACL_DISCONNECTED, device null");
+                    return;
+                }
                     if (V) Log.v(TAG, "ACTION_ACL_DISCONNECTED for device " + device
                         + "- Printer device: " + mBatch.mDestination);
                     if (device.equals(mBatch.mDestination) && mBPPregisterReceiver) {
@@ -617,6 +621,7 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
     private void markInfoStatus(BluetoothOppShareInfo info, int status) {
         if (info == null) {
             Log.e(TAG, "info is null!!");
+            return;
         }
         if (D) Log.d(TAG, "Mark ShareInfo in the batch as " + status );
         Constants.updateShareStatus(mContext, info.mId, status);
@@ -830,14 +835,25 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
 
     private void startSDPSession() {
         if (V) Log.v(TAG, "startSDPSession");
-
-        JobChannel = BluetoothBppPreference.getInstance(mContext).getChannel(
+        BluetoothBppPreference INSTANCE = null;
+        INSTANCE = BluetoothBppPreference.getInstance(mContext);
+        if (INSTANCE == null) {
+            Log.e(TAG, "Unexpected error! Instance is null");
+            if (mSessionHandler != null) {
+                mSessionHandler.obtainMessage(SDP_RESULT, -1, -1,
+                                        mBatch.mDestination).sendToTarget();
+            } else {
+                Log.e(TAG, "Error! mSessionHandler is null");
+            }
+            return;
+        }
+        JobChannel = INSTANCE.getChannel(
                     mBatch.mDestination, BluetoothBppConstant.DPS_UUID16);
 
-        StatusChannel = BluetoothBppPreference.getInstance(mContext).getChannel(
+        StatusChannel = INSTANCE.getChannel(
                     mBatch.mDestination, BluetoothBppConstant.STS_UUID16);
 
-        String docFormats = BluetoothBppPreference.getInstance(mContext).getFeatures(
+        String docFormats = INSTANCE.getFeatures(
                     mBatch.mDestination);
 
         if(IsNotSupportedDocFormats(docFormats)) return;
@@ -847,8 +863,12 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                 ", Status Channel: " + StatusChannel + " from cache for " +
                 mBatch.mDestination);
             mTimestamp = System.currentTimeMillis();
-            mSessionHandler.obtainMessage(SDP_RESULT, JobChannel, StatusChannel,
-                                    mBatch.mDestination).sendToTarget();
+            if (mSessionHandler != null) {
+                mSessionHandler.obtainMessage(SDP_RESULT, JobChannel, StatusChannel,
+                                        mBatch.mDestination).sendToTarget();
+            } else {
+                Log.e(TAG, "Error! mSessionHandler is null");
+            }
         } else {
             doBppSdp();
         }
@@ -869,8 +889,13 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                 ", Status Channel: " + StatusChannel + " from SDP for " +
                 mBatch.mDestination);
 
-            mSessionHandler.obtainMessage(SDP_RESULT, JobChannel, StatusChannel,
-                                    mBatch.mDestination).sendToTarget();
+            if (mSessionHandler != null) {
+                mSessionHandler.obtainMessage(SDP_RESULT, JobChannel, StatusChannel,
+                                        mBatch.mDestination).sendToTarget();
+            } else {
+                Log.e(TAG, "Error! mSessionHandler is null");
+            }
+
             return;
 
         } else {
@@ -889,9 +914,13 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                 return;
             }
         }
-        Message msg = mSessionHandler.obtainMessage(SDP_RESULT, JobChannel,
-                                                    StatusChannel, mBatch.mDestination);
-        mSessionHandler.sendMessageDelayed(msg, 2000);
+        if (mSessionHandler != null) {
+            Message msg = mSessionHandler.obtainMessage(SDP_RESULT, JobChannel,
+                                                        StatusChannel, mBatch.mDestination);
+            mSessionHandler.sendMessageDelayed(msg, 2000);
+        } else {
+            Log.e(TAG, "Error! mSessionHandler is null");
+        }
     }
 
     /**
@@ -949,6 +978,10 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                 mBatch.mOwner = BluetoothShare.OWNER_OPP;
                 mBatch.mStatus = BluetoothShare.STATUS_PENDING;
                 BluetoothOppShareInfo info = mBatch.getPendingShare();
+                if (info == null) {
+                    Log.e(TAG, "Error! info is null");
+                    return false;
+                }
                 BluetoothOppService.markBatchOwnership(mContext, info.mId,
                     BluetoothShare.OWNER_OPP);
 
@@ -956,7 +989,11 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                     if (V) Log.v(TAG, "OPP Transfer Start!! - " + mBatch.mId );
                     BluetoothOppService.mTransfer =
                         new BluetoothOppTransfer(mContext, mPowerManager, mBatch);
-                    BluetoothOppService.mTransfer.start();
+                    if (BluetoothOppService.mTransfer != null) {
+                        BluetoothOppService.mTransfer.start();
+                    } else {
+                        Log.e(TAG, "Error! mTransfer is null");
+                    }
                 }
                 return true;
             }
@@ -994,6 +1031,10 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(BluetoothDevice.ACTION_UUID)) {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                if (device == null) {
+                    Log.e(TAG, "Unexpected error! device is null");
+                    return;
+                }
                 if (V) Log.v(TAG, "ACTION_UUID for device " + device + "requested device: "
                                                                         + mBatch.mDestination);
                 if (device.equals(mBatch.mDestination)) {
@@ -1050,14 +1091,22 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                             mBatch.mOwner = BluetoothShare.OWNER_OPP;
                             mBatch.mStatus = BluetoothShare.STATUS_PENDING;
                             BluetoothOppShareInfo info = mBatch.getPendingShare();
-                            BluetoothOppService.markBatchOwnership(mContext, info.mId,
-                                BluetoothShare.OWNER_OPP);
+                            if (info != null) {
+                                BluetoothOppService.markBatchOwnership(mContext, info.mId,
+                                    BluetoothShare.OWNER_OPP);
+                            } else {
+                                Log.e(TAG, "BroadcastReceiver, Action_UUID, info is null");
+                            }
 
                             if (BluetoothOppService.mTransfer == null) {
                                 if (V) Log.v(TAG, "OPP Transfer Start!! - " + mBatch.mId );
                                 BluetoothOppService.mTransfer =
                                     new BluetoothOppTransfer(mContext, mPowerManager, mBatch);
-                                BluetoothOppService.mTransfer.start();
+                                if (BluetoothOppService.mTransfer != null) {
+                                    BluetoothOppService.mTransfer.start();
+                                } else {
+                                    Log.e(TAG, "Error! mTransfer is null");
+                                }
                             }
                             return;
                         }
@@ -1079,9 +1128,13 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                     if (V) Log.v(TAG, "Start SDP now ");
                     if (!mBatch.mDestination.fetchUuidsWithSdp()) {
                         Log.e(TAG, "Start SDP query failed");
-                        Message msg = mSessionHandler.obtainMessage(SDP_RESULT, -1, -1,
+                        if (mSessionHandler != null) {
+                            Message msg = mSessionHandler.obtainMessage(SDP_RESULT, -1, -1,
                                                                     mBatch.mDestination);
-                        mSessionHandler.sendMessageDelayed(msg, 2000);
+                            mSessionHandler.sendMessageDelayed(msg, 2000);
+                        } else {
+                            Log.e(TAG, "Error! mSessionHandler is null");
+                        }
                     }
                 }
             }
@@ -1123,8 +1176,12 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
         @Override
         public void run() {
 
+            BluetoothBppPreference INSTANCE = null;
             timestamp = System.currentTimeMillis();
-
+            if (device ==null) {
+                Log.e(TAG, "Error! device is null");
+                return;
+            }
             /* Use BluetoothSocket to connect */
             try {
                 if (V) Log.v(TAG, "Rfcomm socket Connection init: " + device.getAddress());
@@ -1142,13 +1199,14 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                         (System.currentTimeMillis() - timestamp) + " ms");
                 BluetoothBppRfcommTransport transport;
                 transport = new BluetoothBppRfcommTransport(btSocket);
-                BluetoothBppPreference.getInstance(mContext).setChannel(device,
-                                        BluetoothBppConstant.DPS_UUID16, JobChannel);
-                BluetoothBppPreference.getInstance(mContext).setChannel(device,
-                                        BluetoothBppConstant.STS_UUID16, StatusChannel);
-                BluetoothBppPreference.getInstance(mContext).setName(device, device.getName());
-                BluetoothBppPreference.getInstance(mContext).setFeatures(device,
-                                        BluetoothBppConstant.mSupportedDocs);
+                INSTANCE = BluetoothBppPreference.getInstance(mContext);
+                INSTANCE.setChannel(device,
+                          BluetoothBppConstant.DPS_UUID16, JobChannel);
+                INSTANCE.setChannel(device,
+                          BluetoothBppConstant.STS_UUID16, StatusChannel);
+                INSTANCE.setName(device, device.getName());
+                INSTANCE.setFeatures(device,
+                          BluetoothBppConstant.mSupportedDocs);
                 if (V) Log.v(TAG, "Send transport message " + transport.toString());
                 if(channel == JobChannel){
                     mSessionHandler.obtainMessage(RFCOMM_CONNECTED, transport).sendToTarget();
@@ -1157,10 +1215,10 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                 }
             } catch (IOException e) {
                 Log.e(TAG, "Rfcomm socket connect exception " + e);
-                BluetoothBppPreference.getInstance(mContext)
-                        .removeChannel(device, BluetoothBppConstant.DPS_UUID16);
-                BluetoothBppPreference.getInstance(mContext)
-                        .removeChannel(device, BluetoothBppConstant.STS_UUID16);
+                if (INSTANCE != null) {
+                    INSTANCE.removeChannel(device, BluetoothBppConstant.DPS_UUID16);
+                    INSTANCE.removeChannel(device, BluetoothBppConstant.STS_UUID16);
+                }
                 markConnectionFailed(btSocket);
                 return;
             }
@@ -1201,6 +1259,10 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
      */
     public void onShareAdded(int id) {
         BluetoothOppShareInfo info = mBatch.getPendingShare();
+        if (info == null) {
+            Log.e(TAG, "Error! info is null");
+            return;
+        }
         if (info.mDirection == BluetoothShare.DIRECTION_INBOUND) {
             mCurrentShare = mBatch.getPendingShare();
             if (mCurrentShare != null

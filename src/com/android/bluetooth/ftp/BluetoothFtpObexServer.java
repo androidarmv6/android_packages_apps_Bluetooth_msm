@@ -49,6 +49,7 @@ import java.io.FileOutputStream;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.util.Date;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.lang.StringBuffer;
 
@@ -70,6 +71,19 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
 
     private static final int UUID_LENGTH = 16;
 
+    /* To help parsing file attributes */
+    private static final int INDEX_YEAR = 0;
+
+    private static final int INDEX_MONTH = 1;
+
+    private static final int INDEX_DATE = 2;
+
+    private static final int INDEX_TIME = 3;
+
+    private static final int INDEX_TIME_HOUR = 0;
+
+    private static final int INDEX_TIME_MINUTE = 1;
+
     // type for list folder contents
     private static final String TYPE_LISTING = "x-obex/folder-listing";
 
@@ -85,6 +99,10 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
     public static boolean sIsAborted = false;
 
     public static final String ROOT_FOLDER_PATH = "/sdcard";
+
+    private static final String FOLDER_NAME_DOT = ".";
+
+    private static final String FOLDER_NAME_DOTDOT = "..";
 
     List<String> filenames;
 
@@ -274,7 +292,12 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
         try {
             name = (String)request.getHeader(HeaderSet.NAME);
             destname =  (String)request.getHeader(HeaderSet.DEST_NAME);
-
+            /* Renaming directory to "." or ".." is not allowed */
+            if (TextUtils.equals(destname, FOLDER_NAME_DOT) ||
+                TextUtils.equals(destname, FOLDER_NAME_DOTDOT) ) {
+               if(D)  Log.d(TAG, "cannot rename the directory to " + destname);
+               return ResponseCodes.OBEX_HTTP_NOT_ACCEPTABLE;
+            }
             if(D)  Log.d(TAG,"Rename "+ name +" to "+destname);
             File src = new File(mCurrentPath + "/" + name);
             File dest = new File(mCurrentPath + "/" + destname);
@@ -343,6 +366,12 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
          */
         try{
            name = (String)request.getHeader(HeaderSet.NAME);
+           /* Not allowed to delete a folder name with "." and ".." */
+           if (TextUtils.equals(name, FOLDER_NAME_DOT) ||
+               TextUtils.equals(name, FOLDER_NAME_DOTDOT) ) {
+              if(D)  Log.d(TAG, "cannot delete the directory " + name);
+              return ResponseCodes.OBEX_HTTP_UNAUTHORIZED;
+           }
            if (D) Log.d(TAG,"OnDelete File = " + name +
                                           "mCurrentPath = " + mCurrentPath );
            File deleteFile = new File(mCurrentPath + "/" + name);
@@ -420,6 +449,12 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
             request = op.getReceivedHeader();
             length = extractLength(request);
             name = (String)request.getHeader(HeaderSet.NAME);
+            /* Put with directory name "." and ".." is not allowed */
+            if (TextUtils.equals(name, FOLDER_NAME_DOT) ||
+                TextUtils.equals(name, FOLDER_NAME_DOTDOT) ) {
+               if(D) Log.d(TAG, "cannot put the directory " + name);
+               return ResponseCodes.OBEX_HTTP_NOT_ACCEPTABLE;
+            }
             filetype = (String)request.getHeader(HeaderSet.TYPE);
             if (D) Log.d(TAG,"type = " + filetype + " name = " + name
                     + " Current Path = " + mCurrentPath + "length = " + length);
@@ -465,9 +500,15 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
 
             int positioninfile = 0;
             File fileinfo = new File(mCurrentPath+ "/" + name);
-            if(fileinfo.getParentFile().canWrite() == false) {
-                if (D) Log.d(TAG,"Dir "+ fileinfo.getParent() +"is read-only");
-                return ResponseCodes.OBEX_DATABASE_LOCKED;
+            File parentFile = fileinfo.getParentFile();
+            if (parentFile != null) {
+                if (parentFile.canWrite() == false) {
+                    if (D) Log.d(TAG,"Dir "+ fileinfo.getParent() +"is read-only");
+                    return ResponseCodes.OBEX_DATABASE_LOCKED;
+                }
+            } else {
+                Log.e(TAG, "Error! Not able to get parent file name");
+                return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
             }
             /* If File exists we delete and proceed to take the rest of bytes */
             if(fileinfo.exists() == true) {
@@ -602,6 +643,13 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
         if (D) Log.d(TAG, "backup=" + backup + " create=" + create +
                    " name=" + tmp_path +"mCurrentPath = " + mCurrentPath);
 
+        /* If the name is "." or ".." do not allow to create or set the directory */
+        if (TextUtils.equals(tmp_path, FOLDER_NAME_DOT) ||
+            TextUtils.equals(tmp_path, FOLDER_NAME_DOTDOT)) {
+           if(D) Log.d(TAG, "cannot create or set the directory to " + tmp_path);
+           return ResponseCodes.OBEX_HTTP_NOT_ACCEPTABLE;
+        }
+
         /* If backup flag is set then if the current path is not null then
          * remove the substring till '/' in the current path For ex. if current
          * path is "/sdcard/bluetooth" we will return a string "/sdcard" into
@@ -692,6 +740,12 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
             request = op.getReceivedHeader();
             type = (String)request.getHeader(HeaderSet.TYPE);
             name = (String)request.getHeader(HeaderSet.NAME);
+            /* Get with folder name "." and ".." is not allowed */
+            if (TextUtils.equals(name, FOLDER_NAME_DOT) ||
+                TextUtils.equals(name, FOLDER_NAME_DOTDOT) ) {
+               if(D) Log.d(TAG, "cannot get the folder " + name);
+               return ResponseCodes.OBEX_HTTP_NOT_ACCEPTABLE;
+            }
         } catch (IOException e) {
             Log.e(TAG,"onGet request headers "+ e.toString());
             if (D) Log.d(TAG, "request headers error");
@@ -741,9 +795,14 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
                     if (D) Log.d(TAG,"Not having a name");
                     File rootfolder = new File(mCurrentPath);
                     File [] files = rootfolder.listFiles();
-                    for(int i = 0; i < files.length; i++)
-                        if (D) Log.d(TAG,"Folder listing =" + files[i] );
-                    return sendFolderListingXml(0,op,files);
+                    if (files != null) {
+                        for(int i = 0; i < files.length; i++)
+                            if (D) Log.d(TAG,"Folder listing =" + files[i] );
+                        return sendFolderListingXml(0,op,files);
+                    } else {
+                        Log.e(TAG,"error in listing files");
+                        return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+                    }
                 } else {
                     if (D) Log.d(TAG,"Non Root Folder");
                     if(type.equals(TYPE_LISTING)){
@@ -758,7 +817,12 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
                             File subFolder = new File(mCurrentPath +"/"+ name);
                             if(subFolder.exists()) {
                                 File [] files = subFolder.listFiles();
-                                return sendFolderListingXml(0,op,files);
+                                if (files != null) {
+                                    return sendFolderListingXml(0,op,files);
+                                } else {
+                                    Log.e(TAG,"error in listing files");
+                                    return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+                                }
                             } else {
                                 Log.e(TAG,
                                     "ResponseCodes.OBEX_HTTP_NO_CONTENT");
@@ -767,9 +831,14 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
                         }
 
                         File [] files = currentfolder.listFiles();
-                        for(int i = 0; i < files.length; i++)
-                           if (D) Log.d(TAG,"Non Root Folder listing =" + files[i] );
-                        return sendFolderListingXml(0,op,files);
+                        if (files != null) {
+                            for(int i = 0; i < files.length; i++)
+                               if (D) Log.d(TAG,"Non Root Folder listing =" + files[i] );
+                            return sendFolderListingXml(0,op,files);
+                        } else {
+                            Log.e(TAG,"error in listing files");
+                            return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+                        }
                     }
                 }
             }
@@ -803,8 +872,8 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
         int outputBufferSize = op.getMaxPacketSize();
         long timestamp = 0;
         int responseCode = -1;
-        FileInputStream fileInputStream;
-        OutputStream outputStream;
+        FileInputStream fileInputStream = null;
+        OutputStream outputStream = null;
         BufferedInputStream bis;
         long finishtimestamp;
         long starttimestamp;
@@ -823,6 +892,15 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
         } catch(IOException e) {
             Log.e(TAG,"SendFilecontents open stream "+ e.toString());
             return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+        } finally {
+            if (fileInputStream != null && outputStream == null) {
+                try {
+                    fileInputStream.close();
+                } catch (IOException ei) {
+                    Log.e(TAG, "Error while closing stream"+ ei.toString());
+                }
+                return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+            }
         }
         bis = new BufferedInputStream(fileInputStream, 0x4000);
         starttimestamp = System.currentTimeMillis();
@@ -931,6 +1009,7 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
         }
 
         File [] files = dir.listFiles();
+        if (files == null) return;
         for(int i = 0; i < files.length; i++) {
             if (D) Log.d(TAG,"Files =" + files[i]);
             if(files[i].isDirectory()) {
@@ -1039,36 +1118,6 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
         if (V) Log.v(TAG, "pushBytes - result = " + pushResult);
         return pushResult;
     }
-    /* Convert Month string to number strings for months */
-    private final String convertMonthtoDigit(String Month) {
-        if(Month.compareTo("Jan")== 0) {
-            return "01";
-        } else if (Month.compareTo("Feb")== 0){
-            return "02";
-        } else if (Month.compareTo("Mar")== 0){
-            return "03";
-        } else if (Month.compareTo("Apr")== 0){
-            return "04";
-        } else if (Month.compareTo("May")== 0){
-            return "05";
-        } else if (Month.compareTo("Jun")== 0){
-            return "06";
-        } else if (Month.compareTo("Jul")== 0){
-            return "07";
-        } else if (Month.compareTo("Aug")== 0){
-            return "08";
-        } else if (Month.compareTo("Sep")== 0){
-            return "09";
-        } else if (Month.compareTo("Oct")== 0){
-            return "10";
-        } else if (Month.compareTo("Nov")== 0){
-            return "11";
-        } else if (Month.compareTo("Dec")== 0){
-            return "12";
-        } else {
-            return "00";
-        }
-    }
 
     /** Form and Send an XML format String to client for Folder listing */
     private final int sendFolderListingXml(final int type,Operation op,final File[] files) {
@@ -1085,69 +1134,51 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
         result.append('\r');
         result.append('\n');
 
-        for(int i =0; i < files.length; i++){
-            if(files[i].isDirectory()) {
-                String dirperm = "";
-                if(files[i].canRead() && files[i].canWrite()) {
-                    dirperm = "RW";
-                } else if(files[i].canRead()) {
-                    dirperm = "R";
-                } else if(files[i].canWrite()) {
-                    dirperm = "W";
-                }
-                Date date = new Date(files[i].lastModified());
-		/* Date Format returned "EEE MMM dd HH:mm:ss zzz+xx:xx yyyy"
-                 * For ex :             "Tue Jan 01 00:00:00 GMT+00:00 1980"
-                 */
+        /* For the purpose of parsing file attributes and to maintain the standard,
+         * enforce the format to be used
+         */
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy MM dd HH:mm");
 
-                StringBuffer xmldateformat = new StringBuffer(date.toString().substring(30,34));
-                xmldateformat.append(convertMonthtoDigit(date.toString().substring(4,7)));
-                xmldateformat.append(date.toString().substring(8,10));
-                xmldateformat.append("T");
-                xmldateformat.append(date.toString().substring(11,13));
-                xmldateformat.append(date.toString().substring(14,16));
-                xmldateformat.append("00Z");
+        String name = "";
+        String permission  = "";
+        for(int i =0; i < files.length; i++) {
 
-                if (D) Log.d(TAG,"<folder name = " + files[i].getName()+ " size = "
-                                + files[i].length() + "modified = " + date.toString()
-                                + "xmldateformat.toString() = " + xmldateformat.toString());
-                result.append("<folder name=\"" + files[i].getName()+ "\"" + " size=\"" +
-                    files[i].length() + "\"" + " user-perm=\"" + dirperm + "\"" +
-                    " modified=\"" + xmldateformat.toString()  + "\"" + "/>");
-                result.append('\r');
-                result.append('\n');
+            if (files[i].isDirectory()) {
+               name = "folder name";
+            } else {
+               name = "file name";
             }
-            else {
-                String userperm = "";
-                if(files[i].canRead() && files[i].canWrite()) {
-                    userperm = "RW";
-                } else if(files[i].canRead()) {
-                    userperm = "R";
-                } else if(files[i].canWrite()) {
-                    userperm = "W";
-                }
 
-                Date date = new Date(files[i].lastModified());
-                /*First put in the Year into String buffer */
-                StringBuffer xmldateformat = new StringBuffer(date.toString().substring(30,34));
-
-                xmldateformat.append(convertMonthtoDigit(date.toString().substring(4,7)));
-                xmldateformat.append(date.toString().substring(8,10));
-                xmldateformat.append("T");
-                xmldateformat.append(date.toString().substring(11,13));
-                xmldateformat.append(date.toString().substring(14,16));
-                xmldateformat.append("00Z");
-
-                if (D) Log.d(TAG,"<file name = " + files[i].getName() + "size = " +
-                        files[i].length() + "Append user-perm = "
-                        + userperm + "Date in string format = " + date.toString()
-                        + "files[i].modifieddate = " + xmldateformat.toString() );
-                result.append("<file name=\"" + files[i].getName()+ "\"" + " size=\"" +
-                    files[i].length() + "\"" + " user-perm=\"" + userperm + "\"" + " modified=\""
-                    + xmldateformat.toString()  + "\"" + "/>");
-                result.append('\r');
-                result.append('\n');
+            if (files[i].canRead() && files[i].canWrite()) {
+               permission = "RW";
+            } else if(files[i].canRead()) {
+               permission = "R";
+            } else if(files[i].canWrite()) {
+               permission = "W";
             }
+
+            Date date = new Date(files[i].lastModified());
+            String[] dateset = sdf.format(date).split(" ");
+
+            StringBuffer xmldateformat = new StringBuffer(dateset[INDEX_YEAR]);
+            xmldateformat.append(dateset[INDEX_MONTH]);
+            xmldateformat.append(dateset[INDEX_DATE]);
+
+            String[] timeset = dateset[INDEX_TIME].split(":");
+            xmldateformat.append("T");
+            xmldateformat.append(timeset[INDEX_TIME_HOUR]);
+            xmldateformat.append(timeset[INDEX_TIME_MINUTE]);
+            xmldateformat.append("00Z");
+
+            if (D) Log.d(TAG, name +"=" + files[i].getName()+ " size="
+                            + files[i].length() + " modified=" + date.toString()
+                            + " dateformat to send=" + xmldateformat.toString());
+
+            result.append("<" + name + "=\"" + files[i].getName()+ "\"" + " size=\"" +
+                files[i].length() + "\"" + " user-perm=\"" + permission + "\"" +
+                " modified=\"" + xmldateformat.toString()  + "\"" + "/>");
+            result.append('\r');
+            result.append('\n');
         }
         result.append("</folder-listing>");
         result.append('\r');
