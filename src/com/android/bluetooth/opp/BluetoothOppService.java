@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2010-2011 Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -55,7 +56,6 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.util.Log;
 import android.os.Process;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -121,7 +121,9 @@ public class BluetoothOppService extends Service {
 
     private PowerManager mPowerManager;
 
-    private BluetoothOppRfcommListener mSocketListener;
+    private BluetoothOppL2capListener mL2capSocketListener;
+
+    private BluetoothOppRfcommListener mRfcommSocketListener;
 
     private boolean mListenStarted = false;
 
@@ -148,7 +150,9 @@ public class BluetoothOppService extends Service {
         super.onCreate();
         if (V) Log.v(TAG, "Service onCreate");
         mAdapter = BluetoothAdapter.getDefaultAdapter();
-        mSocketListener = new BluetoothOppRfcommListener(mAdapter);
+        mL2capSocketListener = new BluetoothOppL2capListener(mAdapter);
+        mRfcommSocketListener = new BluetoothOppRfcommListener(mAdapter);
+
         mShares = Lists.newArrayList();
         mBatchs = Lists.newArrayList();
         mObserver = new BluetoothShareContentObserver();
@@ -310,9 +314,10 @@ public class BluetoothOppService extends Service {
 
     private void startSocketListener() {
 
-        if (V) Log.v(TAG, "start RfcommListener");
-        mSocketListener.start(mHandler);
-        if (V) Log.v(TAG, "RfcommListener started");
+        if (V) Log.v(TAG, "start RFCOMM and L2CAP listeners");
+        mRfcommSocketListener.start(mHandler);
+        mL2capSocketListener.start(mHandler);
+        if (V) Log.d(TAG, "RFCOMM and L2CAP listeners started");
     }
 
     @Override
@@ -321,7 +326,8 @@ public class BluetoothOppService extends Service {
         super.onDestroy();
         getContentResolver().unregisterContentObserver(mObserver);
         unregisterReceiver(mBluetoothReceiver);
-        mSocketListener.stop();
+        mRfcommSocketListener.stop();
+        mL2capSocketListener.stop();
     }
 
     /* suppose we auto accept an incoming OPUSH connection */
@@ -346,7 +352,8 @@ public class BluetoothOppService extends Service {
                         break;
                     case BluetoothAdapter.STATE_TURNING_OFF:
                         if (V) Log.v(TAG, "Receiver DISABLED_ACTION ");
-                        mSocketListener.stop();
+                        mRfcommSocketListener.stop();
+                        mL2capSocketListener.stop();
                         mListenStarted = false;
                         synchronized (BluetoothOppService.this) {
                             if (mUpdateThread == null) {
@@ -571,24 +578,27 @@ public class BluetoothOppService extends Service {
         if (info.isReadyToStart()) {
             if (info.mDirection == BluetoothShare.DIRECTION_OUTBOUND) {
                 /* check if the file exists */
-                InputStream i;
-                try {
-                    i = getContentResolver().openInputStream(Uri.parse(info.mUri));
-                } catch (FileNotFoundException e) {
-                    Log.e(TAG, "Can't open file for OUTBOUND info " + info.mId);
-                    Constants.updateShareStatus(this, info.mId, BluetoothShare.STATUS_BAD_REQUEST);
-                    return;
-                } catch (SecurityException e) {
-                    Log.e(TAG, "Exception:" + e.toString() + " for OUTBOUND info " + info.mId);
-                    Constants.updateShareStatus(this, info.mId, BluetoothShare.STATUS_BAD_REQUEST);
-                    return;
-                }
+                if(!info.mUri.contains("as_multi_vcard")) {
+                    InputStream i;
+                    try {
+                        if (V) Log.v(TAG, "Check The presence of file");
+                        i = getContentResolver().openInputStream(Uri.parse(info.mUri));
+                    } catch (FileNotFoundException e) {
+                        Log.e(TAG, "Can't open file for OUTBOUND info " + info.mId);
+                        Constants.updateShareStatus(this, info.mId, BluetoothShare.STATUS_BAD_REQUEST);
+                        return;
+                    } catch (SecurityException e) {
+                        Log.e(TAG, "Exception:" + e.toString() + " for OUTBOUND info " + info.mId);
+                        Constants.updateShareStatus(this, info.mId, BluetoothShare.STATUS_BAD_REQUEST);
+                        return;
+                    }
 
-                try {
-                    i.close();
-                } catch (IOException ex) {
-                    Log.e(TAG, "IO error when close file for OUTBOUND info " + info.mId);
-                    return;
+                    try {
+                        i.close();
+                    } catch (IOException ex) {
+                        Log.e(TAG, "IO error when close file for OUTBOUND info " + info.mId);
+                        return;
+                    }
                 }
             }
             if (mBatchs.size() == 0) {
@@ -888,6 +898,14 @@ public class BluetoothOppService extends Service {
         delNum = contentResolver.delete(BluetoothShare.CONTENT_URI,
                 WHERE_INVISIBLE_COMPLETE_INBOUND_FAILED, null);
         if (V) Log.v(TAG, "Deleted complete inbound failed shares, number = " + delNum);
+
+        // on boot : remove unconfirmed inbound shares.
+        final String WHERE_CONFIRMATION_PENDING_INBOUND = BluetoothShare.DIRECTION + "="
+                + BluetoothShare.DIRECTION_INBOUND + " AND " + BluetoothShare.USER_CONFIRMATION
+                + "=" + BluetoothShare.USER_CONFIRMATION_PENDING;
+        delNum = contentResolver.delete(BluetoothShare.CONTENT_URI,
+                 WHERE_CONFIRMATION_PENDING_INBOUND, null);
+        if (V) Log.v(TAG, "Deleted unconfirmed incoming shares, number = " + delNum);
 
         // Only keep the inbound and successful shares for LiverFolder use
         // Keep the latest 1000 to easy db query

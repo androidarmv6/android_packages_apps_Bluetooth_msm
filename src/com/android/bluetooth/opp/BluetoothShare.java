@@ -258,6 +258,11 @@ public final class BluetoothShare implements BaseColumns {
     public static final int USER_CONFIRMATION_TIMEOUT = 4;
 
     /**
+     * This transfer is notify for user action.
+     */
+    public static final int USER_CONFIRMATION_NOTIFY = 5;
+
+    /**
      * This transfer is visible and shows in the notifications while in progress
      * and after completion.
      */

@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -187,7 +188,7 @@ public class Constants {
 
     public static final String BLUETOOTHOPP_NAME_PREFERENCE = "btopp_names";
 
-    public static final String BLUETOOTHOPP_CHANNEL_PREFERENCE = "btopp_channels";
+    public static final String BLUETOOTHOPP_OBEX_VARIANT_PREFERENCE = "btopp_obex_variant";
 
     public static String filename_SEQUENCE_SEPARATOR = "-";
 

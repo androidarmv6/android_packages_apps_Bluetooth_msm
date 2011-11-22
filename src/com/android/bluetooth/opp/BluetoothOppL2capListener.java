@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
- *
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,11 +44,10 @@ import android.os.Message;
 import android.os.SystemProperties;
 import android.util.Log;
 
-/**
- * This class listens on OPUSH channel for incoming connection
- */
-public class BluetoothOppRfcommListener {
-    private static final String TAG = "BtOppRfcommListener";
+public class BluetoothOppL2capListener {
+    private static final String TAG = "BtOppL2CapListener";
+
+    private static final boolean D = Constants.DEBUG;
 
     private static final boolean V = Constants.VERBOSE;
 
@@ -62,13 +60,13 @@ public class BluetoothOppRfcommListener {
     private Handler mCallback;
 
     /* Debugging hooks to control AMP-related operations */
-    private static final String DEBUG_RFCOMM_SRV_SCN = "debug.bt.opp.server.rfcomm_scn";
+    private static final String DEBUG_L2CAP_SRV_PSM = "debug.bt.opp.server.l2cap_psm";
 
     private static final int CREATE_RETRY_TIME = 10;
 
-    private static final int DEFAULT_OPP_CHANNEL = 12;
+    private static final int DEFAULT_OPP_PSM = 5255;
 
-    private int mBtOppRfcommChannel;
+    private int mBtOppL2cappsm;
 
     private final BluetoothAdapter mAdapter;
 
@@ -76,21 +74,21 @@ public class BluetoothOppRfcommListener {
 
     private ServerSocket mTcpServerSocket = null;
 
-    public BluetoothOppRfcommListener(BluetoothAdapter adapter) {
-        this(adapter, DEFAULT_OPP_CHANNEL);
+    public BluetoothOppL2capListener(BluetoothAdapter adapter) {
+        this(adapter, DEFAULT_OPP_PSM);
     }
 
-    public BluetoothOppRfcommListener(BluetoothAdapter adapter, int channel) {
-        mBtOppRfcommChannel = channel;
+    public BluetoothOppL2capListener(BluetoothAdapter adapter, int psm) {
+        mBtOppL2cappsm = psm;
         mAdapter = adapter;
 
-        if (V) {
+        if (D) {
             Log.v(TAG, "Applying OBEX debug system properties.");
 
-            int debugScn = SystemProperties.getInt(DEBUG_RFCOMM_SRV_SCN, -1);
-            if (debugScn >= 0) {
-                Log.v(TAG, "DEBUG: Forcing OBEX RFCOMM listener on scn: " + debugScn);
-                mBtOppRfcommChannel = debugScn;
+            int debugPsm = SystemProperties.getInt(DEBUG_L2CAP_SRV_PSM, -1);
+            if (debugPsm >= 0) {
+                Log.v(TAG, "DEBUG: Forcing OBEX L2CAP listener on psm: " + debugPsm);
+                mBtOppL2cappsm = debugPsm;
             }
         }
     }
@@ -107,7 +105,7 @@ public class BluetoothOppRfcommListener {
                             if (V) Log.v(TAG, "Create TCP ServerSocket");
                             mTcpServerSocket = new ServerSocket(Constants.TCP_DEBUG_PORT, 1);
                         } catch (IOException e) {
-                            Log.e(TAG, "Error listing on port" + Constants.TCP_DEBUG_PORT);
+                            Log.e(TAG, "Error listening on port" + Constants.TCP_DEBUG_PORT);
                             mInterrupted = true;
                         }
                         while (!mInterrupted) {
@@ -132,14 +130,15 @@ public class BluetoothOppRfcommListener {
 
                         /*
                          * it's possible that create will fail in some cases.
-                         * retry for 10 times
+                         * retry for CREATE_RETRY_TIME times
                          */
-                        for (int i = 0; i < CREATE_RETRY_TIME && !mInterrupted; i++) {
+                        int i = 0;
+                        for (i = 0; i < CREATE_RETRY_TIME && !mInterrupted; i++) {
                             try {
                                 mBtServerSocket = mAdapter
-                                        .listenUsingInsecureRfcommOn(mBtOppRfcommChannel);
+                                        .listenUsingInsecureEl2capOn(mBtOppL2cappsm);
                             } catch (IOException e1) {
-                                Log.e(TAG, "Error create RfcommServerSocket " + e1);
+                                Log.e(TAG, "Error create L2capServerSocket " + e1);
                                 serverOK = false;
                             }
                             if (!serverOK) {
@@ -157,20 +156,28 @@ public class BluetoothOppRfcommListener {
                             }
                         }
                         if (!serverOK) {
-                            Log.e(TAG, "Error start listening after " + CREATE_RETRY_TIME + " try");
+                            Log.e(TAG, "Error start listening after " +
+                                Integer.toString(i) + " try");
                             mInterrupted = true;
                         }
                         if (!mInterrupted) {
-                            Log.i(TAG, "Accept thread started on channel " + mBtOppRfcommChannel);
+                            Log.i(TAG, "Accept thread started on channel " + mBtOppL2cappsm);
                         }
                         BluetoothSocket clientSocket;
                         while (!mInterrupted) {
                             try {
                                 clientSocket = mBtServerSocket.accept();
-                                Log.i(TAG, "Accepted connectoin from "
+                                Log.i(TAG, "Accepted connection from "
                                         + clientSocket.getRemoteDevice());
-                                BluetoothOppTransport transport = new BluetoothOppTransport(
-                                        clientSocket, BluetoothOppTransport.TYPE_RFCOMM);
+
+                                if (!clientSocket.setDesiredAmpPolicy(
+                                        BluetoothSocket.BT_AMP_POLICY_PREFER_BR_EDR)) {
+                                    Log.e(TAG, "Unable to set AMP policy, " +
+                                            "using default (BR/EDR req).");
+                                }
+
+                                BluetoothOppTransport transport
+                                    = new BluetoothOppTransport(clientSocket, BluetoothOppTransport.TYPE_L2CAP);
                                 Message msg = Message.obtain();
                                 msg.setTarget(mCallback);
                                 msg.what = MSG_INCOMING_BTOPP_CONNECTION;
@@ -228,4 +235,5 @@ public class BluetoothOppRfcommListener {
             }
         }
     }
+
 }

@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -42,13 +43,21 @@ import android.bluetooth.BluetoothSocket;
 
 import javax.obex.ObexTransport;
 
-public class BluetoothOppRfcommTransport implements ObexTransport {
+public class BluetoothOppTransport implements ObexTransport {
+    public static final int TYPE_RFCOMM = 0;
+    public static final int TYPE_L2CAP = 1;
 
     private final BluetoothSocket mSocket;
+    private final int mType;
 
-    public BluetoothOppRfcommTransport(BluetoothSocket socket) {
+    public BluetoothOppTransport(BluetoothSocket socket, int type) {
         super();
         this.mSocket = socket;
+        this.mType = type;
+    }
+
+    public int getMaxPacketSize() {
+        return mSocket.getMtu();
     }
 
     public void close() throws IOException {
@@ -95,4 +104,17 @@ public class BluetoothOppRfcommTransport implements ObexTransport {
         return mSocket.getRemoteDevice().getAddress();
     }
 
+    public boolean isAmpCapable() {
+        return mType == TYPE_L2CAP;
+    }
+
+    public boolean isSrmCapable() {
+        return mType == TYPE_L2CAP;
+    }
+
+    public boolean setDesiredAmpPolicy(int policy) {
+        if (mSocket == null || mType != TYPE_L2CAP)
+            return false;
+        return mSocket.setDesiredAmpPolicy(policy);
+    }
 }

@@ -91,6 +91,8 @@ public class BluetoothPbapVcardManager {
 
     static final int CONTACTS_NAME_COLUMN_INDEX = 1;
 
+    private static final int CONTACTS_DISPLAY_NAME_COLUMN_INDEX = 4;
+
     // call histories use dynamic handles, and handles should order by date; the
     // most recently one should be the first handle. In table "calls", _id and
     // date are consistent in ordering, to implement simply, we sort by _id
@@ -237,31 +239,50 @@ public class BluetoothPbapVcardManager {
 
     public final ArrayList<String> getContactNamesByNumber(final String phoneNumber) {
         ArrayList<String> nameList = new ArrayList<String>();
+        ArrayList<String> startNameList = new ArrayList<String>();
 
         Cursor contactCursor = null;
-        Uri uri = null;
-
-        if (phoneNumber != null && phoneNumber.length() == 0) {
-            uri = Contacts.CONTENT_URI;
-        } else {
-            uri = Uri.withAppendedPath(PhoneLookup.CONTENT_FILTER_URI,
-                Uri.encode(phoneNumber));
-        }
+        Uri uri = Data.CONTENT_URI;
 
         try {
-            contactCursor = mResolver.query(uri, CONTACTS_PROJECTION, CLAUSE_ONLY_VISIBLE,
-                        null, Contacts._ID);
+            contactCursor = mResolver.query(uri, PHONES_PROJECTION, CLAUSE_ONLY_VISIBLE,
+                        null, Contacts.DISPLAY_NAME);
 
             if (contactCursor != null) {
                 for (contactCursor.moveToFirst(); !contactCursor.isAfterLast(); contactCursor
                         .moveToNext()) {
-                    String name = contactCursor.getString(CONTACTS_NAME_COLUMN_INDEX);
-                    long id = contactCursor.getLong(CONTACTS_ID_COLUMN_INDEX);
-                    if (TextUtils.isEmpty(name)) {
-                        name = mContext.getString(android.R.string.unknownName);
+                    String number = contactCursor.getString(PHONE_NUMBER_COLUMN_INDEX);
+                    if (number == null) {
+                        if (V) Log.v(TAG, "number is null");
+                        continue;
                     }
-                    if (V) Log.v(TAG, "got name " + name + " by number " + phoneNumber + " @" + id);
-                    nameList.add(name);
+                    StringBuilder onlyNumber = new StringBuilder();
+                    for (int j=0; j<number.length(); j++) {
+                        char c = number.charAt(j);
+                        if (c >= '0' && c <= '9') {
+                            onlyNumber = onlyNumber.append(c);
+                        }
+                    }
+                    String tmpNumber = onlyNumber.toString();
+                    if (V) Log.v(TAG, "number: "+number+" onlyNumber:"+onlyNumber+" tmpNumber:"+tmpNumber);
+                    if (tmpNumber.endsWith(phoneNumber)) {
+                        String name = contactCursor.getString(CONTACTS_DISPLAY_NAME_COLUMN_INDEX);
+                        if (TextUtils.isEmpty(name)) {
+                            name = mContext.getString(android.R.string.unknownName);
+                        }
+                        if (V) Log.v(TAG, "got name " + name + " by number " + phoneNumber);
+                        if (V) Log.v(TAG, "Adding to end name list");
+                        nameList.add(name);
+                    }
+                    if (tmpNumber.startsWith(phoneNumber)) {
+                        String name = contactCursor.getString(CONTACTS_DISPLAY_NAME_COLUMN_INDEX);
+                        if (TextUtils.isEmpty(name)) {
+                            name = mContext.getString(android.R.string.unknownName);
+                        }
+                        if (V) Log.v(TAG, "got name " + name + " by number " + phoneNumber);
+                        if (V) Log.v(TAG, "Adding to start name list");
+                        startNameList.add(name);
+                    }
                 }
             }
         } finally {
@@ -269,6 +290,13 @@ public class BluetoothPbapVcardManager {
                 contactCursor.close();
             }
         }
+        int startListSize = startNameList.size();
+        for (int index = 0; index < startListSize; index++) {
+            String object = startNameList.get(index);
+            if (!nameList.contains(object))
+                nameList.add(object);
+        }
+
         return nameList;
     }
 

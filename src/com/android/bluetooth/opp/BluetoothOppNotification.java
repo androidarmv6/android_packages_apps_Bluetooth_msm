@@ -34,6 +34,7 @@ package com.android.bluetooth.opp;
 
 import com.android.bluetooth.R;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -77,8 +78,8 @@ class BluetoothOppNotification {
     private static final String WHERE_COMPLETED_INBOUND = WHERE_COMPLETED + " AND " + "("
             + BluetoothShare.DIRECTION + " == " + BluetoothShare.DIRECTION_INBOUND + ")";
 
-    static final String WHERE_CONFIRM_PENDING = BluetoothShare.USER_CONFIRMATION + " == '"
-            + BluetoothShare.USER_CONFIRMATION_PENDING + "'" + " AND " + visible;
+    static final String WHERE_CONFIRM_NOTIFY = BluetoothShare.USER_CONFIRMATION + " == '"
+            + BluetoothShare.USER_CONFIRMATION_NOTIFY + "'" + " AND " + visible;
 
     public NotificationManager mNotificationMgr;
 
@@ -429,7 +430,7 @@ class BluetoothOppNotification {
 
     private void updateIncomingFileConfirmNotification() {
         Cursor cursor = mContext.getContentResolver().query(BluetoothShare.CONTENT_URI, null,
-                WHERE_CONFIRM_PENDING, null, BluetoothShare._ID);
+                        WHERE_CONFIRM_NOTIFY, null, BluetoothShare._ID);
 
         if (cursor == null) {
             return;
@@ -443,6 +444,11 @@ class BluetoothOppNotification {
             int id = cursor.getInt(cursor.getColumnIndexOrThrow(BluetoothShare._ID));
             long timeStamp = cursor.getLong(cursor.getColumnIndexOrThrow(BluetoothShare.TIMESTAMP));
             Uri contentUri = Uri.parse(BluetoothShare.CONTENT_URI + "/" + id);
+
+            ContentValues updateValues = new ContentValues();
+            updateValues.put(BluetoothShare.USER_CONFIRMATION,
+                             BluetoothShare.USER_CONFIRMATION_PENDING);
+            mContext.getContentResolver().update(contentUri, updateValues, null, null);
 
             Notification n = new Notification();
             n.icon = R.drawable.bt_incomming_file_notification;

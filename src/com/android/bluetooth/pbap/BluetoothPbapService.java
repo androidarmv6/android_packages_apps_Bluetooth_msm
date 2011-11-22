@@ -278,11 +278,14 @@ public class BluetoothPbapService extends Service {
             } else {
                 stopObexServerSession();
             }
+            removePbapNotification(NOTIFICATION_ID_ACCESS);
         } else if (action.equals(AUTH_RESPONSE_ACTION)) {
             String sessionkey = intent.getStringExtra(EXTRA_SESSION_KEY);
             notifyAuthKeyInput(sessionkey);
+            removePbapNotification(NOTIFICATION_ID_AUTH);
         } else if (action.equals(AUTH_CANCELLED_ACTION)) {
             notifyAuthCancelled();
+            removePbapNotification(NOTIFICATION_ID_AUTH);
         } else {
             removeTimeoutMsg = false;
         }
@@ -670,7 +673,6 @@ public class BluetoothPbapService extends Service {
                     getString(R.string.auth_notif_message, name), PendingIntent
                             .getActivity(this, 0, clickIntent, 0));
 
-            notification.flags |= Notification.FLAG_AUTO_CANCEL;
             notification.flags |= Notification.FLAG_ONLY_ALERT_ONCE;
             notification.defaults = Notification.DEFAULT_SOUND;
             notification.deleteIntent = PendingIntent.getBroadcast(this, 0, deleteIntent, 0);

@@ -93,6 +93,13 @@ public class BluetoothOppUtility {
 
                 if (info.mFileUri != null) {
                     Uri u = Uri.parse(info.mFileUri);
+                    /* Ensure the file exists before we try to check the mime type */
+                    File f = new File(info.mFileName);
+                    if (!f.exists()) {
+                        if (V) Log.v(TAG,"File doesnot exist so not reading mime type"+ info.mStatus);
+                        cursor.close();
+                        return info;
+                    }
                     info.mFileType = context.getContentResolver().getType(u);
                 } else {
                     Uri u = Uri.parse(info.mFileName);
@@ -156,8 +163,8 @@ public class BluetoothOppUtility {
      */
     public static void openReceivedFile(Context context, String fileName, String mimetype,
             Long timeStamp, Uri uri) {
-        if (fileName == null || mimetype == null) {
-            Log.e(TAG, "ERROR: Para fileName ==null, or mimetype == null");
+        if (fileName == null) {
+            Log.e(TAG, "ERROR: Para fileName ==null");
             return;
         }
 
@@ -180,6 +187,11 @@ public class BluetoothOppUtility {
         // If there is no scheme, then it must be a file
         if (path.getScheme() == null) {
             path = Uri.fromFile(new File(fileName));
+        }
+
+        if (mimetype == null) {
+            Log.e(TAG, "ERROR: Para mimetype==null");
+            return;
         }
 
         if (isRecognizedFileType(context, path, mimetype)) {

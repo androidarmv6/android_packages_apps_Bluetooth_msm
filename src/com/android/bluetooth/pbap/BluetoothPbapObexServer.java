@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 
 import javax.obex.ServerRequestHandler;
 import javax.obex.ResponseCodes;
@@ -471,7 +472,7 @@ public class BluetoothPbapObexServer extends ServerRequestHandler {
             AppParamValue appParamValue) {
         int i = 0;
         boolean parseOk = true;
-        while (i < appParam.length) {
+        while ((i < appParam.length) && (parseOk == true)) {
             switch (appParam[i]) {
                 case ApplicationParameter.TRIPLET_TAGID.FILTER_TAGID:
                     i += 2; // length and tag field in triplet
@@ -487,6 +488,7 @@ public class BluetoothPbapObexServer extends ServerRequestHandler {
                     // length of search value is variable
                     int length = appParam[i];
                     if (length == 0) {
+                        //If parse is not OK return false
                         parseOk = false;
                         break;
                     }
@@ -594,7 +596,8 @@ public class BluetoothPbapObexServer extends ServerRequestHandler {
         ArrayList<String> nameList = mVcardManager.getPhonebookNameList(mOrderBy);
         final int requestSize = nameList.size() >= maxListCount ? maxListCount : nameList.size();
         final int listSize = nameList.size();
-        String compareValue = "", currentValue;
+        String compareValue = "", currentValue, tmpCurrentValue;
+
 
         if (D) Log.d(TAG, "search by " + type + ", requestSize=" + requestSize + " offset="
                     + listStartOffset + " searchValue=" + searchValue);
@@ -622,15 +625,29 @@ public class BluetoothPbapObexServer extends ServerRequestHandler {
         } else {
             if (searchValue != null) {
                 compareValue = searchValue.trim();
+                compareValue = compareValue.toLowerCase();
             }
             for (int pos = listStartOffset; pos < listSize &&
                     itemsFound < requestSize; pos++) {
                 currentValue = nameList.get(pos);
+                tmpCurrentValue = currentValue.toLowerCase();
                 if (D) Log.d(TAG, "currentValue=" + currentValue);
-                if (searchValue == null || currentValue.startsWith(compareValue)) {
+                if (searchValue == null) {
                     itemsFound++;
                     result.append("<card handle=\"" + pos + ".vcf\" name=\""
                             + currentValue + "\"" + "/>");
+                } else {
+                    int sIndex = -1;
+                    do {
+                        tmpCurrentValue = tmpCurrentValue.substring(sIndex+1);
+                        if (tmpCurrentValue.startsWith(compareValue)) {
+                            itemsFound++;
+                            result.append("<card handle=\"" + pos + ".vcf\" name=\""
+                                + currentValue + "\"" + "/>");
+                            break;
+                        }
+                        sIndex = tmpCurrentValue.indexOf(' ');
+                    }while(sIndex > 0);
                 }
             }
         }
