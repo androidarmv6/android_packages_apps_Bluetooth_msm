@@ -61,6 +61,8 @@ import android.os.PowerManager;
 import android.util.Log;
 import android.widget.Toast;
 import android.app.Activity;
+import android.database.Cursor;
+import android.provider.OpenableColumns;
 
 import java.io.File;
 import java.io.IOException;
@@ -154,11 +156,11 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
     private long mTimestamp;
 
     public boolean mForceClose = false;
-    
+
     private volatile boolean mBPPregisterReceiver = false;
-    
+
     public boolean mTransferCancelled = false;
-    
+
     String PrintResultMsg = null;
 
     public boolean mAuthChallProcess = false;
@@ -556,7 +558,7 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                         }
                         if (V) Log.v(TAG, "mTransport closed ");
                         if (mStatusFinal == 0) {
-                            mStatusFinal = BluetoothShare.STATUS_CONNECTION_ERROR;                            
+                            mStatusFinal = BluetoothShare.STATUS_CONNECTION_ERROR;
                         }
                         printResultMsg();
                     }
@@ -908,11 +910,32 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
             if (V) Log.v(TAG, "Printer supports doc format: " + docFormats);
 
             String currFileType = BluetoothOppManager.getInstance(mContext).getSendingFileTypeInfo();
-            String currFileName = BluetoothOppManager.getInstance(mContext).getSendingFileNameInfo();
-            if (V) Log.v(TAG, "File Type: " + currFileType + "\r\nFile Name: "+ currFileName);
+            String currUriName = BluetoothOppManager.getInstance(mContext).getSendingFileNameInfo();
+            if (V) Log.v(TAG, "File Type: " + currFileType + "\r\nFile Name: "+ currUriName);
+            String fileName = null;
+            Uri u = Uri.parse(currUriName);
+            String scheme = u.getScheme();
+            Log.v(TAG,"Scheme = " + scheme);
+            if (scheme.equals("content")) {
+                    Cursor metadataCursor = mContext.getContentResolver().query(u, new String[] {
+                             OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE
+                            }, null, null, null);
+                   if (metadataCursor != null) {
+                     try {
+                         if (metadataCursor.moveToFirst()) {
+                             fileName = metadataCursor.getString(0);
+                        }
+                     } finally {
+                           metadataCursor.close();
+                       }
+                 }
+            } else if (scheme.equals("file")) {
+                fileName = u.getLastPathSegment();
+            }
 
             if ( docFormats.indexOf(currFileType, 0) == -1 ) {
-                if ((extractMime = checkUnknownMimetype(currFileType, currFileName)) != null) {
+                Log.v(TAG," filename after change =   "+ fileName);
+                if ((extractMime = checkUnknownMimetype(currFileType, fileName)) != null) {
                     if (V) Log.v(TAG, "Set the file type to " + extractMime);
                     if(docFormats.indexOf(extractMime, 0) != -1 ){
                         return false;
@@ -958,6 +981,10 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
             mimeType = "text/x-vmessage";
         }else if (fileName.endsWith(".htm")) {
             mimeType = "application/vnd.pwg-xhtml-print+xml";
+        }else if (fileName.endsWith(".jpg")) {
+            mimeType = "image/jpeg";
+        }else if (fileName.endsWith(".gif")) {
+            mimeType = "image/gif";
         }
         return mimeType;
     }
