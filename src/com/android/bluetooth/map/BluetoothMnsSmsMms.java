@@ -274,13 +274,13 @@ public class BluetoothMnsSmsMms extends MnsClient {
                 for (Message msg : values) {
                     String folderName = (msg.mThreadId == -1) ? DELETED : msg.mFolderName;
                     mListener.onNewMessage(mMasId, String.valueOf(SMS_OFFSET_START + msg.mId),
-                            folderName, type);
+                            PRE_PATH + folderName, type);
                     if (msg.mType == Sms.MESSAGE_TYPE_SENT) {
-                        mListener.onSendingSuccess(mMasId,
-                                String.valueOf(SMS_OFFSET_START + msg.mId), SENT, type);
+                        mListener.onSendingSuccess(mMasId, String.valueOf(SMS_OFFSET_START +
+                                msg.mId), PRE_PATH + SENT, type);
                     } else if (msg.mType == Sms.MESSAGE_TYPE_FAILED) {
-                        mListener.onSendingFailure(mMasId,
-                                String.valueOf(SMS_OFFSET_START + msg.mId), OUTBOX, type);
+                        mListener.onSendingFailure(mMasId, String.valueOf(SMS_OFFSET_START +
+                                msg.mId), PRE_PATH + OUTBOX, type);
                     }
                 }
             }
@@ -296,7 +296,7 @@ public class BluetoothMnsSmsMms extends MnsClient {
                 for (Message msg : values) {
                     String folderName = (msg.mThreadId == -1) ? DELETED : msg.mFolderName;
                     mListener.onMessageDeleted(mMasId, String.valueOf(SMS_OFFSET_START + msg.mId),
-                            folderName, type);
+                            PRE_PATH + folderName, type);
                 }
             }
         }
@@ -308,10 +308,10 @@ public class BluetoothMnsSmsMms extends MnsClient {
                 for (Message msg : values) {
                     String folderName = (msg.mThreadId == -1) ? DELETED : msg.mFolderName;
                     mListener.onNewMessage(mMasId, String.valueOf(MMS_OFFSET_START + msg.mId),
-                            folderName, MMS);
+                            PRE_PATH + folderName, MMS);
                     if (msg.mType == Mms.MESSAGE_BOX_SENT) {
-                        mListener.onSendingSuccess(mMasId,
-                                String.valueOf(SMS_OFFSET_START + msg.mId), SENT, MMS);
+                        mListener.onSendingSuccess(mMasId, String.valueOf(SMS_OFFSET_START +
+                                msg.mId), PRE_PATH + SENT, MMS);
                     }
                 }
             }
@@ -324,7 +324,7 @@ public class BluetoothMnsSmsMms extends MnsClient {
                 for (Message msg : values) {
                     String folderName = (msg.mThreadId == -1) ? DELETED : msg.mFolderName;
                     mListener.onMessageDeleted(mMasId, String.valueOf(MMS_OFFSET_START + msg.mId),
-                            folderName, MMS);
+                            PRE_PATH + folderName, MMS);
                 }
             }
         }

@@ -63,6 +63,8 @@ import javax.obex.ObexTransport;
 import static com.android.bluetooth.map.BluetoothMasService.MAS_INS_INFO;
 import static com.android.bluetooth.map.BluetoothMasService.MAX_INSTANCES;
 import static com.android.bluetooth.map.IBluetoothMasApp.HANDLE_OFFSET;
+import static com.android.bluetooth.map.IBluetoothMasApp.MSG;
+import static com.android.bluetooth.map.IBluetoothMasApp.TELECOM;
 
 /**
  * This class run an MNS session.
@@ -295,7 +297,9 @@ public class BluetoothMns implements MessageNotificationListener {
                 case RFCOMM_ERROR:
                     if (V) Log.v(TAG, "receive RFCOMM_ERROR msg");
                     deregisterAll();
-                    stop();
+                    if (canDisconnect()) {
+                        stop();
+                    }
                     break;
                 /*
                  * RFCOMM connected. Do an OBEX connect by starting the session
@@ -683,6 +687,7 @@ public class BluetoothMns implements MessageNotificationListener {
     public static abstract class MnsClient implements MnsRegister {
         public static final String TAG = "MnsClient";
         public static final boolean V = BluetoothMasService.VERBOSE;
+        protected static final String PRE_PATH = TELECOM + "/" + MSG + "/";
 
         protected Context mContext;
         protected MessageNotificationListener mListener = null;

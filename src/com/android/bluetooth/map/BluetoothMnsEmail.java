@@ -290,10 +290,10 @@ public class BluetoothMnsEmail extends MnsClient {
                 for (EmailMessage email : values) {
                     if (V) Log.v(TAG, email.toString());
                     mListener.onNewMessage(mMasId, String.valueOf(email.mId + OFFSET_START),
-                            email.mFolderName, EMAIL);
+                            PRE_PATH + email.mFolderName, EMAIL);
                     if (email.mType == TYPE_SENT) {
                         mListener.onSendingSuccess(mMasId, String.valueOf(email.mId + OFFSET_START),
-                                email.mFolderName, EMAIL);
+                                PRE_PATH + email.mFolderName, EMAIL);
                     }
                 }
             }
@@ -306,7 +306,7 @@ public class BluetoothMnsEmail extends MnsClient {
                 for (EmailMessage email : values) {
                     if (V) Log.v(TAG, email.toString());
                     mListener.onMessageDeleted(mMasId, String.valueOf(email.mId + OFFSET_START),
-                            email.mFolderName, EMAIL);
+                            PRE_PATH + email.mFolderName, EMAIL);
                 }
             }
         }
