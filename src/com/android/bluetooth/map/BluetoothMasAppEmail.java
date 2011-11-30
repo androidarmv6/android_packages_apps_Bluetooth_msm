@@ -45,6 +45,7 @@ import com.android.bluetooth.map.MapUtils.CommonUtils;
 import com.android.bluetooth.map.MapUtils.EmailUtils;
 import com.android.bluetooth.map.MapUtils.MapUtils;
 import com.android.bluetooth.map.MapUtils.MsgListingConsts;
+import com.android.bluetooth.map.MapUtils.SqlHelper;
 import com.android.bluetooth.map.MapUtils.CommonUtils.BluetoothMasMessageListingRsp;
 import com.android.bluetooth.map.MapUtils.CommonUtils.BluetoothMasMessageRsp;
 import com.android.bluetooth.map.MapUtils.CommonUtils.BluetoothMasPushMsgRsp;
@@ -57,11 +58,17 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import javax.obex.ResponseCodes;
 
 import static com.android.bluetooth.map.BluetoothMasService.MSG_SERVERSESSION_CLOSE;
+import static com.android.bluetooth.map.MapUtils.EmailUtils.TYPE_DELETED;
+import static com.android.bluetooth.map.MapUtils.EmailUtils.TYPE_DRAFT;
+import static com.android.bluetooth.map.MapUtils.EmailUtils.TYPE_INBOX;
+import static com.android.bluetooth.map.MapUtils.EmailUtils.TYPE_OUTBOX;
+import static com.android.bluetooth.map.MapUtils.EmailUtils.TYPE_SENT;
 import static com.android.bluetooth.map.MapUtils.SmsMmsUtils.DELETED;
 import static com.android.bluetooth.map.MapUtils.SmsMmsUtils.DRAFT;
 import static com.android.bluetooth.map.MapUtils.SmsMmsUtils.DRAFTS;
@@ -74,6 +81,11 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
     public final boolean V = BluetoothMasService.VERBOSE;;
 
     private ContentObserver mObserver;
+    private static final int[] SPECIAL_MAILBOX_TYPES
+            = {TYPE_DELETED, TYPE_DRAFT, TYPE_INBOX, TYPE_OUTBOX, TYPE_SENT};
+    private static final String[] SPECIAL_MAILBOX_MAP_NAME
+            = {DELETED, DRAFT, INBOX, OUTBOX, SENT};
+    private HashMap<Integer, String> mSpecialMailboxName = new HashMap<Integer, String>();
 
     public BluetoothMasAppEmail(Context context, Handler handler, BluetoothMns mnsClient,
             int masId, String remoteDeviceName) {
@@ -92,7 +104,22 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
             }
         };
 
+        loadSpecialMailboxName();
         if (V) Log.v(TAG, "BluetoothMasAppEmail Constructor called");
+    }
+
+    private void loadSpecialMailboxName() {
+        mSpecialMailboxName.clear();
+        long id = EmailUtils.getAccountId(mMasId);
+        final String where = EmailUtils.ACCOUNT_KEY + "=" + id + " AND " + EmailUtils.TYPE + "=";
+        String name;
+        for (int i = 0; i < SPECIAL_MAILBOX_TYPES.length; i ++) {
+            name = SqlHelper.getFirstValueForColumn(mContext, EmailUtils.EMAIL_BOX_URI,
+                    EmailUtils.DISPLAY_NAME, where + SPECIAL_MAILBOX_TYPES[i], null);
+            if (name.length() > 0) {
+                mSpecialMailboxName.put(i, name);
+            }
+        }
     }
 
     /**
@@ -118,20 +145,20 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
         if (V) Log.v(TAG, "getCompleteFolderList");
         long id = EmailUtils.getAccountId(mMasId);
         List<String> list = EmailUtils.getEmailFolderList(mContext, id);
-        if (!list.contains(INBOX)) {
-            list.add(INBOX);
-        }
-        if (!list.contains(OUTBOX)) {
-            list.add(OUTBOX);
-        }
-        if (!list.contains(SENT)) {
-            list.add(SENT);
-        }
-        if (!list.contains(DELETED)) {
-            list.add(DELETED);
-        }
-        if (!list.contains(DRAFT)) {
-            list.add(DRAFT);
+        String name;
+        for (int i = 0; i < SPECIAL_MAILBOX_TYPES.length; i ++) {
+            name = mSpecialMailboxName.get(TYPE_INBOX);
+            if (name != null && name.length() > 0) {
+                for (String str : list) {
+                    if (name.equalsIgnoreCase(str)) {
+                        list.remove(str);
+                        break;
+                    }
+                }
+            }
+            if (!list.contains(SPECIAL_MAILBOX_MAP_NAME[i])) {
+                list.add(SPECIAL_MAILBOX_MAP_NAME[i]);
+            }
         }
         return list;
     }
@@ -209,29 +236,23 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
                     // TODO: Take care of subfolders
 
                     folderName = EmailUtils.getFolderName(splitStrings);
-                    if (DRAFT.equalsIgnoreCase(folderName)) {
-                        long accountId = EmailUtils.getAccountId(mMasId);
-                        List<String> draftFolders = EmailUtils.getFoldersForType(mContext,
-                                accountId, EmailUtils.TYPE_DRAFT);
-                        List<MsgListingConsts> list = null;
-                        for (String draft : draftFolders) {
-                            list = getListEmailFromFolder(draft, rsp, appParams);
-                            if (list.size() > 0) {
-                                msgList.addAll(list);
+                    int index = 0;
+                    long accountId = EmailUtils.getAccountId(mMasId);
+                    for (; index < SPECIAL_MAILBOX_MAP_NAME.length; index ++) {
+                        if (SPECIAL_MAILBOX_MAP_NAME[index].equalsIgnoreCase(folderName)) {
+                            List<String> folders = EmailUtils.getFoldersForType(mContext,
+                                    accountId, SPECIAL_MAILBOX_TYPES[index]);
+                            List<MsgListingConsts> list = null;
+                            for (String folder : folders) {
+                                list = getListEmailFromFolder(folder, rsp, appParams);
+                                if (list.size() > 0) {
+                                    msgList.addAll(list);
+                                }
                             }
+                            break;
                         }
-                    } else if (DELETED.equalsIgnoreCase(folderName)) {
-                        long accountId = EmailUtils.getAccountId(mMasId);
-                        List<String> deletedFolders = EmailUtils.getFoldersForType(mContext,
-                                accountId, EmailUtils.TYPE_DELETED);
-                        List<MsgListingConsts> list = null;
-                        for (String deleted : deletedFolders) {
-                            list = getListEmailFromFolder(deleted, rsp, appParams);
-                            if (list.size() > 0) {
-                                msgList.addAll(list);
-                            }
-                        }
-                    } else {
+                    }
+                    if (index == SPECIAL_MAILBOX_MAP_NAME.length) {
                         msgList = getListEmailFromFolder(folderName, rsp, appParams);
                     }
 
