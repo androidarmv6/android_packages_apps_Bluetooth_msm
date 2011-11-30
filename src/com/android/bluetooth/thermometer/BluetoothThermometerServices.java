@@ -332,8 +332,8 @@ public class BluetoothThermometerServices extends Service {
                     Log.d(TAG, "gattService.getServiceUuid() ======= "
                           + srvUUID.toString());
                     try {
-                        discoverCharacteristics(srvUUID);
                         registerForWatcher(srvUUID);
+                        discoverCharacteristics(srvUUID);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -411,8 +411,8 @@ public class BluetoothThermometerServices extends Service {
                     bundleAndSendResult(uuid,
                                         THERMOMETER_SERVICE_OP_READ_VALUE, true,
                                         new ArrayList<String>(Arrays.asList(value)));
-                } else if (convertStrToParcelUUID(MEASUREMENT_INTERVAL_UUID).toString().equals(
-                                                                                              uuid.toString())) {
+                } else if (convertStrToParcelUUID(MEASUREMENT_INTERVAL_UUID).toString()
+                           .equals(uuid.toString())) {
                     Log.d(TAG,
                           "calling Msr Interval Read Char to get updated value");
                     String value = readMeasurementInterval(uuid);
@@ -420,9 +420,50 @@ public class BluetoothThermometerServices extends Service {
                                         THERMOMETER_SERVICE_OP_READ_VALUE,
                                         true, new ArrayList<String>(Arrays.asList(value)));
 
-                } else {
-                    Log.d(TAG, "Character cannot be updated");
+                } else if (convertStrToParcelUUID(TEMPERATURE_TYPE_UUID).toString()
+                           .equals(uuid.toString())) {
+                    Log.d(TAG, "Reading the temperature type Charactersitics");
+                    String value = readTemperatureType(uuid);
+                    bundleAndSendResult(uuid,
+                                        THERMOMETER_SERVICE_OP_READ_VALUE,
+                                        true, new ArrayList<String>(Arrays.asList(value)));
 
+                } else if ((convertStrToParcelUUID(MANUFACTURER_NAME_STRING_UUID)
+                            .toString().equals(uuid.toString())) ||
+                           (convertStrToParcelUUID(MODEL_NUMBER_STRING_UUID)
+                            .toString().equals(uuid.toString())) ||
+                           (convertStrToParcelUUID(SERIAL_NUMBER_STRING_UUID)
+                            .toString().equals(uuid.toString())) ||
+                           (convertStrToParcelUUID(HARDWARE_REVISION_STRING_UUID)
+                            .toString().equals(uuid.toString())) ||
+                           (convertStrToParcelUUID(FIRMWARE_REVISION_STRING_UUID)
+                            .toString().equals(uuid.toString())) ||
+                           (convertStrToParcelUUID(SOFTWARE_REVISION_STRING_UUID)
+                            .toString().equals(uuid.toString())) ||
+                           (convertStrToParcelUUID(SYSTEM_ID_UUID)
+                            .toString().equals(uuid.toString())) ||
+                           (convertStrToParcelUUID(CERTIFICATION_DATA_UUID)
+                            .toString().equals(uuid.toString()))) {
+                    Log.d(TAG, "Reading the Device Information UTF-8 Charactersitic");
+                    String value = readDeviceInformationUtf8String(uuid);
+                    bundleAndSendResult(uuid,
+                                        THERMOMETER_SERVICE_OP_READ_VALUE,
+                                        true, new ArrayList<String>(Arrays.asList(value)));
+
+
+                } else if ((convertStrToParcelUUID(SYSTEM_ID_UUID)
+                            .toString().equals(uuid.toString())) ||
+                           (convertStrToParcelUUID(CERTIFICATION_DATA_UUID)
+                            .toString().equals(uuid.toString()))) {
+                    Log.d(TAG, "Reading the Device Information Charactersitic");
+                    String value = readDeviceInformationString(uuid);
+                    bundleAndSendResult(
+                        uuid,
+                        BluetoothThermometerServices.THERMOMETER_SERVICE_OP_READ_VALUE,
+                        true, new ArrayList<String>(Arrays.asList(value)));
+
+                    } else {
+                    Log.d(TAG, "Character cannot be updated");
                 }
             } else {
                 Log.e(TAG, "onUpdateCharacteristicValueResult : " + arg1);
@@ -504,21 +545,20 @@ public class BluetoothThermometerServices extends Service {
                 } else if (convertStrToParcelUUID(MEASUREMENT_INTERVAL_UUID)
                            .toString().equals(readCharUUID)) {
                     Log.d(TAG, "Reading the Measurement Interval Charactersitics");
-                    if (!updateCharacteristic(uuid)) {
-                        bundleAndSendResult(
-                                           uuid,
-                                           BluetoothThermometerServices.THERMOMETER_SERVICE_OP_READ_VALUE,
-                                           false, new ArrayList<String>());
-                    }
-
+                    updateCharValue(uuid);
                 } else if (convertStrToParcelUUID(TEMPERATURE_TYPE_UUID).toString()
                            .equals(readCharUUID)) {
                     Log.d(TAG, "Reading the temperature type Charactersitics");
                     String value = readTemperatureType(uuid);
-                    bundleAndSendResult(
-                                       uuid,
-                                       BluetoothThermometerServices.THERMOMETER_SERVICE_OP_READ_VALUE,
-                                       true, new ArrayList<String>(Arrays.asList(value)));
+                    if(value == null) {
+                        Log.d(TAG, "Read Char returned null..so calling update char");
+                        updateCharValue(uuid);
+                    } else {
+                        bundleAndSendResult(
+                                           uuid,
+                                           BluetoothThermometerServices.THERMOMETER_SERVICE_OP_READ_VALUE,
+                                           true, new ArrayList<String>(Arrays.asList(value)));
+                    }
                 } else if ((convertStrToParcelUUID(MANUFACTURER_NAME_STRING_UUID)
                             .toString().equals(readCharUUID)) ||
                            (convertStrToParcelUUID(MODEL_NUMBER_STRING_UUID)
@@ -537,10 +577,15 @@ public class BluetoothThermometerServices extends Service {
                             .toString().equals(readCharUUID))) {
                     Log.d(TAG, "Reading the Device Information UTF-8 Charactersitic");
                     String value = readDeviceInformationUtf8String(uuid);
-                    bundleAndSendResult(
-                                       uuid,
-                                       BluetoothThermometerServices.THERMOMETER_SERVICE_OP_READ_VALUE,
-                                       true, new ArrayList<String>(Arrays.asList(value)));
+                    if(value == null) {
+                        Log.d(TAG, "Read Char returned null..so calling update char");
+                        updateCharValue(uuid);
+                    } else {
+                        bundleAndSendResult(
+                                           uuid,
+                                           BluetoothThermometerServices.THERMOMETER_SERVICE_OP_READ_VALUE,
+                                           true, new ArrayList<String>(Arrays.asList(value)));
+                    }
 
                 } else if ((convertStrToParcelUUID(SYSTEM_ID_UUID)
                             .toString().equals(readCharUUID)) ||
@@ -548,10 +593,15 @@ public class BluetoothThermometerServices extends Service {
                             .toString().equals(readCharUUID))) {
                     Log.d(TAG, "Reading the Device Information Charactersitic");
                     String value = readDeviceInformationString(uuid);
-                    bundleAndSendResult(
-                                       uuid,
-                                       BluetoothThermometerServices.THERMOMETER_SERVICE_OP_READ_VALUE,
-                                       true, new ArrayList<String>(Arrays.asList(value)));
+                    if(value == null) {
+                        Log.d(TAG, "Read Char returned null..so calling update char");
+                        updateCharValue(uuid);
+                    } else {
+                        bundleAndSendResult(
+                                           uuid,
+                                           BluetoothThermometerServices.THERMOMETER_SERVICE_OP_READ_VALUE,
+                                           true, new ArrayList<String>(Arrays.asList(value)));
+                    }
 
                 } else {
                     Log.e(TAG, "This characteristics : " + uuid + " cannot be read");
@@ -725,6 +775,12 @@ public class BluetoothThermometerServices extends Service {
                 mDevice.uuidGattSrvMap.put(uuid, gattService);
                 Log.d(TAG, "Adding gatt service to map for : " + uuid + "size :" +
                       mDevice.uuidGattSrvMap.size());
+                                boolean isDiscovered =  gattService.isDiscoveryDone();
+                Log.d(TAG, "isDiscovered returned : " + isDiscovered);
+                if(isDiscovered) {
+                    registerForWatcher(uuid);
+                    discoverCharacteristics(uuid);
+                }
             } else {
                 Log.e(TAG, "Gatt service is null for UUID : " + uuid.toString());
             }
@@ -747,7 +803,6 @@ public class BluetoothThermometerServices extends Service {
     }
 
     private void discoverCharacteristics(ParcelUuid srvUUID) {
-        Log.d(TAG, "In discoverCharacteristics");
         Log.d(TAG, "Calling gattService.getCharacteristics()");
 
         BluetoothGattService gattService = mDevice.uuidGattSrvMap.get(srvUUID);
@@ -1261,6 +1316,14 @@ public class BluetoothThermometerServices extends Service {
 
         Log.d(TAG, "parseTempMeasurement : " + list.size());
         return list;
+    }
+
+    private void updateCharValue(ParcelUuid uuid) {
+        if (!updateCharacteristic(uuid)) {
+            bundleAndSendResult(uuid,
+                                BluetoothThermometerServices.THERMOMETER_SERVICE_OP_READ_VALUE,
+                                false, new ArrayList<String>());
+            }
     }
 
     private UUID convertUUIDStringToUUID(String UUIDStr) {
