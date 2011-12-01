@@ -53,6 +53,14 @@ import android.os.PowerManager.WakeLock;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
 
+import android.os.SystemProperties;
+import android.database.Cursor;
+import android.provider.ContactsContract.Contacts;
+import android.provider.ContactsContract.Profile;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+
+
 import javax.obex.HeaderSet;
 import javax.obex.ObexHelper;
 import javax.obex.ObexTransport;
@@ -72,7 +80,7 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
     private static final boolean D = Constants.DEBUG;
     private static final boolean V = Constants.VERBOSE;
 
-    private static final String OPP_SERVER_DIR_PATH = "/data/bluetooth/oppserver";
+    private static final String OPP_SERVER_DIR_PATH = "/data/data/com.android.bluetooth/oppserver";
     private static final String OPP_MIME_TYPE = "text/x-vcard";
     private static final String OPP_DEFAULT_vCARD_NAME = "default.vcf";
     private static final int OPP_LOCAL_BUF_SIZE  = 0x4000;
@@ -565,7 +573,65 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
     }
 
     public File getMyBusinessCard ( ) {
+        Log.v(TAG, " getMyBusinessCard()");
+        Uri myProfileUri = Profile.CONTENT_URI;
+        Uri lookupUri = null;
+        Uri shareUri = null;
+        Log.v(TAG," My Profile Uri  " + myProfileUri);
+        Cursor c = mContext.getContentResolver().query(myProfileUri,
+          new String[] {Contacts._ID, Contacts.LOOKUP_KEY},null, null, null);
+        try{
+            if (c.moveToFirst()) {
+                final long contactId = c.getLong(0);
+                final String lookupKey = c.getString(1);
+                lookupUri = Contacts.getLookupUri(contactId, lookupKey);
+                if(V) Log.v(TAG," My LookupUri  " + lookupUri + " LookUpKey "+ lookupKey);
+                shareUri = Uri.withAppendedPath(Contacts.CONTENT_VCARD_URI, lookupKey);
+                if(V) Log.v(TAG," My ShareUri  " + shareUri);
+            }
+        } finally {
+            c.close();
+        }
+
+        File dir   =  new File(OPP_SERVER_DIR_PATH);
         File myCard = new File(OPP_SERVER_DIR_PATH, OPP_DEFAULT_vCARD_NAME);
+        if((dir.exists())&&(myCard.exists())&&(shareUri != null)) {
+            Log.v(TAG," Directory and File is alredy There, Delete it");
+            myCard.delete();
+            dir.delete();
+        }
+        if(shareUri != null){
+            InputStream i = null;
+            int length;
+            byte[] buffer = new byte[1024];
+            try {
+                if(!dir.exists()){
+                    dir.mkdirs();
+                    }else {
+                    Log.d(TAG," ** Not able to Create DIR ***");
+                    }
+                if(!myCard.createNewFile()){
+                    Log.d(TAG," my Profile vcard not created");
+                    return myCard;
+                }
+                try {
+                    i=mContext.getContentResolver().openInputStream(Uri.parse(shareUri.toString()));
+                } catch (FileNotFoundException e) {
+                    Log.d(TAG," Not able to open URI" + e.toString());
+                }
+                FileOutputStream fos = new FileOutputStream(myCard);
+                do {
+                    if(i == null)
+                        break;
+                    length = i.read(buffer);
+                    if(length == -1)
+                        break;
+                    fos.write(buffer,0,length);
+                }while(true);
+             }catch(IOException e) {
+                Log.e(TAG,"Not able to read myVcard"+ e.toString());
+            }
+        }
         return myCard;
     }
 
@@ -583,10 +649,13 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
         long fileReadPos = 0;
         int readLength;
         Byte srm;
-
-        File myCard = getMyBusinessCard ( );
+        File myCard = null;
+        if(SystemProperties.getBoolean("ro.qualcomm.bluetooth.sndmyinfo", true)){
+            myCard = getMyBusinessCard ( );
+        } else {
+            return ResponseCodes.OBEX_HTTP_NOT_IMPLEMENTED;
+        }
         int outputBufferSize = op.getMaxPacketSize();
-
         /* Extract the name and type header from operation object */
         try {
             request = op.getReceivedHeader();
