@@ -116,6 +116,8 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
 
     boolean mTimeoutMsgSent = false;
 
+    boolean mTransferInProgress = false;
+
     public BluetoothOppObexServerSession(Context context, ObexTransport transport) {
         mContext = context;
         mTransport = transport;
@@ -184,6 +186,22 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
         }
         mCallback = null;
         mSession = null;
+    }
+
+    /*
+    * Called when a ABORT request is received.
+    */
+    @Override
+    public int onAbort(HeaderSet request, HeaderSet reply) {
+        if (D) Log.d(TAG, "onAbort()");
+        if (mTransferInProgress) {
+           return ResponseCodes.OBEX_HTTP_OK;
+        } else {
+            /* Transfer is completed already or the command is received
+             * when no transfer in progress. Send -ve response.
+             */
+            return ResponseCodes.OBEX_HTTP_NOT_ACCEPTABLE;
+        }
     }
 
     public void addShare(BluetoothOppShareInfo info) {
@@ -765,8 +783,10 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
                 readLength = bis.read(buffer, 0, outputBufferSize);
                 fileReadPos += readLength;
 
-                if(((ServerOperation)op).isAborted != true) {
+                if(((ServerOperation)op).isAborted() != true) {
                     outputStream.write(buffer, 0, readLength);
+                    /* To handle abort request depends on the current state */
+                    mTransferInProgress = true;
                     if (((ServerOperation)op).mSrmServerSession.getLocalSrmpWait( ) == true) {
                         try {
                             request = op.getReceivedHeader();
@@ -784,6 +804,8 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
                         }
                     }
                 } else {
+                    /* Abort command is received. Bring down the GET operation */
+                    Log.v(TAG, "Abort is received");
                     break;
                 }
             }
@@ -791,6 +813,24 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             Log.e(TAG, "OPP Pull Business Card : Write outputstrem failed" + e.toString());
             return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
         }
+
+        /* Close the streams */
+        if (bis != null) {
+           try {
+              bis.close();
+            } catch (IOException e) {
+                Log.e(TAG,"input stream close" + e.toString());
+                if (D) Log.d(TAG, "Error when closing stream after send");
+                return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+            }
+        }
+
+        if (!closeStream(outputStream, op)) {
+          return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+        }
+
+        /* Reset the state */
+        mTransferInProgress = false;
         if (D) Log.d(TAG, "onGet() -");
         return ResponseCodes.OBEX_HTTP_OK;
     }
@@ -841,5 +881,29 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             msg.obj = mInfo;
             msg.sendToTarget();
         }
+    }
+
+    public static boolean closeStream(final OutputStream out, final Operation op) {
+        boolean returnvalue = true;
+        if (D) Log.d(TAG, "closeoutStream +");
+        try {
+            if (out != null) {
+                out.close();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "outputStream close failed" + e.toString());
+            returnvalue = false;
+        }
+        try {
+            if (op != null) {
+                op.close();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "operation close failed" + e.toString());
+            returnvalue = false;
+        }
+
+        if (D) Log.d(TAG, "closeoutStream -");
+        return returnvalue;
     }
 }
