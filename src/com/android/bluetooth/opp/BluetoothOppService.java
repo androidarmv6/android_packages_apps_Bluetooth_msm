@@ -279,8 +279,9 @@ public class BluetoothOppService extends Service {
                      */
                     if (D) Log.d(TAG, "mBatchs.size(): " + mBatchs.size()
                         + "\r\nmTransfer : " + mTransfer
+                        + "\r\nmServerTransfer : " + mServerTransfer
                         + "\r\nmPendingConnection : " + mPendingConnection );
-                    if (((mBatchs.size() == 0) || ((mBatchs.size() > 0) && mTransfer == null))
+                    if (((mBatchs.size() == 0) || ((mBatchs.size() > 0) && mServerTransfer == null))
                             && mPendingConnection == null) {
                         Log.i(TAG, "### Start Obex Server");
                         createServerSession(transport);
@@ -307,8 +308,9 @@ public class BluetoothOppService extends Service {
                     break;
                 case MSG_INCOMING_CONNECTION_RETRY:
                     if (D) Log.d(TAG, "#2 mBatchs.size(): " + mBatchs.size()
-                        + "\r\nmTransfer : " + mTransfer);
-                    if ((mBatchs.size() == 0) || ((mBatchs.size() > 0) && mTransfer == null)) {
+                        + "\r\nmTransfer : " + mTransfer
+                        + "\r\nmServerTransfer : " + mServerTransfer);
+                    if ((mBatchs.size() == 0) || ((mBatchs.size() > 0) && mServerTransfer == null)) {
                         Log.i(TAG, "Start Obex Server");
                         createServerSession(mPendingConnection);
                         mIncomingRetries = 0;
@@ -600,7 +602,6 @@ public class BluetoothOppService extends Service {
         }
 
         mShares.add(arrayPos, info);
-
         /* Mark the info as failed if it's in invalid status */
         if (info.isObsolete()) {
             Constants.updateShareStatus(this, info.mId, BluetoothShare.STATUS_UNKNOWN_ERROR);
@@ -645,17 +646,23 @@ public class BluetoothOppService extends Service {
             BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter();
             BluetoothDevice  d = a.getRemoteDevice(info.mDestination);
             BluetoothClass   c = d.getBluetoothClass();
-            if (V) Log.v(TAG, "BT Device Class: 0x" + Integer.toHexString(c.getDeviceClass()));
+            if(c != null){
+                if (V) Log.v(TAG, "BT Device Class: 0x" + Integer.toHexString(c.getDeviceClass()));
 
-            if (c.getDeviceClass() == BluetoothClass.Device.IMAGING_PRINTER) {
-                /* BPP Profile*/
-                markBatchOwnership(this, info.mId, BluetoothShare.OWNER_BPP);
-                info.mOwner = BluetoothShare.OWNER_BPP;
-            } else {
-                /* OPP Profile*/
+                if (c.getDeviceClass() == BluetoothClass.Device.IMAGING_PRINTER) {
+                    /* BPP Profile*/
+                    markBatchOwnership(this, info.mId, BluetoothShare.OWNER_BPP);
+                    info.mOwner = BluetoothShare.OWNER_BPP;
+                } else {
+                    /* OPP Profile*/
+                    markBatchOwnership(this, info.mId, BluetoothShare.OWNER_OPP);
+                    info.mOwner = BluetoothShare.OWNER_OPP;
+                }
+           } else {
+                if(V) Log.v(TAG," deviceClass is null, going ahead with OPP");
                 markBatchOwnership(this, info.mId, BluetoothShare.OWNER_OPP);
                 info.mOwner = BluetoothShare.OWNER_OPP;
-            }
+           }
 
             Log.v(TAG, "New OWNER   : " + info.mOwner);
 
@@ -868,6 +875,7 @@ public class BluetoothOppService extends Service {
                     if (mServerTransfer == null) {
                         Log.e(TAG, "Unexpected error! mServerTransfer is null");
                     } else if (batch.mId == mServerTransfer.getBatchId()) {
+                        if(V) Log.v(TAG," Stopping Inbound Transfer ");
                         mServerTransfer.stop();
                     } else {
                         Log.e(TAG, "Unexpected error! batch id " + batch.mId
