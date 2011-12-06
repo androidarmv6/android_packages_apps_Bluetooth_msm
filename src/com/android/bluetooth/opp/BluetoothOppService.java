@@ -713,28 +713,18 @@ public class BluetoothOppService extends Service {
                             info.mId);
                     if (info.mDirection == BluetoothShare.DIRECTION_OUTBOUND) {
                         if ((c != null) && (c.getDeviceClass() == BluetoothClass.Device.IMAGING_PRINTER)) {
-                            boolean duplicate_transfer = false;
-                            for(int id =0; id<mBppTransfer.size(); id++){
-                                BluetoothBppTransfer BppTransfer_mShare = mBppTransfer.get(id);
-                                if (BppTransfer_mShare == null) {
-                                    Log.e(TAG, "Error! enqued BppTransfer is null");
-                                    continue;
+                            BluetoothBppTransfer BppTransfer =
+                            new BluetoothBppTransfer(this, mPowerManager, newBatch);
+                            if(BppTransfer != null) {
+                                if(mBppTransfer.size()==0) {
+                                    mBppTransfer.add(BppTransfer);
+                                    mBppTransId++;
+                                    BppTransfer.start();
+                                }else {
+                                    mBppTransfer.add(BppTransfer);
+                                    mBppTransId++;
                                 }
-                                if ((newBatch.mDestination.getAddress()).equals(BppTransfer_mShare.mBatch.mDestination.getAddress()))
-                                    {
-                                        if(V) Log.v(TAG," Transfer to same device going on");
-                                        duplicate_transfer = true;
-                                        break;
-                                    }
-                                }
-                            if(!duplicate_transfer){
-                                BluetoothBppTransfer BppTransfer =
-                                      new BluetoothBppTransfer(this, mPowerManager, newBatch);
-                                if(BppTransfer != null){
-                                	mBppTransfer.add(BppTransfer);
-                               	        mBppTransId++;
-                                        BppTransfer.start();
-                                } else  {
+                            } else  {
                                       Log.e(TAG, "Unexpected error! BppTransfer is null");
                                       mBatchs.remove(newBatch);
                                       mBatchId--;
@@ -742,7 +732,7 @@ public class BluetoothOppService extends Service {
                                 }
                             if (V) Log.v(TAG, "Additional BT BPP Transfer(" + mBppTransId
                                 + "/" + mBppTransfer.size() + ") Start !!");
-                            }
+
 
                         } else {
                             if(mTransfer == null) {
@@ -860,6 +850,9 @@ public class BluetoothOppService extends Service {
                                     BppTransfer.stop();
                                     mBppTransfer.remove(BppTransfer);
                                     mBppTransId--;
+                                    if(mBppTransfer.size() > 0) {
+                                        mBppTransfer.get(0).start();
+                                    }
                                     break;
                                 }
                                 if (id == mBppTransfer.size()) {
@@ -967,19 +960,8 @@ public class BluetoothOppService extends Service {
                     // just finish a transfer, start pending outbound transfer
                     if (nextBatch.mDirection == BluetoothShare.DIRECTION_OUTBOUND) {
                         if (nextBatch.mOwner == BluetoothShare.OWNER_BPP) {
-                            if(V)Log.v(TAG," Remaining batch from the same device");
-                            BluetoothBppTransfer BppTransfer =
-                                new BluetoothBppTransfer(this, mPowerManager, nextBatch);
-                            if (BppTransfer != null) {
-                                mBppTransfer.add(BppTransfer);
-                                mBppTransId++;
-                                BppTransfer.start();
-                            } else {
-                                Log.e(TAG, " RemoveBatch new BppTransfer Instance not created");
-                                mBatchs.remove(nextBatch);
-                                mBatchId--;
-                            }
-
+                            if (V) Log.e(TAG, "Unexpeced Error!!, there is pending batch("
+                                         + nextBatch.mId +") on mBppTransfer!!");
                             break;
                         } else if (nextBatch.mOwner == BluetoothShare.OWNER_OPP) {
                         if (V) Log.v(TAG, "Start pending OPP batch(" + nextBatch.mId + ")");
