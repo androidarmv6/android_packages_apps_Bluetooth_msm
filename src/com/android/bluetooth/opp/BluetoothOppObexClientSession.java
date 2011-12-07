@@ -255,10 +255,6 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
                     mWaitingForRemote = true;
                 }
                 try {
-                    if (mCs.mSrmClient.getLocalSrmCapability() == ObexHelper.SRM_CAPABLE) {
-                        if (V) Log.v(TAG, "Connect: Client SRM_SUPPORTED header added");
-                        hs.setHeader(HeaderSet.SINGLE_RESPONSE_MODE, ObexHelper.OBEX_SRM_SUPPORTED);
-                    }
                     mCs.connect(hs);
                     if (D) Log.d(TAG, "OBEX session created");
                     mConnected = true;
