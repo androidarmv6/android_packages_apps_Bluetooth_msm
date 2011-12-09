@@ -308,7 +308,7 @@ public class BluetoothPbapVcardManager {
     }
 
     public final int composeAndSendCallLogVcards(final int type, Operation op,
-            final int startPoint, final int endPoint, final boolean vcardType21) {
+            final int startPoint, final int endPoint, final boolean vcardType21, boolean photobit) {
         if (startPoint < 1 || startPoint > endPoint) {
             Log.e(TAG, "internal error: startPoint or endPoint is not correct.");
             return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
@@ -365,11 +365,11 @@ public class BluetoothPbapVcardManager {
 
         if (V) Log.v(TAG, "Call log query selection is: " + selection);
 
-        return composeAndSendVCards(op, selection, vcardType21, null, false);
+        return composeAndSendVCards(op, selection, vcardType21, null, false, photobit);
     }
 
     public final int composeAndSendPhonebookVcards(Operation op, final int startPoint,
-            final int endPoint, final boolean vcardType21, String ownerVCard) {
+            final int endPoint, final boolean vcardType21, String ownerVCard, boolean photobit) {
         if (startPoint < 1 || startPoint > endPoint) {
             Log.e(TAG, "internal error: startPoint or endPoint is not correct.");
             return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
@@ -410,11 +410,11 @@ public class BluetoothPbapVcardManager {
 
         if (V) Log.v(TAG, "Query selection is: " + selection);
 
-        return composeAndSendVCards(op, selection, vcardType21, ownerVCard, true);
+        return composeAndSendVCards(op, selection, vcardType21, ownerVCard, true, photobit);
     }
 
     public final int composeAndSendPhonebookOneVcard(Operation op, final int offset,
-            final boolean vcardType21, String ownerVCard, int orderByWhat) {
+            final boolean vcardType21, String ownerVCard, int orderByWhat, boolean photobit) {
         if (offset < 1) {
             Log.e(TAG, "Internal error: offset is not correct.");
             return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
@@ -459,11 +459,11 @@ public class BluetoothPbapVcardManager {
 
         if (V) Log.v(TAG, "Query selection is: " + selection);
 
-        return composeAndSendVCards(op, selection, vcardType21, ownerVCard, true);
+        return composeAndSendVCards(op, selection, vcardType21, ownerVCard, true, photobit);
     }
 
     public final int composeAndSendVCards(Operation op, final String selection,
-            final boolean vcardType21, String ownerVCard, boolean isContacts) {
+            final boolean vcardType21, String ownerVCard, boolean isContacts, boolean photobit) {
         long timestamp = 0;
         if (V) timestamp = System.currentTimeMillis();
 
@@ -478,8 +478,9 @@ public class BluetoothPbapVcardManager {
                 } else {
                     vcardType = VCardConfig.VCARD_TYPE_V30_GENERIC;
                 }
-                vcardType |= VCardConfig.FLAG_REFRAIN_IMAGE_EXPORT;
-
+                if ((!photobit) || (vcardType21)){
+                    vcardType |= VCardConfig.FLAG_REFRAIN_IMAGE_EXPORT;
+                }
                 composer = new VCardComposer(mContext, vcardType, true);
                 // BT does want PAUSE/WAIT conversion while it doesn't want the other formatting
                 // done by vCard library by default.
