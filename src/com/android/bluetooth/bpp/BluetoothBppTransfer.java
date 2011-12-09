@@ -944,7 +944,7 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
             String fileName = null;
             Uri u = Uri.parse(currUriName);
             String scheme = u.getScheme();
-            Log.v(TAG,"Scheme = " + scheme);
+            if(V) Log.v(TAG,"Scheme = " + scheme);
             if (scheme.equals("content")) {
                     Cursor metadataCursor = mContext.getContentResolver().query(u, new String[] {
                              OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE
@@ -963,7 +963,7 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
             }
 
             if ( docFormats.indexOf(currFileType, 0) == -1 ) {
-                Log.v(TAG," filename after change =   "+ fileName);
+                if(V) Log.v(TAG," filename after change =   "+ fileName);
                 if ((extractMime = checkUnknownMimetype(currFileType, fileName)) != null) {
                     if (V) Log.v(TAG, "Set the file type to " + extractMime);
                     if(docFormats.indexOf(extractMime, 0) != -1 ){
@@ -1006,22 +1006,30 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
         String mimeType = null;
         if(fileType == null || fileName == null)
             return null;
-        if (fileName.endsWith(".vcf")) {
+        int dotIndex = fileName.lastIndexOf(".");
+        String extension = fileName.substring(dotIndex + 1).toLowerCase();
+        if(V) Log.v(TAG,"extension = " + extension);
+        if (extension.equals("vcf")) {
             mimeType = "text/x-vcard";
-        }else if (fileName.endsWith(".vcs")) {
+        }else if (extension.equals("vcs")) {
             mimeType = "text/x-vcalendar";
-        }else if (fileName.endsWith(".vmg")) {
+        }else if (extension.equals("vmg")) {
             mimeType = "text/x-vmessage";
-        }else if (fileName.endsWith(".ical")) {
+        }else if (extension.equals("ical")) {
             mimeType = "text/calendar";
-        }else if (fileName.endsWith(".msg")) {
+        }else if (extension.equals("msg")) {
             mimeType = "text/x-vmessage";
-        }else if (fileName.endsWith(".htm")) {
+        }else if (extension.equals("htm")) {
             mimeType = "application/vnd.pwg-xhtml-print+xml";
-        }else if (fileName.endsWith(".jpg")) {
+        }else if ((extension.equals("jpg"))||(extension.equals("jpeg"))
+                ||(extension.equals("jpe"))||(extension.equals("jfif")) ) {
             mimeType = "image/jpeg";
-        }else if (fileName.endsWith(".gif")) {
+        }else if (extension.equals("gif")) {
             mimeType = "image/gif";
+        }else if (extension.equals("png")) {
+            mimeType = "image/png";
+        }else if ((extension.equals("tif"))||(extension.equals("tiff"))) {
+            mimeType = "image/tiff";
         }
         return mimeType;
     }
