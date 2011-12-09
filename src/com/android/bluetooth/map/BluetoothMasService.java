@@ -39,6 +39,7 @@ import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.Intent;
+import android.database.ContentObserver;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -47,9 +48,12 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.bluetooth.R;
+import com.android.bluetooth.map.BluetoothMns.MnsClient;
+import com.android.bluetooth.map.MapUtils.EmailUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.obex.ServerSession;
 
@@ -71,7 +75,7 @@ public class BluetoothMasService extends Service {
     public static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
 
     /**
-     * Intent indicating incoming connection request which is seetprop log.tag.BluetoothMapService DEBUG/t to
+     * Intent indicating incoming connection request which is sent to
      * BluetoothMasActivity
      */
     public static final String ACCESS_REQUEST_ACTION = "com.android.bluetooth.map.accessrequest";
@@ -177,8 +181,60 @@ public class BluetoothMasService extends Service {
     private static final String ACCESS_AUTHORITY_PACKAGE = "com.android.settings";
     private static final String ACCESS_AUTHORITY_CLASS =
                         "com.android.settings.bluetooth.BluetoothPermissionRequest";
+
+    public static class MasInstanceInfo {
+        int mSupportedMessageTypes;
+        Class<? extends MnsClient> mMnsClientClass;
+        int mRfcommPort;
+
+        public MasInstanceInfo(int smt, Class<? extends MnsClient> _class, int port) {
+            mSupportedMessageTypes = smt;
+            mMnsClientClass = _class;
+            mRfcommPort = port;
+        }
+    }
+
+    public static final int MAX_INSTANCES = 2;
+    public static final int EMAIL_MAS_START = 1;
+    public static final int EMAIL_MAS_END = 1;
+    public static final MasInstanceInfo MAS_INS_INFO[] = new MasInstanceInfo[MAX_INSTANCES];
+
+    // The following information must match with corresponding
+    // SDP records supported message types and port number
+    // Please refer sdptool.c, BluetoothService.java, & init.qcom.rc
+    static {
+        MAS_INS_INFO[0] = new MasInstanceInfo(MESSAGE_TYPE_SMS_MMS, BluetoothMnsSmsMms.class, 16);
+        MAS_INS_INFO[1] = new MasInstanceInfo(MESSAGE_TYPE_EMAIL, BluetoothMnsEmail.class, 17);
+    }
+
+    private ContentObserver mEmailAccountObserver;
+
+    private void updateEmailAccount() {
+        List<Long> list = EmailUtils.getEmailAccountIdList(this);
+        ArrayList<Long> notAssigned = new ArrayList<Long>();
+        EmailUtils.removeMasIdIfNotPresent(list);
+        for (Long id : list) {
+            int masId = EmailUtils.getMasId(id);
+            if (masId == -1) {
+                notAssigned.add(id);
+            }
+        }
+        for (int i = EMAIL_MAS_START; i <= EMAIL_MAS_END; i ++) {
+            long accountId = EmailUtils.getAccountId(i);
+            if (accountId == -1 && notAssigned.size() > 0) {
+                EmailUtils.updateMapTable(notAssigned.remove(0), i);
+            }
+        }
+    }
+
     public BluetoothMasService() {
         mConnectionManager = new BluetoothMasObexConnectionManager();
+        mEmailAccountObserver = new ContentObserver(null) {
+            @Override
+            public void onChange(boolean selfChange) {
+                updateEmailAccount();
+            }
+        };
     }
 
     @Override
@@ -202,6 +258,9 @@ public class BluetoothMasService extends Service {
                 Log.v(TAG, "BT is not ON, no start");
             }
         }
+        updateEmailAccount();
+        getContentResolver().registerContentObserver(
+                EmailUtils.EMAIL_ACCOUNT_URI, true, mEmailAccountObserver);
     }
 
     @Override
@@ -282,6 +341,8 @@ public class BluetoothMasService extends Service {
             Log.v(TAG, "Map Service onDestroy");
 
         super.onDestroy();
+        getContentResolver().unregisterContentObserver(mEmailAccountObserver);
+        EmailUtils.clearMapTable();
         closeService();
     }
 
@@ -422,11 +483,10 @@ public class BluetoothMasService extends Service {
                 new ArrayList<BluetoothMasObexConnection>();
 
         public BluetoothMasObexConnectionManager() {
-            // These connections must match with corresponding
-            // SDP records supported message types and port number
-            // Please refer sdptool.c, BluetoothService.java, & init.qcom.rc
-            mConnections.add(new BluetoothMasObexConnection(MESSAGE_TYPE_SMS_MMS, 0, 16));
-            mConnections.add(new BluetoothMasObexConnection(MESSAGE_TYPE_EMAIL, 1, 17));
+            for (int i = 0; i < MAX_INSTANCES; i ++) {
+                mConnections.add(new BluetoothMasObexConnection(
+                        MAS_INS_INFO[i].mSupportedMessageTypes, i, MAS_INS_INFO[i].mRfcommPort));
+            }
         }
 
         public void initiateObexServerSession(BluetoothDevice device) {
@@ -696,11 +756,13 @@ public class BluetoothMasService extends Service {
                     ((mSupportedMessageTypes & MESSAGE_TYPE_SMS) != 0x00) &&
                     ((mSupportedMessageTypes & MESSAGE_TYPE_MMS) != 0x00)) {
                 // BluetoothMasAppZero if and only if both SMS and MMS
-                appIf = new BluetoothMasAppSmsMms(context, mSessionStatusHandler, mnsClient, 0);
+                appIf = new BluetoothMasAppSmsMms(context, mSessionStatusHandler, mnsClient,
+                        mMasId, device.getName());
             } else if (((mSupportedMessageTypes & ~MESSAGE_TYPE_EMAIL) == 0x0) &&
                     ((mSupportedMessageTypes & MESSAGE_TYPE_EMAIL) != 0x0)) {
                 // BluetoothMasAppOne if and only if email
-                appIf = new BluetoothMasAppEmail(context, mSessionStatusHandler, mnsClient, 1);
+                appIf = new BluetoothMasAppEmail(context, mSessionStatusHandler, mnsClient,
+                        mMasId, device.getName());
             }
 
             mMapServer = new BluetoothMasObexServer(mSessionStatusHandler,
@@ -764,7 +826,7 @@ public class BluetoothMasService extends Service {
 
                         if (!mConnectionManager.isAllowedConnection(device)) {
                             connSocket.close();
-                            break;
+                            continue;
                         }
                         mConnSocket = connSocket;
                         boolean trust = device.getTrustState();

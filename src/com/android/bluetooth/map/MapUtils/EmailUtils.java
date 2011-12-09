@@ -41,11 +41,11 @@ import com.android.bluetooth.map.BluetoothMasService;
 import com.android.bluetooth.map.MapUtils.CommonUtils.BluetoothMasMessageRsp;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
-
-import static com.android.bluetooth.map.IBluetoothMasApp.EMAIL_HDLR_CONSTANT;
 
 public class EmailUtils {
     public static final String TAG = "EmailUtils";
@@ -106,7 +106,7 @@ public class EmailUtils {
         return folderList;
     }
 
-    public static String getWhereIsQueryForTypeEmail(String folder, Context context) {
+    public static String getWhereIsQueryForTypeEmail(String folder, Context context, int masId) {
         String query = "mailboxKey = -1";
         String folderId;
         Uri uri = Uri.parse("content://com.android.email.provider/mailbox");
@@ -117,7 +117,8 @@ public class EmailUtils {
             folder = folder.replace("'", "''");
         }
         Cursor cr = context.getContentResolver().query(
-                uri, null, "(UPPER(displayName) = '"+ folder.toUpperCase()+"')" , null, null);
+                uri, null, "(" + ACCOUNT_KEY + "=" + getAccountId(masId) +
+                ") AND (UPPER(displayName) = '"+ folder.toUpperCase()+"')" , null, null);
         if (cr != null) {
             if ( cr.moveToFirst()) {
                 do {
@@ -131,7 +132,7 @@ public class EmailUtils {
         return query;
     }
 
-    public static int getMessageSizeEmail(int messageId, Context context) {
+    public static int getMessageSizeEmail(long messageId, Context context) {
         if (V){
             Log.v(TAG, ":: Message Id in getMessageSizeEmail ::"+ messageId);
         }
@@ -180,8 +181,9 @@ public class EmailUtils {
         return folderName;
     }
 
-    public static String getConditionString(String folderName, Context context, BluetoothMasAppParams appParams) {
-        String whereClauseEmail = getWhereIsQueryForTypeEmail(folderName, context);
+    public static String getConditionString(String folderName, Context context,
+            BluetoothMasAppParams appParams, int masId) {
+        String whereClauseEmail = getWhereIsQueryForTypeEmail(folderName, context, masId);
 
         /* Filter readstatus: 0 no filtering, 0x01 get unread, 0x10 get read */
         if (appParams.FilterReadStatus != 0) {
@@ -280,10 +282,11 @@ public class EmailUtils {
     public static MsgListingConsts bldEmailMsgLstItem(Context context, String folderName,
                 BluetoothMasAppParams appParams, String subject, String timestamp,
                 String senderName, String senderAddressing, String recipientName,
-                String recipientAddressing, String msgId, String readStatus, String replyToStr) {
+                String recipientAddressing, String msgId, String readStatus, String replyToStr,
+                long offset) {
 
         MsgListingConsts emailMsg = new MsgListingConsts();
-        emailMsg.setMsg_handle(Integer.valueOf(msgId)+ EMAIL_HDLR_CONSTANT);
+        emailMsg.setMsg_handle(Long.valueOf(msgId)+ offset);
 
         Time time = new Time();
         time.set(Long.valueOf(timestamp));
@@ -441,7 +444,7 @@ public class EmailUtils {
 
         if ((appParams.ParameterMask & BIT_SIZE) != 0) {
             int  msgSize = 0;
-            msgSize = getMessageSizeEmail(Integer.parseInt(msgId), context);
+            msgSize = getMessageSizeEmail(Long.valueOf(msgId), context);
             emailMsg.setSize(msgSize);
         }
 
@@ -506,7 +509,7 @@ public class EmailUtils {
         return emailMsg;
     }
 
-    public static String bldEmailBmsg(int msgHandle, BluetoothMasMessageRsp rsp, Context context) {
+    public static String bldEmailBmsg(long msgHandle, BluetoothMasMessageRsp rsp, Context context) {
         String str = null;
         //Query the message table for obtaining the message related details
         Cursor cr1 = null;
@@ -676,12 +679,27 @@ public class EmailUtils {
     public static final Uri EMAIL_URI = Uri.parse("content://" + AUTHORITY);
     public static final Uri EMAIL_ACCOUNT_URI = Uri.withAppendedPath(EMAIL_URI, "account");
     public static final Uri EMAIL_BOX_URI = Uri.withAppendedPath(EMAIL_URI, "mailbox");
+    public static final Uri EMAIL_MESSAGE_URI = Uri.withAppendedPath(EMAIL_URI, "message");
     public static final String RECORD_ID = "_id";
     public static final String DISPLAY_NAME = "displayName";
     public static final String ACCOUNT_KEY = "accountKey";
+    public static final String MAILBOX_KEY = "mailboxKey";
     public static final String EMAIL_ADDRESS = "emailAddress";
     public static final String IS_DEFAULT = "isDefault";
     public static final String TYPE = "type";
+    public static final String[] EMAIL_BOX_PROJECTION = new String[] {
+        RECORD_ID, DISPLAY_NAME, ACCOUNT_KEY, TYPE
+    };
+    public static final int EMAIL_BOX_COLUMN_RECORD_ID = 0;
+    public static final int EMAIL_BOX_COLUMN_DISPLAY_NAME = 1;
+    public static final int EMAIL_BOX_COLUMN_ACCOUNT_KEY = 2;
+    public static final int EMAIL_BOX_COLUMN_TYPE = 3;
+    public static final String[] EMAIL_MESSAGE_PROJECTION = new String[] {
+        RECORD_ID, MAILBOX_KEY, ACCOUNT_KEY
+    };
+    public static final int MSG_COL_RECORD_ID = 0;
+    public static final int MSG_COL_MAILBOX_KEY = 1;
+    public static final int MSG_COL_ACCOUNT_KEY = 2;
     private static final String[] ACCOUNT_ID_PROJECTION = new String[] {
         RECORD_ID, EMAIL_ADDRESS, IS_DEFAULT
     };
@@ -697,6 +715,56 @@ public class EmailUtils {
     // deleted
     public static final int TYPE_DELETED = 6;
 
+    public static HashMap<Long, Integer> sAccToMas = new HashMap<Long, Integer>();
+    public static HashMap<Integer, Long> sMasToAcc = new HashMap<Integer, Long>();
+
+    public static void clearMapTable() {
+        sAccToMas.clear();
+        sMasToAcc.clear();
+    }
+
+    public static void updateMapTable(long accountId, int masId) {
+        if (sAccToMas.containsKey(accountId)) {
+            sAccToMas.remove(accountId);
+        }
+        if (sMasToAcc.containsKey(masId)) {
+            sMasToAcc.remove(masId);
+        }
+        sAccToMas.put(accountId, masId);
+        sMasToAcc.put(masId, accountId);
+    }
+
+    public static long getAccountId(int masId) {
+        Long accountId = sMasToAcc.get(masId);
+        return (accountId != null) ? accountId : -1;
+    }
+
+    public static int getMasId(long accountId) {
+        Integer masId = sAccToMas.get(accountId);
+        return (masId != null) ? masId : -1;
+    }
+
+    public static void removeMasIdIfNotPresent(List<Long> accountIdList) {
+        Collection<Long> oldList = sMasToAcc.values();
+        ArrayList<Long> toRemove = new ArrayList<Long>();
+        for (long oldId : oldList) {
+            if (!accountIdList.contains(oldId)) {
+                // remove it
+                toRemove.add(oldId);
+            }
+        }
+        for (long accountId : toRemove) {
+            Integer masId = sAccToMas.remove(accountId);
+            if (masId != null) {
+                sMasToAcc.remove(masId);
+            }
+        }
+    }
+
+    public static int countEmailAccount(Context context) {
+        return SqlHelper.count(context, EMAIL_ACCOUNT_URI, null, null);
+    }
+
     /**
      * Returns whether Email account exists
      * @param context the calling Context
@@ -704,6 +772,16 @@ public class EmailUtils {
      */
     public static boolean hasEmailAccount(Context context) {
         int numAccounts = SqlHelper.count(context, EMAIL_ACCOUNT_URI, null, null);
+        if (numAccounts > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public static boolean hasEmailAccount(Context context, long accountId) {
+        String where = RECORD_ID + "=" + accountId;
+        int numAccounts = SqlHelper.count(context, EMAIL_ACCOUNT_URI, where, null);
         if (numAccounts > 0) {
             return true;
         } else {
@@ -745,6 +823,25 @@ public class EmailUtils {
         }
         if (V) Log.v(TAG, "id = " + id);
         return id;
+    }
+
+    public static List<Long> getEmailAccountIdList(Context context) {
+        if (V) Log.v(TAG, "getDefaultEmailAccountId()");
+        long id = -1;
+        ArrayList<Long> list = new ArrayList<Long>();
+        Cursor cursor = context.getContentResolver().query(EMAIL_ACCOUNT_URI,
+                ACCOUNT_ID_PROJECTION, null, null, null);
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                do {
+                    id = cursor.getLong(0);
+                    list.add(id);
+                    if (V) Log.v(TAG, "id = " + id);
+                } while (cursor.moveToNext());
+            }
+            cursor.close();
+        }
+        return list;
     }
 
     /**

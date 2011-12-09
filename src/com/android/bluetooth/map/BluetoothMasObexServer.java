@@ -841,12 +841,15 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
 
     private final int msgStatus(Operation op, String name) {
         if (D) Log.d(TAG, "msgStatus: Enter");
+        if (name == null) {
+            return ResponseCodes.OBEX_HTTP_BAD_REQUEST;
+        }
         return mAppIf.msgStatus(name, masAppParams.get());
     }
 
-    private final int msgUpdate(Operation op, String name) {
+    private final int msgUpdate(Operation op) {
         if (D) Log.d(TAG, "msgUpdate: Enter");
-        return mAppIf.msgUpdate(name, masAppParams.get());
+        return mAppIf.msgUpdate();
     }
 
     private final int notification(Operation op) {
@@ -902,7 +905,7 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
             return msgStatus(op, name);
         }
         if (type.equals(TYPE_MESSAGE_UPDATE)) {
-            return msgUpdate(op, name);
+            return msgUpdate(op);
         }
         if (type.equals(TYPE_MESSAGE_NOTIFICATION)) {
             return notification(op);

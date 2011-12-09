@@ -44,7 +44,7 @@ public class MsgListingConsts {
     }
     public MsgInfo msgInfo = new MsgInfo();
 
-    public int msg_handle = 0;
+    public long msg_handle = 0;
     public String subject = null;
     public boolean  sendSubject = false;
     public String datetime = null;
@@ -64,11 +64,11 @@ public class MsgListingConsts {
     public String msg_protected = null;
     public String replyto_addressing = null;
 
-    public int getMsg_handle() {
+    public long getMsg_handle() {
         return msg_handle;
     }
 
-    public void setMsg_handle(int msg_handle) {
+    public void setMsg_handle(long msg_handle) {
         this.msg_handle = msg_handle;
     }
 

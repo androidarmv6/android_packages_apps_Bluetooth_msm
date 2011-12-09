@@ -42,12 +42,16 @@ import android.text.format.Time;
 import android.util.Log;
 import android.util.Pair;
 
+import com.android.bluetooth.map.IBluetoothMasApp.MessageNotificationListener;
+import com.android.bluetooth.map.IBluetoothMasApp.MnsRegister;
 import com.android.bluetooth.map.MapUtils.MapUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -56,10 +60,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import javax.obex.ObexTransport;
 
+import static com.android.bluetooth.map.BluetoothMasService.MAS_INS_INFO;
+import static com.android.bluetooth.map.BluetoothMasService.MAX_INSTANCES;
+import static com.android.bluetooth.map.IBluetoothMasApp.HANDLE_OFFSET;
+
 /**
  * This class run an MNS session.
  */
-public class BluetoothMns {
+public class BluetoothMns implements MessageNotificationListener {
     private static final String TAG = "BtMns";
 
     private static final boolean V = BluetoothMasService.VERBOSE;
@@ -108,8 +116,7 @@ public class BluetoothMns {
 
     private EventHandler mSessionHandler;
 
-    private BluetoothMnsSmsMms bmz = null;
-    private BluetoothMnsEmail bmo = null;
+    private List<MnsClient> mMnsClients = new ArrayList<MnsClient>();
     public static final ParcelUuid BluetoothUuid_ObexMns = ParcelUuid
             .fromString("00001133-0000-1000-8000-00805F9B34FB");
 
@@ -127,8 +134,33 @@ public class BluetoothMns {
         mAdapter = BluetoothAdapter.getDefaultAdapter();
         mContext = context;
 
-        bmz = new BluetoothMnsSmsMms(mContext, this);
-        bmo = new BluetoothMnsEmail(mContext, this);
+        for (int i = 0; i < MAX_INSTANCES; i ++) {
+            try {
+                // TODO: must be updated when Class<? extends MnsClient>'s constructor is changed
+                Constructor<? extends MnsClient> constructor;
+                constructor = MAS_INS_INFO[i].mMnsClientClass.getConstructor(Context.class,
+                        Integer.class);
+                mMnsClients.add(constructor.newInstance(mContext, i));
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "The " + MAS_INS_INFO[i].mMnsClientClass.getName()
+                        + "'s constructor arguments mismatch", e);
+            } catch (InstantiationException e) {
+                Log.e(TAG, "The " + MAS_INS_INFO[i].mMnsClientClass.getName()
+                        + " cannot be instantiated", e);
+            } catch (IllegalAccessException e) {
+                Log.e(TAG, "The " + MAS_INS_INFO[i].mMnsClientClass.getName()
+                        + " cannot be instantiated", e);
+            } catch (InvocationTargetException e) {
+                Log.e(TAG, "Exception during " + MAS_INS_INFO[i].mMnsClientClass.getName()
+                        + "'s constructor invocation", e);
+            } catch (SecurityException e) {
+                Log.e(TAG, MAS_INS_INFO[i].mMnsClientClass.getName()
+                        + "'s constructor is not accessible", e);
+            } catch (NoSuchMethodException e) {
+                Log.e(TAG, MAS_INS_INFO[i].mMnsClientClass.getName()
+                        + " has no matched constructor", e);
+            }
+        }
 
         if (!mAdapter.isEnabled()) {
             Log.e(TAG, "Can't send event when Bluetooth is disabled ");
@@ -147,33 +179,63 @@ public class BluetoothMns {
         return mSessionHandler;
     }
 
-    private void register(final int masId) {
-        new Thread(new Runnable() {
-            public void run() {
-                if (masId == 0) {
-                    bmz.register();
-                } else if (masId == 1) {
-                    bmo.register();
-                }
+    /**
+     * Asserting masId
+     * @param masId
+     * @return true if MnsClient is created for masId; otherwise false.
+     */
+    private boolean assertMasid(final int masId) {
+        final int size = mMnsClients.size();
+        if (masId < 0 || masId >= size) {
+            Log.e(TAG, "MAS id: " + masId + " is out of maximum number of MAS instances: " + size);
+            return false;
+        }
+        return true;
+    }
+
+    private boolean register(final int masId) {
+        if (!assertMasid(masId)) {
+            Log.e(TAG, "Attempt to register MAS id: " + masId);
+            return false;
+        }
+        final MnsClient client = mMnsClients.get(masId);
+        if (!client.isRegistered()) {
+            try {
+                client.register(BluetoothMns.this);
+            } catch (Exception e) {
+                Log.e(TAG, "Exception occured while register MNS for MAS id: " + masId, e);
+                return false;
             }
-        }).start();
+        }
+        return true;
     }
 
     private synchronized boolean canDisconnect() {
-        return !bmz.isRegistered() && !bmo.isRegistered();
+        for (MnsClient client : mMnsClients) {
+            if (client.isRegistered()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void deregister(final int masId) {
-        if (masId == 0) {
-            bmz.deregister();
-        } else if (masId == 1) {
-            bmo.deregister();
+        if (!assertMasid(masId)) {
+            Log.e(TAG, "Attempt to register MAS id: " + masId);
+            return;
+        }
+        final MnsClient client = mMnsClients.get(masId);
+        if (client.isRegistered()) {
+            client.register(null);
         }
     }
 
     private void deregisterAll() {
-        bmz.deregister();
-        bmo.deregister();
+        for (MnsClient client : mMnsClients) {
+            if (client.isRegistered()) {
+                client.register(null);
+            }
+        }
     }
 
     /*
@@ -197,7 +259,10 @@ public class BluetoothMns {
                     if (mSession != null) {
                         if (V) Log.v(TAG, "is MNS session connected? " + mSession.isConnected());
                         if (mSession.isConnected()) {
-                            register(masId);
+                            if (!register(masId)) {
+                                // failed to register, disconnect
+                                obtainMessage(MNS_DISCONNECT, masId, -1).sendToTarget();
+                            }
                             break;
                         }
                     }
@@ -404,7 +469,7 @@ public class BluetoothMns {
     /**
      * Post a MNS Event to the MNS thread
      */
-    public void sendMnsEvent(String msg, String handle, String folder,
+    public void sendMnsEvent(int masId, String msg, String handle, String folder,
             String old_folder, String msgType) {
         if (V) {
             Log.v(TAG, "sendMnsEvent()");
@@ -415,7 +480,6 @@ public class BluetoothMns {
             Log.v(TAG, "msgType: " + msgType);
         }
         int location = -1;
-        int masId = -1;
 
         /* Send the notification, only if it was not initiated
          * by MCE. MEMORY_FULL and MEMORY_AVAILABLE cannot be
@@ -428,21 +492,9 @@ public class BluetoothMns {
         }
 
         if (location == -1) {
-            String str = MapUtils.mapEventReportXML(msg, handle, folder, old_folder,
-                    msgType);
-
-            if(msgType != null && msgType.equalsIgnoreCase("SMS_GSM") ||
-                        msgType.equalsIgnoreCase("MMS")){
-                Log.d(TAG, "SMS and MMS notifications sent");
-                masId = 0;
-            }
-            else if(msgType != null && msgType.equalsIgnoreCase("EMAIL")){
-                Log.d(TAG, "EMAIL notifications sent");
-                masId = 1;
-            }
-
-            mSessionHandler.obtainMessage(MNS_SEND_EVENT, masId, -1, str)
-                    .sendToTarget();
+            String str = MapUtils.mapEventReportXML(msg, handle, folder, old_folder, msgType);
+            if (V) Log.v(TAG, "Notification to MAS " + masId + ", msgType = " + msgType);
+            mSessionHandler.obtainMessage(MNS_SEND_EVENT, masId, -1, str).sendToTarget();
         } else {
             removeMceInitiatedOperation(location);
         }
@@ -475,18 +527,11 @@ public class BluetoothMns {
 
             File fileR = new File(mContext.getFilesDir() + "/" + FILENAME);
             if (fileR.exists() == true) {
-                if (V){
-                    Log.v(TAG, " Sending event report file ");
+                if (V) {
+                    Log.v(TAG, " Sending event report file for Mas " + masId);
                 }
 
-                if(masId == 0){
-                    Log.d(TAG, "notification for Mas 0::");
-                    mSession.sendEvent(fileR, (byte) 0);
-                }
-                else if(masId == 1){
-                    Log.d(TAG, "notification for Mas 1::");
-                    mSession.sendEvent(fileR, (byte) 1);
-                }
+                mSession.sendEvent(fileR, (byte) masId);
             } else {
                 if (V){
                     Log.v(TAG, " ERROR IN CREATING SEND EVENT OBJ FILE");
@@ -504,10 +549,10 @@ public class BluetoothMns {
                 final String action = intent.getAction();
                 if (Intent.ACTION_DEVICE_STORAGE_LOW.equals(action)) {
                     Log.d(TAG, " Memory Full ");
-                    sendMnsEvent(MEMORY_FULL, null, null, null, null);
+                    sendMnsEventMemory(MEMORY_FULL);
                 } else if (Intent.ACTION_DEVICE_STORAGE_OK.equals(action)) {
                     Log.d(TAG, " Memory Available ");
-                    sendMnsEvent(MEMORY_AVAILABLE, null, null, null, null);
+                    sendMnsEventMemory(MEMORY_AVAILABLE);
                 }
             }
         }
@@ -531,11 +576,7 @@ public class BluetoothMns {
     private void startObexSession(ObexTransport transport) throws NullPointerException {
         if (V) Log.v(TAG, "Create Client session with transport " + transport.toString());
         mSession = new BluetoothMnsObexSession(mContext, transport);
-        new Thread(new Runnable() {
-            public void run() {
-                mSession.connect();
-            }
-        }).start();
+        mSession.connect();
     }
 
     private SocketConnectThread mConnectThread;
@@ -599,5 +640,83 @@ public class BluetoothMns {
             mSessionHandler.obtainMessage(RFCOMM_ERROR).sendToTarget();
             return;
         }
+    }
+
+    public void sendMnsEventMemory(String msg) {
+        // Sending "MemoryFull" or "MemoryAvailable" to all registered Mas Instances
+        for (MnsClient client : mMnsClients) {
+            if (client.isRegistered()) {
+                sendMnsEvent(client.getMasId(), msg, null, null, null, null);
+            }
+        }
+    }
+
+    public void onDeliveryFailure(int masId, String handle, String folder, String msgType) {
+        sendMnsEvent(masId, DELIVERY_FAILURE, handle, folder, null, msgType);
+    }
+
+    public void onDeliverySuccess(int masId, String handle, String folder, String msgType) {
+        sendMnsEvent(masId, DELIVERY_SUCCESS, handle, folder, null, msgType);
+    }
+
+    public void onMessageShift(int masId, String handle, String toFolder,
+            String fromFolder, String msgType) {
+        sendMnsEvent(masId, MESSAGE_SHIFT, handle, toFolder, fromFolder, msgType);
+    }
+
+    public void onNewMessage(int masId, String handle, String folder, String msgType) {
+        sendMnsEvent(masId, NEW_MESSAGE, handle, folder, null, msgType);
+    }
+
+    public void onSendingFailure(int masId, String handle, String folder, String msgType) {
+        sendMnsEvent(masId, SENDING_FAILURE, handle, folder, null, msgType);
+    }
+
+    public void onSendingSuccess(int masId, String handle, String folder, String msgType) {
+        sendMnsEvent(masId, SENDING_SUCCESS, handle, folder, null, msgType);
+    }
+
+    public void onMessageDeleted(int masId, String handle, String folder, String msgType) {
+        sendMnsEvent(masId, MESSAGE_DELETED, handle, folder, null, msgType);
+    }
+
+    public static abstract class MnsClient implements MnsRegister {
+        public static final String TAG = "MnsClient";
+        public static final boolean V = BluetoothMasService.VERBOSE;
+
+        protected Context mContext;
+        protected MessageNotificationListener mListener = null;
+        protected int mMasId;
+
+        protected final long OFFSET_START;
+        protected final long OFFSET_END;
+
+        public MnsClient(Context context, int masId) {
+            mContext = context;
+            mMasId = masId;
+            OFFSET_START = HANDLE_OFFSET[masId];
+            OFFSET_END = HANDLE_OFFSET[masId + 1] - 1;
+        }
+
+        public synchronized void register(MessageNotificationListener listener) {
+            if (listener != null) {
+                mListener = listener;
+                registerContentObserver();
+            } else {
+                mListener = null;
+                unregisterContentObserver();
+            }
+        }
+
+        public boolean isRegistered() {
+            return mListener != null;
+        }
+
+        public int getMasId() {
+            return mMasId;
+        }
+
+        protected abstract void registerContentObserver();
+        protected abstract void unregisterContentObserver();
     }
 }

@@ -58,8 +58,30 @@ public interface IBluetoothMasApp {
     public static final int BIT_PROTECTED = 0x4000;
     public static final int BIT_REPLYTO_ADDRESSING = 0x8000;
 
-    public static final int MMS_HDLR_CONSTANT = 100000;
-    public static final int EMAIL_HDLR_CONSTANT = 200000;
+    /**
+     * Message Access Profile SPEC V10
+     * 3.1.1 Handle
+     * The handle shall be a 64 bit unsigned integer whose value is defined by the MSE.
+     * 7.1 SDP Interoperability Requirements
+     * Up to 12 MAS Instances may be supported by a MSE device.
+     * The value range of the MASInstanceID. shall be 0..255.
+     * Although id range is 0..255, 0~11 are selected for conventional indexing
+     */
+    public static final long HANDLE_OFFSET[] = {
+        0,          // MAS id 0
+        1 << 59,    // MAS id 1
+        2 << 59,    // MAS id 2
+        3 << 59,    // MAS id 3
+        4 << 59,    // MAS id 4
+        5 << 59,    // MAS id 5
+        6 << 59,    // MAS id 6
+        7 << 59,    // MAS id 7
+        8 << 59,    // MAS id 8
+        9 << 59,    // MAS id 9
+        10 << 59,   // MAS id 10
+        11 << 59,   // MAS id 11
+        Long.MAX_VALUE
+    };
 
     public static final int EMAIL_MAX_PUSHMSG_SIZE = 409600;
 
@@ -86,9 +108,8 @@ public interface IBluetoothMasApp {
         BluetoothMasAppParams bluetoothMasAppParams);
     public BluetoothMasPushMsgRsp pushMsg(String name, File file,
         BluetoothMasAppParams bluetoothMasAppParams) throws BadRequestException;
-    public int msgStatus(String name, BluetoothMasAppParams bluetoothMasAppParams);
-    public int msgUpdate(String name,
-        BluetoothMasAppParams bluetoothMasAppParams);
+    public int msgStatus(String msgHandle, BluetoothMasAppParams bluetoothMasAppParams);
+    public int msgUpdate();
     public void onConnect();
     public void onDisconnect();
     public int notification(BluetoothDevice remoteDevice,
@@ -96,9 +117,28 @@ public interface IBluetoothMasApp {
     public void startMnsSession(BluetoothDevice remoteDevice);
     public void stopMnsSession(BluetoothDevice remoteDevice);
     public int getMasId();
-    public boolean supportSms(boolean only);
-    public boolean supportMms(boolean only);
-    public boolean supportSmsMms(boolean only);
-    public boolean supportEmail(boolean only);
     public boolean checkPrecondition();
+
+    public interface MessageNotificationListener {
+        public static final String NEW_MESSAGE = "NewMessage";
+        public static final String DELIVERY_SUCCESS = "DeliverySuccess";
+        public static final String SENDING_SUCCESS = "SendingSuccess";
+        public static final String DELIVERY_FAILURE = "DeliveryFailure";
+        public static final String SENDING_FAILURE = "SendingFailure";
+        public static final String MESSAGE_DELETED = "MessageDeleted";
+        public static final String MESSAGE_SHIFT = "MessageShift";
+        public void onNewMessage(int masId, String handle, String folder, String msgType);
+        public void onDeliverySuccess(int masId, String handle, String folder, String msgType);
+        public void onSendingSuccess(int masId, String handle, String folder, String msgType);
+        public void onDeliveryFailure(int masId, String handle, String folder, String msgType);
+        public void onSendingFailure(int masId, String handle, String folder, String msgType);
+        public void onMessageDeleted(int masId, String handle, String folder, String msgType);
+        public void onMessageShift(int masId, String handle, String toFolder, String fromFolder,
+                String msgType);
+    }
+
+    public interface MnsRegister {
+        public void register(MessageNotificationListener listener);
+        public boolean isRegistered();
+    }
 }
