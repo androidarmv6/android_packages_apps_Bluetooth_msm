@@ -121,7 +121,7 @@ public class BluetoothBppActivity extends Activity {
 
         // Menu window only show during the last BPP operation.
         int id = BluetoothOppService.mBppTransId - 1;
-        bf = BluetoothOppService.mBppTransfer.get(id);
+        bf = BluetoothOppService.mBppTransfer.get(0);
 
         // Setup the window
         requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);

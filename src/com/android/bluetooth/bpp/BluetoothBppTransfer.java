@@ -480,7 +480,6 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                     if (mStatusFinal == 0 ) {
                         mStatusFinal = info1.mStatus;
                     }
-                    printResultMsg();
 
                     if(BluetoothBppStatusActivity.mContext != null) {
                         ((Activity) BluetoothBppStatusActivity.mContext).finish();
@@ -494,6 +493,7 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                     if(BluetoothBppActivity.mContext != null){
                         ((Activity) BluetoothBppActivity.mContext).finish();
                     }
+                    printResultMsg();
                     break;
 
                 /* Handle the error state of an Obex session */
@@ -676,6 +676,8 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
             } else if (mBatch.mDirection == BluetoothShare.DIRECTION_INBOUND) {
                 if (V) Log.v(TAG, "BPP doesn't support Server !!");
             }
+        } else {
+            if(V) Log.v(TAG,"  Start: Thread Already there");
         }
     }
 
@@ -937,9 +939,8 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
 
         if(docFormats != null){
             if (V) Log.v(TAG, "Printer supports doc format: " + docFormats);
-
-            String currFileType = BluetoothOppManager.getInstance(mContext).getSendingFileTypeInfo();
-            String currUriName = BluetoothOppManager.getInstance(mContext).getSendingFileNameInfo();
+            String currFileType = mBatch.getPendingShare().mMimetype;
+            String currUriName =  mBatch.getPendingShare().mUri;
             if (V) Log.v(TAG, "File Type: " + currFileType + "\r\nFile Name: "+ currUriName);
             String fileName = null;
             Uri u = Uri.parse(currUriName);
@@ -961,8 +962,7 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
             } else if (scheme.equals("file")) {
                 fileName = u.getLastPathSegment();
             }
-
-            if ( docFormats.indexOf(currFileType, 0) == -1 ) {
+            if ((currFileType == null) || ( docFormats.indexOf(currFileType, 0) == -1 )){
                 if(V) Log.v(TAG," filename after change =   "+ fileName);
                 if ((extractMime = checkUnknownMimetype(currFileType, fileName)) != null) {
                     if (V) Log.v(TAG, "Set the file type to " + extractMime);
