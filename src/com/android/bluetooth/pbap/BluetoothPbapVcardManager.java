@@ -478,7 +478,7 @@ public class BluetoothPbapVcardManager {
                 } else {
                     vcardType = VCardConfig.VCARD_TYPE_V30_GENERIC;
                 }
-                if ((!photobit) || (vcardType21)){
+                if ((!photobit)){
                     vcardType |= VCardConfig.FLAG_REFRAIN_IMAGE_EXPORT;
                 }
                 composer = new VCardComposer(mContext, vcardType, true);
