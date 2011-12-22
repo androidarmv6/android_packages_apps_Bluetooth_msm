@@ -128,6 +128,47 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
         mThread.addShare(share);
     }
 
+
+    private class ContentResolverUpdateThread extends Thread {
+
+        private static final int sSleepTime = 500;
+        private Uri contentUri;
+        private Context mContext1;
+        private int position;
+
+        public ContentResolverUpdateThread(Context context, Uri cntUri, int pos) {
+            super("BtOpp ContentResolverUpdateThread");
+            mContext1 = context;
+            contentUri = cntUri;
+            position = pos;
+        }
+
+        public void updateProgress (int pos) {
+            position = pos;
+        }
+
+        @Override
+        public void run() {
+            ContentValues updateValues;
+
+            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+
+            while (true) {
+                updateValues = new ContentValues();
+                updateValues.put(BluetoothShare.CURRENT_BYTES, position);
+                mContext1.getContentResolver().update(contentUri, updateValues,
+                        null, null);
+
+                try {
+                    Thread.sleep(sSleepTime);
+                } catch (InterruptedException e1) {
+                    if (V) Log.v(TAG, "ContentResolverUpdateThread was interrupted (1), exiting");
+                    return;
+                }
+            }
+        }
+    }
+
     private class ClientThread extends Thread {
 
         private static final int sSleepTime = 500;
@@ -363,6 +404,7 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
             int status = BluetoothShare.STATUS_SUCCESS;
             Uri contentUri = Uri.parse(BluetoothShare.CONTENT_URI + "/" + mInfo.mId);
             ContentValues updateValues;
+            ContentResolverUpdateThread uiUpdateThread = null;
             HeaderSet reply;
             reply = new HeaderSet();
             HeaderSet request;
@@ -577,11 +619,31 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
                                             + " readLength " + readLength + " bytes took "
                                             + (System.currentTimeMillis() - timestamp) + " ms");
                                 }
-                                updateValues = new ContentValues();
-                                updateValues.put(BluetoothShare.CURRENT_BYTES, position);
-                                mContext1.getContentResolver().update(contentUri, updateValues,
-                                        null, null);
+
+                                if (uiUpdateThread == null) {
+                                    uiUpdateThread = new ContentResolverUpdateThread (mContext1,
+                                                                    contentUri, position);
+                                    uiUpdateThread.start ( );
+                                } else {
+                                    uiUpdateThread.updateProgress (position);
+                                }
+
                             }
+                        }
+                    }
+
+                    if (uiUpdateThread != null) {
+                        try {
+                            uiUpdateThread.interrupt ();
+                            uiUpdateThread.join ();
+                            uiUpdateThread = null;
+
+                            updateValues = new ContentValues();
+                            updateValues.put(BluetoothShare.CURRENT_BYTES, position);
+                            mContext1.getContentResolver().update(contentUri, updateValues,
+                                        null, null);
+                        } catch (InterruptedException ie) {
+                            if (V) Log.v(TAG, "Interrupted waiting for uiUpdateThread to join");
                         }
                     }
 
@@ -619,6 +681,12 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
                 handleSendException(e.toString());
             } finally {
                 try {
+
+                    if (uiUpdateThread != null) {
+                        uiUpdateThread.interrupt ();
+                        uiUpdateThread = null;
+                    }
+
                     fileInfo.mInputStream.close();
                     if (!error) {
                         responseCode = putOperation.getResponseCode();
