@@ -486,8 +486,8 @@ public class BluetoothOppService extends Service {
                         int id = cursor.getInt(idColumn);
 
                         if (arrayPos == mShares.size()) {
-                            insertShare(cursor, arrayPos);
                             if (V) Log.v(TAG, "Array update: inserting " + id + " @ " + arrayPos);
+                            insertShare(cursor, arrayPos);
                             if (shouldScanFile(arrayPos) && (!scanFile(cursor, arrayPos))) {
                                 keepService = true;
                             }
@@ -514,6 +514,7 @@ public class BluetoothOppService extends Service {
                             } else if (arrayId == id) {
                                 // This cursor row already exists in the stored
                                 // array
+                                if(V) Log.v(TAG," Calling Updateshare arraypos " + arrayPos);
                                 updateShare(cursor, arrayPos, userAccepted);
                                 if (shouldScanFile(arrayPos) && (!scanFile(cursor, arrayPos))) {
                                     keepService = true;
@@ -718,11 +719,26 @@ public class BluetoothOppService extends Service {
 
             } else {
                 int i = findBatchWithTimeStamp(info.mTimestamp);
-                if (i != -1) {
+                if ((i != -1)&&(info.mOwner == BluetoothShare.OWNER_OPP)) {
                     if (V) Log.v(TAG, "Service add info " + info.mId + " to existing batch "
                                 + mBatchs.get(i).mId);
                     mBatchs.get(i).addShare(info);
                 } else {
+                    /* Changing the Timestamp of simultaneously queued BPP Share */
+                    if(info.mOwner == BluetoothShare.OWNER_BPP){
+                        for ( int k=0;k < mBatchs.size(); k++){
+                            if(info.mOwner == BluetoothShare.OWNER_BPP){
+                                if(V) Log.v(TAG," Changing TimeStamp BPP");
+                                if(mBatchs.get(k).mTimestamp == info.mTimestamp)
+                                    info.mTimestamp++;
+                            }
+                        }
+                        mShares.get(arrayPos).mTimestamp = info.mTimestamp;
+                        ContentValues values = new ContentValues();
+                        Uri contentUri = Uri.parse(BluetoothShare.CONTENT_URI + "/" + info.mId);
+                        values.put(BluetoothShare.TIMESTAMP,info.mTimestamp);
+                        this.getContentResolver().update(contentUri, values, null, null);
+                    }
                     // There is ongoing batch
                     BluetoothOppBatch newBatch = new BluetoothOppBatch(this, info);
                     newBatch.mId = mBatchId;
