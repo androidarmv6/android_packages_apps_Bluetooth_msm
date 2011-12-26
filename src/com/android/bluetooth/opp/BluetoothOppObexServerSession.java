@@ -85,6 +85,7 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
     private static final String OPP_SERVER_DIR_PATH = "/data/data/com.android.bluetooth/oppserver";
     private static final String OPP_MIME_TYPE = "text/x-vcard";
     private static final String OPP_DEFAULT_vCARD_NAME = "default.vcf";
+    private static final String OPP_myProfile_NAME = "myprofile.vcf";
     private static final int OPP_LOCAL_BUF_SIZE  = 0x4000;
 
     private ObexTransport mTransport;
@@ -710,8 +711,8 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
         }
 
         File dir   =  new File(OPP_SERVER_DIR_PATH);
-        File myCard = new File(OPP_SERVER_DIR_PATH, OPP_DEFAULT_vCARD_NAME);
-        if((dir.exists())&&(myCard.exists())&&(shareUri != null)) {
+        File myCard = new File(OPP_SERVER_DIR_PATH, OPP_myProfile_NAME);
+        if((dir.exists())&&(myCard.exists())) {
             Log.v(TAG," Directory and File is alredy There, Delete it");
             myCard.delete();
             dir.delete();
@@ -747,8 +748,11 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
              }catch(IOException e) {
                 Log.e(TAG,"Not able to read myVcard"+ e.toString());
             }
+            return myCard;
+        }else {
+            File mDefaultvCard = new File(OPP_SERVER_DIR_PATH, OPP_DEFAULT_vCARD_NAME);
+            return mDefaultvCard;
         }
-        return myCard;
     }
 
     @Override
