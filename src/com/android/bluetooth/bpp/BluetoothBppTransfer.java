@@ -207,8 +207,8 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                     if (device.equals(mBatch.mDestination) && mBPPregisterReceiver) {
                         if (V) Log.v(TAG, "Received ACTION_ACL_DISCONNECTED - batch: " + mBatch.mId);
                         mStatusFinal = BluetoothShare.STATUS_BPP_DISCONNECTED;
-                        printResultMsg();
                         ForceCloseBpp();
+                        printResultMsg();
                 }
             }
         }
@@ -296,10 +296,29 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                  */
                 case RFCOMM_ERROR:
                     if (V) Log.v(TAG, "receive RFCOMM_ERROR msg");
-                    mConnectThread = null;
+                    if(mConnectThread.isAlive()){
+                        try {
+                            mConnectThread.interrupt();
+                            mConnectThread.join();
+                        }catch (InterruptedException e) {
+                            if (V) Log.v(TAG, "EXP: RFCOMM_ERROR waiting to join");
+                        }
+                    }
                     BluetoothBppActivity.mOPPstop = false;
                     if(BluetoothBppActivity.mContext != null){
                         ((Activity) BluetoothBppActivity.mContext).finish();
+                    }
+                    while( true ) {
+                        if(BluetoothBppActivity.mContext != null){
+                            try {
+                                if(V) Log.v(TAG," RFCOMM_ERROR waiting for 10 sec");
+                                Thread.sleep(10);
+                            }catch (InterruptedException e) {
+                                if(V) Log.v(TAG,"  Thread Interrupted");
+                            }
+                        }else {
+                            break;
+                        }
                     }
                     mStatusFinal = BluetoothShare.STATUS_CONNECTION_ERROR;
                     printResultMsg();
@@ -309,8 +328,15 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                  * BluetoothOppObexClientSession and start it
                  */
                 case RFCOMM_CONNECTED:
-                    if (V) Log.v(TAG, "Transfer receive RFCOMM_CONNECTED msg");
-                    mConnectThread = null;
+                    if (V) Log.v(TAG, "Transfer receive RFCOMM_CONNECTED msg checking IsAlive()");
+                    if(mConnectThread.isAlive()){
+                        try {
+                            mConnectThread.interrupt();
+                            mConnectThread.join();
+                        }catch (InterruptedException e) {
+                            if (V) Log.v(TAG, "EXP: RFCOMM_CONNECTED waiting to join");
+                        }
+                    }
                     mTransport = (ObexTransport)msg.obj;
                     startObexSession();
                     break;
@@ -428,7 +454,7 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                             if ((mSessionEvent.bs.mJobStatus.compareTo("completed")== 0)
                                 && mSessionEvent.mConnected){
                                 mSessionEvent.stop();
-                            } else if (mSessionEvent.mConnected == false) {
+                            } else if ((mSessionEvent.mConnected == false)&&(mSession != null)) {
                                 mSession.stop();
                             }
                         }
@@ -450,7 +476,8 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                 case BluetoothBppObexClientSession.MSG_SESSION_STOP:
                     if (V) Log.v(TAG, "receive MSG_SESSION_STOP");
                     /* Disconnect Job Channel */
-                    if (!mSessionEvent.bs.mFileSending || mSessionEvent.mEnforceClose) {
+                    if ((!mSessionEvent.bs.mFileSending || mSessionEvent.mEnforceClose)
+                         &&(mSession != null)) {
                         mSession.stop();
                     }
                     break;
@@ -493,6 +520,21 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                     if(BluetoothBppActivity.mContext != null){
                         ((Activity) BluetoothBppActivity.mContext).finish();
                     }
+                    while( true ) {
+                        if((BluetoothBppActivity.mContext != null)&&
+                          (BluetoothBppSetting.mContext != null)&&
+                          (BluetoothBppPrintPrefActivity.mContext != null)&&
+                          (BluetoothBppStatusActivity.mContext != null)){
+                            try {
+                                if(V) Log.v(TAG," MSG_SESSION_COMPLETE Thread Waiting for 10 ms");
+                                Thread.sleep(10);
+                            }catch (InterruptedException e) {
+                                if(V) Log.v(TAG,"  Thread Interrupted");
+                            }
+                        }else {
+                            break;
+                        }
+                    }
                     printResultMsg();
                     break;
 
@@ -506,6 +548,18 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                     if(BluetoothBppActivity.mContext != null){
                         ((Activity) BluetoothBppActivity.mContext).finish();
                     }
+                    while( true ) {
+                        if(BluetoothBppActivity.mContext != null) {
+                            try {
+                                if(V) Log.v(TAG," MSG_SESSION_ERROR Thread Waiting for 10 ms");
+                                Thread.sleep(10);
+                            }catch (InterruptedException e) {
+                                if(V) Log.v(TAG,"  Thread Interrupted");
+                            }
+                       } else {
+                            break;
+                        }
+                    }
                     BluetoothOppShareInfo info2 = (BluetoothOppShareInfo)msg.obj;
                     if (mStatusFinal == 0) {
                         mStatusFinal = info2.mStatus;
@@ -514,13 +568,14 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                         if (mSessionEvent.mConnected == true) {
                             mSessionEvent.mEnforceClose = true;
                             mSessionEvent.stop();
-                        } else {
+                        } else if(mSession != null){
                             mSession.stop();
                         }
                     }else{
                         if (V) Log.v(TAG, "Event Thread has not been started,"+
                             " so just close obexsession");
-                        mSession.stop();
+                        if(mSession != null)
+                            mSession.stop();
                     }
                     break;
 
@@ -686,15 +741,14 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
      */
     public void stop() {
         if (V) Log.v(TAG, "stop");
-        if (mConnectThread != null) {
+        if((mConnectThread!= null)&&(mConnectThread.isAlive())) {
             try {
                 mConnectThread.interrupt();
                 if (V) Log.v(TAG, "waiting for connect thread to terminate");
                 mConnectThread.join();
             } catch (InterruptedException e) {
-                if (V) Log.v(TAG, "Interrupted waiting for connect thread to join");
+                if (V) Log.v(TAG, "EXP: stop() waiting to join");
             }
-            mConnectThread = null;
         }
         if (mSession != null) {
             if (V) Log.v(TAG, "Stop mSession");
@@ -702,7 +756,7 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
             mSession = null;
         }
         if (mHandlerThread != null) {
-            if (V) Log.v(TAG, "mHandlerThread is stopped !!");
+            if (V) Log.v(TAG, " Stopping mHandlerThread !!");
             /* TO-DO --- need to think about how to handle this..*/
             //mHandlerThread.getLooper().quit();
             mHandlerThread.interrupt();
@@ -731,8 +785,13 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
         if (mCurrentShare == null) {
             Log.e(TAG, "Unexpected error happened !");
             // It should disconnect RFCOMM channel right away.
-            if(mConnectThread != null) {
+            if(mConnectThread.isAlive()) {
+            try {
                 mConnectThread.interrupt();
+                mConnectThread.join();
+            }catch (InterruptedException e) {
+                if (V) Log.v(TAG, "EXP: StartObexSession()waiting to join");
+            }
             }
             return;
         }
@@ -1149,7 +1208,7 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
         }
     };
 
-    private SocketConnectThread mConnectThread;
+    private SocketConnectThread mConnectThread = null;
     private SocketConnectThread mConnectThreadEvent;
 
     private class SocketConnectThread extends Thread {
@@ -1179,6 +1238,7 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                     }
                 }
             }
+            super.interrupt();
         }
 
         @Override

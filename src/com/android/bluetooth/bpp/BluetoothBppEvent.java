@@ -67,7 +67,7 @@ public class BluetoothBppEvent {
 
     static final int MSG_SESSION_COMPLETE = 1;
 
-    static final int MSG_GET_JOBID		  = 2;
+    static final int MSG_GET_JOBID  = 2;
 
     private ClientThread mThread;
 
@@ -121,18 +121,19 @@ public class BluetoothBppEvent {
 
     public void stop() {
         if (D) Log.d(TAG, "Stop!");
-        if (mThread != null) {
+        if ((mThread != null) && (mThread.isAlive())) {
             try {
                 if (V) Log.v(TAG, "try interrupt");
                 mThread.interrupt();
                 if (V) Log.v(TAG, "waiting for thread to terminate");
                 mThread.join();
                 mThread = null;
-                } catch (InterruptedException e) {
-                    if (V) Log.v(TAG, "Interrupted waiting for thread to join");
-                }
+                mCallback = null;
+            } catch (InterruptedException e) {
+                   if (V) Log.v(TAG, "Interrupted waiting for thread to join");
+            }
         }
-        mCallback = null;
+
     }
 
     private class ClientThread extends Thread {
@@ -201,12 +202,12 @@ public class BluetoothBppEvent {
 
         @Override
         public void interrupt() {
-            if (V) Log.v(TAG, "super.interrupt()");
-            super.interrupt();
             if(mInterrupted){
                 if (V) Log.v(TAG, "Interupt already in progress");
                 return;
             }
+            if (V) Log.v(TAG, "super.interrupt()");
+            super.interrupt();
             mInterrupted = true;
             if (mEnforceClose) {
                 try {
@@ -219,7 +220,10 @@ public class BluetoothBppEvent {
                         if (V) Log.v(TAG, "Status Channel already disconnected");
                         return;
                     }
-                    mTransport1.close();
+                    if(mTransport1 != null ){
+                        mTransport1.close();
+                        mTransport1 = null;
+                    }
                 } catch (IOException e) {
                     Log.e(TAG, "mTransport.close error");
                 }
@@ -252,6 +256,7 @@ public class BluetoothBppEvent {
                 try {
                     if (D) Log.d(TAG, "Try mTransport1.close");
                     mTransport1.close();
+                    mTransport1 = null;
                 } catch (IOException e) {
                     Log.e(TAG, "mTransport.close error");
                 }
