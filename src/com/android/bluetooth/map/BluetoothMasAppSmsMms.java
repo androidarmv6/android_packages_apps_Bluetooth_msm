@@ -149,7 +149,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
     protected BluetoothMsgListRsp msgListingSpecific(List<MsgListingConsts> msgList, String name,
             BluetoothMasMessageListingRsp rsp, BluetoothMasAppParams appParams) {
         BluetoothMsgListRsp bmlr = new BluetoothMsgListRsp();
-        String fullPath = (name == null) ? mCurrentPath :
+        String fullPath = (name == null || name.length() == 0) ? mCurrentPath :
                 CommonUtils.getFullPath(name, mContext, getCompleteFolderList(), mCurrentPath);
         if (fullPath == null) {
             // Child folder not present
