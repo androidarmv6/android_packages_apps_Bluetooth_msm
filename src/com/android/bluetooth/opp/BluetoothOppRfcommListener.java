@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010, 2012, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -128,7 +128,7 @@ public class BluetoothOppRfcommListener {
                         }
                         if (V) Log.v(TAG, "TCP listen thread finished");
                     } else {
-                        boolean serverOK = true;
+                        boolean serverOK = false;
 
                         /*
                          * it's possible that create will fail in some cases.
@@ -138,6 +138,7 @@ public class BluetoothOppRfcommListener {
                             try {
                                 mBtServerSocket = mAdapter
                                         .listenUsingInsecureRfcommOn(mBtOppRfcommChannel);
+                                serverOK = true;
                             } catch (IOException e1) {
                                 Log.e(TAG, "Error create RfcommServerSocket " + e1);
                                 serverOK = false;
