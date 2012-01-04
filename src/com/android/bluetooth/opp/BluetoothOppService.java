@@ -893,36 +893,20 @@ public class BluetoothOppService extends Service {
                         }
                         mTransfer = null;
                     } else if (info.mOwner == BluetoothShare.OWNER_BPP) {
-                        if (mBppTransfer.size() > 0) {
-                            for (int id=0; id<mBppTransfer.size();id++) {
-                                BluetoothBppTransfer BppTransfer = mBppTransfer.get(id);
-                                if (BppTransfer == null) {
-                                    Log.e(TAG, "Error! BppTransfer is null");
-                                }
+                                BluetoothBppTransfer BppTransfer = mBppTransfer.get(0);
+                                // as every new BPP share is queued up, the
+                                // current share is the topmost one. Moreover
+                                // we need not check for the complete
+                                // array.Just  stop the transfer here, batch
+                                // removal and starting of new batch will be
+                                // done from the removebatch
                                 if (BppTransfer != null && batch.mId == BppTransfer.getBatchId()) {
-                                    Log.d(TAG, "BPP Transfer(" + id + ") + batch("
+                                    Log.d(TAG, "BPP Transfer + batch("
                                         + batch.mId + ") are removed!!");
-                                    if (BppTransfer != null) {
                                         BppTransfer.stop();
                                     } else {
                                         Log.e(TAG, "Unexpected error! BppTransfer is null");
                                     }
-
-                                    mBppTransfer.remove(BppTransfer);
-                                    mBppTransId--;
-                                    if(mBppTransfer.size() > 0) {
-                                        mBppTransfer.get(0).start();
-                                    }
-                                    break;
-                                }
-                                if (id == mBppTransfer.size()) {
-                                    Log.e(TAG, "Unexpected error! batch id doesn't "
-                                        + "match with BppTransfer ");
-                                }
-                            }
-                        } else {
-                            Log.e(TAG, "Unexpected error! There is no mBppTransfer");
-                        }
                     }
                 } else {
                     if (mServerTransfer == null) {
@@ -1004,44 +988,76 @@ public class BluetoothOppService extends Service {
         }
         return -1;
     }
-
+   // Parallel BPP and OPP transfer is possible. In case
+   // both OPP and BPP share are queued, we need to start
+   // the next available transfer. We should not stop at
+   // first instance of running share. At one instant
+   // 2 outgoing shares are possible, but they have to
+   // be from different Owner. 1 outgoing and 1 incoming
+   // share is also possible .
     private void removeBatch(BluetoothOppBatch batch) {
         if (V) Log.v(TAG, "Remove batch " + batch.mId);
+            if(batch.mOwner == BluetoothShare.OWNER_BPP){
+                if(V) Log.v(TAG,"Removing BPP Share");
+                mBppTransfer.remove(0);
+                mBppTransId--;
+            }
         mBatchs.remove(batch);
         mBatchId--;
         BluetoothOppBatch nextBatch;
         if (mBatchs.size() > 0) {
+            int mRunningBatchDirection = -1;
+            int mRunningBatchOwner = -1;
             for (int i = 0; i < mBatchs.size(); i++) {
                 // we have a running batch
                 nextBatch = mBatchs.get(i);
                 if (nextBatch.mStatus == Constants.BATCH_STATUS_RUNNING) {
-                    return;
+                        if(mRunningBatchDirection == -1){
+                            mRunningBatchDirection = nextBatch.mDirection;
+                            continue;
+                        }
+                        if(mRunningBatchOwner == -1){
+                            mRunningBatchOwner = nextBatch.mOwner;
+                            continue;
+                        }
+                        /* we have either both direction or both owners, return from here */
+                        if((mRunningBatchDirection != -1)&&(mRunningBatchDirection != nextBatch.mDirection))
+                            return;
+                        if((mRunningBatchOwner != -1)&&(mRunningBatchOwner != nextBatch.mOwner))
+                            return;
                 } else {
                     // just finish a transfer, start pending outbound transfer
                     if (nextBatch.mDirection == BluetoothShare.DIRECTION_OUTBOUND) {
-                        if (nextBatch.mOwner == BluetoothShare.OWNER_BPP) {
-                            if (V) Log.e(TAG, "Unexpeced Error!!, there is pending batch("
+                         if ((nextBatch.mOwner == BluetoothShare.OWNER_BPP) &&
+                             (mRunningBatchOwner != BluetoothShare.OWNER_BPP)){
+                              if (V) Log.e(TAG, "Unexpeced Error!!, there is pending batch("
                                          + nextBatch.mId +") on mBppTransfer!!");
-                            break;
-                        } else if (nextBatch.mOwner == BluetoothShare.OWNER_OPP) {
-                        if (V) Log.v(TAG, "Start pending OPP batch(" + nextBatch.mId + ")");
-                            mTransfer = new BluetoothOppTransfer(this, mPowerManager, nextBatch);
-                            mTransfer.start();
-                        }
-                        return;
-                    } else if (nextBatch.mDirection == BluetoothShare.DIRECTION_INBOUND
-                            && mServerSession != null) {
-                        // have to support pending inbound transfer
-                        // if an outbound transfer and incoming socket happens together
-                        if (V) Log.v(TAG, "Start pending inbound batch " + nextBatch.mId);
-                        mServerTransfer = new BluetoothOppTransfer(this, mPowerManager, nextBatch,
+                               if(mBppTransfer.size() > 0) {
+                                   mBppTransfer.get(0).start();
+                                   return;
+                               }
+                         } else if ((nextBatch.mOwner == BluetoothShare.OWNER_OPP)&&
+                                    !((mRunningBatchOwner == BluetoothShare.OWNER_OPP)&&
+                                    (mRunningBatchDirection == BluetoothShare.DIRECTION_OUTBOUND))) {
+                                      if (V) Log.v(TAG, "Start pending OPP batch(" + nextBatch.mId + ")");
+                                      mTransfer = new BluetoothOppTransfer(this, mPowerManager, nextBatch);
+                                      mTransfer.start();
+                                      return;
+                         }
+                    } else if ((nextBatch.mDirection == BluetoothShare.DIRECTION_INBOUND
+                                &&  mServerSession != null) &&
+                               (mRunningBatchDirection != BluetoothShare.DIRECTION_INBOUND)){
+                                // have to support pending inbound transfer
+                                // if an outbound transfer and incoming socket happens together
+                                if (V) Log.v(TAG, "Start pending inbound batch " + nextBatch.mId);
+                                mServerTransfer = new BluetoothOppTransfer(this, mPowerManager, nextBatch,
                                                                    mServerSession);
-                        mServerTransfer.start();
-                        if (nextBatch.getPendingShare().mConfirm ==
-                                BluetoothShare.USER_CONFIRMATION_CONFIRMED) {
-                            mServerTransfer.setConfirmed();
-                        }
-                        return;
+                                mServerTransfer.start();
+                                if (nextBatch.getPendingShare().mConfirm ==
+                                    BluetoothShare.USER_CONFIRMATION_CONFIRMED) {
+                                      mServerTransfer.setConfirmed();
+                                }
+                                return;
                     }
                 }
             }

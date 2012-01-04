@@ -164,14 +164,14 @@ public class BluetoothBppObexClientSession{
 
     public void stop() {
         if (D) Log.d(TAG, "Stop!");
-        if (mThread != null) {
+        if ((mThread != null) && (mThread.isAlive())) {
             try {
                 mThread.interrupt();
                 if (V) Log.v(TAG, "waiting for thread to terminate");
                 mThread.join();
                 mThread = null;
             } catch (InterruptedException e) {
-                if (V) Log.v(TAG, "Interrupted waiting for thread to join");
+                  if (V) Log.v(TAG, "Interrupted waiting for thread to join");
             }
         }
         mCallback = null;
@@ -897,7 +897,8 @@ public class BluetoothBppObexClientSession{
                             }
                         }
                     }
-                    if((mSoapProcess == CANCEL) && (position != mFileSize)){
+                    if((mSoapProcess == CANCEL) && (position != mFileSize)
+                       && (!mInterrupted)){
                         mSoapProcess = CANCELLING;
                         error = true;
                         status = BluetoothShare.STATUS_CANCELED;
@@ -972,11 +973,12 @@ public class BluetoothBppObexClientSession{
 
         @Override
         public void interrupt() {
-            super.interrupt();
+            if(V) Log.v(TAG,"interrupt + ");
             if(mInterrupted){
                 if (V) Log.v(TAG, "Interupt already in progress");
                 return;
             }
+            super.interrupt();
             mInterrupted = true;
         }
     }

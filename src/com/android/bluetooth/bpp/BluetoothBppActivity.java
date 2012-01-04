@@ -158,6 +158,7 @@ public class BluetoothBppActivity extends Activity {
 
                 if (JobChannel != -1) {
                     if (bf.mSessionHandler != null)
+                       if(V) Log.v(TAG," Sending Message from BPPActivity");
                        bf.mSessionHandler.obtainMessage(
                                 BluetoothBppTransfer.RFCOMM_CONNECT,
                                 JobChannel, StatusChannel, -1).sendToTarget();

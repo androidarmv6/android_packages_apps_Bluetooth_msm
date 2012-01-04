@@ -61,9 +61,13 @@ public class BluetoothBppStatusActivity extends Activity{
     protected void onCreate(Bundle icicle) {
         super.onCreate(icicle);
 
-        // Menu window only show during the last BPP operation.
-        int id = BluetoothOppService.mBppTransId - 1;
-        bf = BluetoothOppService.mBppTransfer.get(id);
+       // Instead of taking a share that is last in the list
+       // we have to take share from the top. Unlike earlier
+       // approach of starting every file that is shared we
+       // are now queuing  every share. In the present
+       // scenario the BPP share that we have to start is
+       // first one from the BPP array.
+        bf = BluetoothOppService.mBppTransfer.get(0);
 
         mContext = this;
         setContentView(R.layout.print_status);
