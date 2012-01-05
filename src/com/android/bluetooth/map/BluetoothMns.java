@@ -610,24 +610,20 @@ public class BluetoothMns implements MessageNotificationListener {
             try {
                 btSocket = device.createInsecureRfcommSocketToServiceRecord(
                         BluetoothUuid_ObexMns.getUuid());
-                try{
-                    btSocket.connect();
-                }
-                catch(Exception e){
-                    Log.d(TAG, "BtSocket Connect error::"+e.toString());
-                }
-                if (V) Log.v(TAG, "Rfcomm socket connection attempt took "
-                        + (System.currentTimeMillis() - timestamp) + " ms");
-                ObexTransport transport;
-                transport = new BluetoothMnsRfcommTransport(btSocket);
-                if (V) Log.v(TAG, "Send transport message " + transport.toString());
-
-                mSessionHandler.obtainMessage(RFCOMM_CONNECTED, transport).sendToTarget();
+                btSocket.connect();
             } catch (IOException e) {
-                Log.e(TAG, "Rfcomm socket connect exception " + e.getMessage());
+                Log.e(TAG, "BtSocket Connect error " + e.getMessage(), e);
                 markConnectionFailed(btSocket);
                 return;
             }
+
+            if (V) Log.v(TAG, "Rfcomm socket connection attempt took "
+                    + (System.currentTimeMillis() - timestamp) + " ms");
+            ObexTransport transport;
+            transport = new BluetoothMnsRfcommTransport(btSocket);
+            if (V) Log.v(TAG, "Send transport message " + transport.toString());
+
+            mSessionHandler.obtainMessage(RFCOMM_CONNECTED, transport).sendToTarget();
         }
 
         /**
