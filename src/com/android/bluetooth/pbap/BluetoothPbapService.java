@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -333,15 +334,17 @@ public class BluetoothPbapService extends Service {
     private final boolean initSocket() {
         if (VERBOSE) Log.v(TAG, "Pbap Service initSocket");
 
-        boolean initSocketOK = true;
+        boolean initSocketOK = false;
         final int CREATE_RETRY_TIME = 10;
 
+        if (VERBOSE) Log.v(TAG, "initSocket : mInterrupted : " + mInterrupted);
         // It's possible that create will fail in some cases. retry for 10 times
         for (int i = 0; i < CREATE_RETRY_TIME && !mInterrupted; i++) {
             try {
                 // It is mandatory for PSE to support initiation of bonding and
                 // encryption.
                 mServerSocket = mAdapter.listenUsingEncryptedRfcommOn(PORT_NUM);
+                initSocketOK = true;
             } catch (IOException e) {
                 Log.e(TAG, "Error create RfcommServerSocket " + e.toString());
                 initSocketOK = false;
@@ -375,6 +378,7 @@ public class BluetoothPbapService extends Service {
             // Stop the possible trying to init serverSocket
             mInterrupted = true;
 
+            if (VERBOSE) Log.v(TAG, "closeSocket : set mInterrupted");
             if (mServerSocket != null) {
                 mServerSocket.close();
             }

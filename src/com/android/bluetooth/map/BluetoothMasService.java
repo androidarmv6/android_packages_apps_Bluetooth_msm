@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008-2009, Motorola, Inc. All rights reserved.
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -650,13 +650,14 @@ public class BluetoothMasService extends Service {
             if (VERBOSE)
                 Log.v(TAG, "Map Service initSocket");
 
-            boolean initSocketOK = true;
+            boolean initSocketOK = false;
             final int CREATE_RETRY_TIME = 10;
 
             // It's possible that create will fail in some cases. retry for 10 times
             for (int i = 0; i < CREATE_RETRY_TIME && !mInterrupted; i++) {
                 try {
                     mServerSocket = mAdapter.listenUsingRfcommOn(mPortNum);
+                    initSocketOK = true;
                 } catch (IOException e) {
                     Log.e(TAG, "Error create RfcommServerSocket " + e.toString());
                     initSocketOK = false;
