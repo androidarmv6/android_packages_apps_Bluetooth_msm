@@ -942,6 +942,11 @@ public class BluetoothFtpService extends Service {
                         Log.e(TAG, "CloseSocket error: " + ex);
                     }
                     break;
+                case MSG_OBEX_AUTH_CHALL:
+                    createFtpNotification(AUTH_CHALL_ACTION);
+                    mSessionStatusHandler.sendMessageDelayed(mSessionStatusHandler
+                         .obtainMessage(MSG_INTERNAL_AUTH_TIMEOUT), USER_CONFIRM_TIMEOUT_VALUE);
+                    break;
                 default:
                     break;
             }
