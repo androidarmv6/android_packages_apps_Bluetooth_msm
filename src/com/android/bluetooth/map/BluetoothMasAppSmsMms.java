@@ -260,7 +260,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         if(!checkPath(false, name, false) ||
                 mCurrentPath == null ||
                 mCurrentPath.equals("telecom") ||
-                (mCurrentPath.equals("telecom/msg") && (name == null))) {
+                (mCurrentPath.equals("telecom/msg") && (name == null || name.length() == 0))) {
             rsp.response = ResponseCodes.OBEX_HTTP_BAD_REQUEST;
             return rsp;
         }
@@ -271,7 +271,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         final long allowedMem = outInfo.availMem - outInfo.threshold;
 
         byte[] readBytes = null;
-        FileInputStream fis;
+        FileInputStream fis = null;
         try {
             fis = new FileInputStream(file);
             if(file.length() > allowedMem){
@@ -283,7 +283,6 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
                 readBytes = new byte[(int) file.length()];
                 fis.read(readBytes);
             }
-            fis.close();
         } catch (FileNotFoundException e) {
             Log.e(TAG, e.getMessage());
             return rsp;
@@ -293,6 +292,14 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         } catch (SecurityException e) {
             Log.e(TAG, e.getMessage());
             return rsp;
+        } finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    Log.e(TAG, "Error while closing stream"+ e.toString());
+                }
+            }
         }
 
         String readStr = "";
@@ -2150,7 +2157,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
 
     private BluetoothMasPushMsgRsp pushMessageMms(BluetoothMasPushMsgRsp rsp,
             String readStr, String name) throws BadRequestException {
-        String fullPath = (name == null) ? mCurrentPath : mCurrentPath + "/" + name;
+        String fullPath = (name == null || name.length() == 0) ? mCurrentPath : mCurrentPath + "/" + name;
         if (fullPath.equalsIgnoreCase("telecom/msg/outbox")) {
             String handle = addToMmsFolder(DRAFTS, readStr);
             if (INTERNAL_ERROR == handle) {  // == comparison valid here
@@ -2201,7 +2208,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         BmessageConsts bMsg = MapUtils.fromBmessageSMS(readStr);
         String address = bMsg.getRecipientVcard_phone_number();
         String smsText = bMsg.getBody_msg();
-        String fullPath = (name == null) ? mCurrentPath : mCurrentPath + "/" + name;
+        String fullPath = (name == null || name.length() == 0) ? mCurrentPath : mCurrentPath + "/" + name;
         if(!"telecom/msg/outbox".equalsIgnoreCase(fullPath)) {
             String splitStrings[] = mCurrentPath.split("/");
             mMnsClient.addMceInitiatedOperation("+");

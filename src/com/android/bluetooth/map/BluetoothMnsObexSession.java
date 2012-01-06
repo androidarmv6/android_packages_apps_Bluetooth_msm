@@ -168,6 +168,7 @@ public class BluetoothMnsObexSession {
 
         ClientOperation putOperation = null;
         OutputStream outputStream = null;
+        FileInputStream fileInputStream = null;
         try {
             synchronized (this) {
                 mWaitingForRemote = true;
@@ -202,7 +203,7 @@ public class BluetoothMnsObexSession {
                 int outputBufferSize = putOperation.getMaxPacketSize();
                 byte[] buffer = new byte[outputBufferSize];
 
-                FileInputStream fileInputStream = new FileInputStream(file);
+                fileInputStream = new FileInputStream(file);
                 BufferedInputStream a = new BufferedInputStream(fileInputStream, 0x4000);
 
                 while ((position != file.length())) {
@@ -237,6 +238,13 @@ public class BluetoothMnsObexSession {
             handleSendException(e.toString());
             error = true;
         } finally {
+            if (fileInputStream != null) {
+                try {
+                    fileInputStream.close();
+                } catch (IOException ei) {
+                    Log.e(TAG, "Error while closing stream"+ ei.toString());
+                }
+            }
             try {
                 if (!error) {
                     responseCode = putOperation.getResponseCode();

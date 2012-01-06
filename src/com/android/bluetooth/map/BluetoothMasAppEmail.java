@@ -194,7 +194,7 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
     protected BluetoothMsgListRsp msgListingSpecific(List<MsgListingConsts> msgList, String name,
             BluetoothMasMessageListingRsp rsp, BluetoothMasAppParams appParams) {
         BluetoothMsgListRsp bmlr = new BluetoothMsgListRsp();
-        String fullPath = (name == null) ? mCurrentPath :
+        String fullPath = (name == null || name.length() == 0) ? mCurrentPath :
                 CommonUtils.getFullPath(name, mContext, getCompleteFolderList(), mCurrentPath);
         if (fullPath == null) {
             // Child folder not present
@@ -323,12 +323,12 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
         if(!checkPath(false, name, false) ||
                 mCurrentPath == null ||
                 mCurrentPath.equals("telecom") ||
-                (mCurrentPath.equals("telecom/msg") && (name == null))) {
+                (mCurrentPath.equals("telecom/msg") && (name == null || name.length() == 0))) {
             rsp.response = ResponseCodes.OBEX_HTTP_BAD_REQUEST;
             return rsp;
         }
         byte[] readBytes = null;
-        FileInputStream fis;
+        FileInputStream fis = null;
         try {
             fis = new FileInputStream(file);
             if(file.length() > EMAIL_MAX_PUSHMSG_SIZE){
@@ -340,7 +340,6 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
                 readBytes = new byte[(int) file.length()];
                 fis.read(readBytes);
             }
-            fis.close();
         } catch (FileNotFoundException e) {
             Log.e(TAG, e.getMessage());
             return rsp;
@@ -350,6 +349,15 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
         } catch (SecurityException e) {
             Log.e(TAG, e.getMessage());
             return rsp;
+        } finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException ei) {
+                    Log.e(TAG, "Error while closing stream"+ ei.toString());
+                }
+                return rsp;
+            }
         }
 
         String readStr = "";
@@ -634,7 +642,8 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
         String originator = bMsg.getOriginatorVcard_email();
         String origName = bMsg.getOriginatorVcard_name();
 
-        String fullPath = (name == null) ? mCurrentPath : mCurrentPath + "/" + name;
+        String fullPath = (name == null || name.length() == 0)
+                ? mCurrentPath : mCurrentPath + "/" + name;
         String splitStrings[] = fullPath.split("/");
         mMnsClient.addMceInitiatedOperation("+");
         int tmp = splitStrings.length;

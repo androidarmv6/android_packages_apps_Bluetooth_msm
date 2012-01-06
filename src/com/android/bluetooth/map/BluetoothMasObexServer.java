@@ -841,7 +841,7 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
 
     private final int msgStatus(Operation op, String name) {
         if (D) Log.d(TAG, "msgStatus: Enter");
-        if (name == null) {
+        if (name == null || name.length() == 0) {
             return ResponseCodes.OBEX_HTTP_BAD_REQUEST;
         }
         return mAppIf.msgStatus(name, masAppParams.get());
@@ -1004,7 +1004,7 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
         int readLength = 0;
         int outputBufferSize = op.getMaxPacketSize();
         long timestamp = 0;
-        FileInputStream fileInputStream;
+        FileInputStream fileInputStream = null;
         OutputStream outputStream;
         BufferedInputStream bis;
 
@@ -1029,6 +1029,14 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
             }
         } catch (IOException e) {
             return ResponseCodes.OBEX_HTTP_BAD_REQUEST;
+        } finally {
+            if (fileInputStream != null) {
+                try {
+                    fileInputStream.close();
+                } catch (IOException ei) {
+                    Log.e(TAG, "Error while closing stream"+ ei.toString());
+                }
+            }
         }
         if (position == fileinfo.length()) {
             if (D) Log.d(TAG, "SendBody : Exit: OK");

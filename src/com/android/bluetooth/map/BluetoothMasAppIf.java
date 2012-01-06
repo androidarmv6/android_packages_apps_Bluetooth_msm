@@ -128,7 +128,7 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
             Log.v(TAG, "name::"+name);
         }
         if (up == false) {
-            if(name == null || name.length() == 0) {
+            if (name == null || name.length() == 0) {
                 mCurrentPath = (setPathFlag) ? null : mCurrentPath;
                 return true;
             }
@@ -152,7 +152,7 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
                     mCurrentPath = mCurrentPath.substring(0, LastIndex);
                 }
             }
-            if (name == null) {
+            if (name == null || name.length() == 0) {
                 // Only going up by one
                 return true;
             }
