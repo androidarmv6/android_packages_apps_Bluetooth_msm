@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -283,7 +283,8 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
          * For multiple objects, reject further objects after user deny the
          * first one
          */
-        if (mAccepted == BluetoothShare.USER_CONFIRMATION_DENIED) {
+        if (mAccepted == BluetoothShare.USER_CONFIRMATION_DENIED ||
+            mAccepted == BluetoothShare.USER_CONFIRMATION_TIMEOUT) {
             return ResponseCodes.OBEX_HTTP_FORBIDDEN;
         }
 
