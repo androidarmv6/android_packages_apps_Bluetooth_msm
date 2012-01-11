@@ -240,5 +240,12 @@
                 <action android:name="android.bluetooth.IBluetoothThermometerServices" />
             </intent-filter>
         </service>
+        <service
+            android:process="@string/process"
+            android:name=".proximity.LEProximityServices" >
+            <intent-filter>
+                <action android:name="android.bluetooth.IBluetoothLEProximityServices" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>
