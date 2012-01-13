@@ -40,6 +40,7 @@ import com.android.bluetooth.map.BluetoothMasAppParams;
 import com.android.bluetooth.map.BluetoothMasService;
 import com.android.bluetooth.map.MapUtils.CommonUtils.BluetoothMasMessageRsp;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -70,6 +71,8 @@ public class EmailUtils {
     public static final int BIT_SENT = 0x2000;
     public static final int BIT_PROTECTED = 0x4000;
     public static final int BIT_REPLYTO_ADDRESSING = 0x8000;
+
+    public static final String BMW = "BMW";
 
     public static List<String> folderListEmail(List<String> folderList, Context context) {
         String[] projection = new String[] {"displayName"};
@@ -509,7 +512,8 @@ public class EmailUtils {
         return emailMsg;
     }
 
-    public static String bldEmailBmsg(long msgHandle, BluetoothMasMessageRsp rsp, Context context) {
+    public static String bldEmailBmsg(long msgHandle, BluetoothMasMessageRsp rsp, Context context,
+            String remoteDeviceName) {
         String str = null;
         //Query the message table for obtaining the message related details
         Cursor cr1 = null;
@@ -608,35 +612,48 @@ public class EmailUtils {
                     }
                 }
             }
-            Random randomGenerator = new Random();
-            int randomInt = randomGenerator.nextInt(1000);
-            String boundary = "MessageBoundary."+randomInt;
-            if (emailBody != null){
-                while (emailBody.contains(boundary)){
-                    randomInt = randomGenerator.nextInt(1000);
-                    boundary = "MessageBoundary."+randomInt;
-                }
-            }
-            Date date = new Date(Long.parseLong(timeStamp));
-            sb.append("Date: ").append(date.toString()).append("\r\n");
-            sb.append("To:").append(bmsg.getRecipientVcard_email()).append("\r\n");
-            sb.append("From:").append(bmsg.getOriginatorVcard_email()).append("\r\n");
-            sb.append("Subject:").append(subjectText).append("\r\n");
 
-            sb.append("Mime-Version: 1.0").append("\r\n");
-            sb.append(
-                    "Content-Type: multipart/mixed; boundary=\""+boundary+"\"")
-                    .append("\r\n");
-            sb.append("Content-Transfer-Encoding: 7bit").append("\r\n")
-                    .append("\r\n");
-            sb.append("MIME Message").append("\r\n");
-            sb.append("--"+boundary).append("\r\n");
-            sb.append("Content-Type: text/plain; charset=\"UTF-8\"").append("\r\n");
-            sb.append("Content-Transfer-Encoding: 8bit").append("\r\n");
-            sb.append("Content-Disposition:inline").append("\r\n")
-                    .append("\r\n");
-            sb.append(emailBody).append("\r\n");
-            sb.append("--"+boundary+"--").append("\r\n");
+            Date date = new Date(Long.parseLong(timeStamp));
+            sb.append("From:").append(bmsg.getOriginatorVcard_email()).append("\r\n");
+            sb.append("To:").append(bmsg.getRecipientVcard_email()).append("\r\n");
+            if (remoteDeviceName != null && remoteDeviceName.startsWith(BMW)) {
+                sb.append("Mime-Version: 1.0").append("\r\n");
+                sb.append("Content-Type: text/plain; charset=\"UTF-8\"").append("\r\n");
+                sb.append("Content-Transfer-Encoding: 8bit").append("\r\n");
+                // BMW 14692 carkit accepts Date format in "EEE, dd MMM yyyy HH:mm:ss Z"
+                sb.append("Date:");
+                sb.append(new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z").format(date));
+                sb.append("\r\n");
+                sb.append("Subject:").append(subjectText).append("\r\n").append("\r\n");
+                sb.append(emailBody).append("\r\n");
+            } else {
+                Random randomGenerator = new Random();
+                int randomInt = randomGenerator.nextInt(1000);
+                String boundary = "MessageBoundary."+randomInt;
+                if (emailBody != null){
+                    while (emailBody.contains(boundary)){
+                        randomInt = randomGenerator.nextInt(1000);
+                        boundary = "MessageBoundary."+randomInt;
+                    }
+                }
+                sb.append("Date: ").append(date.toString()).append("\r\n");
+                sb.append("Subject:").append(subjectText).append("\r\n");
+                sb.append("Mime-Version: 1.0").append("\r\n");
+                sb.append(
+                        "Content-Type: multipart/mixed; boundary=\""+boundary+"\"")
+                        .append("\r\n");
+                sb.append("Content-Transfer-Encoding: 8bit").append("\r\n")
+                        .append("\r\n");
+                sb.append("MIME Message").append("\r\n");
+                sb.append("--"+boundary).append("\r\n");
+                sb.append("Content-Type: text/plain; charset=\"UTF-8\"").append("\r\n");
+                sb.append("Content-Transfer-Encoding: 8bit").append("\r\n");
+                sb.append("Content-Disposition:inline").append("\r\n")
+                        .append("\r\n");
+                sb.append(emailBody).append("\r\n");
+                sb.append("--"+boundary+"--").append("\r\n");
+            }
+
             bmsg.setBody_msg(sb.toString());
             bmsg.setBody_length(sb.length() + 22);
             // Send a bMessage

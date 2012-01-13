@@ -279,7 +279,7 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
     protected BluetoothMasMessageRsp getMessageSpecific(long msgHandle,
             BluetoothMasMessageRsp rsp, BluetoothMasAppParams bluetoothMasAppParams) {
         long emailMsgID = msgHandle - OFFSET_START;
-        String str = EmailUtils.bldEmailBmsg(emailMsgID, rsp, mContext);
+        String str = EmailUtils.bldEmailBmsg(emailMsgID, rsp, mContext, mRemoteDeviceName);
         if (V) Log.v(TAG, "\n" + str + "\n");
         if (str != null && (str.length() > 0)) {
             final String FILENAME = "message" + getMasId();
