@@ -1271,52 +1271,93 @@ public class BluetoothThermometerServices extends Service {
         return revHexStr;
     }
 
-    private Float getFloatFromHex(int val) {
+    private Float getIEEE754FloatFromHex(int val) {
         Float res = Float.intBitsToFloat(val);
-        Log.d(TAG, "getFloatFromHex : " + res);
+        Log.d(TAG, "getIEEE754FloatFromHex : " + res);
         return res;
     }
 
-    private ArrayList<String> parseTempMeasurement(String value) {
-        Log.d(TAG, "parseTempMeasurement " );
-        ArrayList<String> list = new ArrayList<String>();
-        String tempValStr = "";
+   private Float getIEEE11073FloatFromHex(String hexStr) {
+        int mantissa;
+        Log.d(TAG, "getIEEE11073FloatFromHex : " + hexStr);
 
-        String flags = value.substring(0, 2);
-        int flagVal = Integer.parseInt(flags, 16);
+        // get signed 8 bit exponent value
+        String hexExp = hexStr.substring(0, 2);
+        byte exp = (byte) Integer.parseInt(hexExp, 16);
+        Log.d(TAG, "exp : " + exp);
 
-        String temStr = value.substring(2, 10);
-        Log.d(TAG, "Temp msr str : " + temStr);
+        String hexMantissa = hexStr.substring(2, 8);
+        String signStr = Character.toString(hexStr.charAt(2));
+        int sign = Integer.parseInt(signStr, 16) & 8;
+        int tempMantissa = Integer.parseInt(hexMantissa, 16);
+        Log.d(TAG, "temp Mantissa : " + tempMantissa);
 
-        String revHexStr = reverseHexStr(temStr);
-        tempValStr = String.valueOf(getFloatFromHex(Integer.valueOf(revHexStr, 16)));
-
-        if ((flagVal & 0x01) == 1) {
-            tempValStr = tempValStr + " F";
-        }
-        if ((flagVal & 0x01) == 0) {
-            tempValStr = tempValStr + " C";
-        }
-        list.add(tempValStr);
-
-        if ((flagVal & 0x02) == 2) {
-            String date = value.substring(10, 24);
-            Log.d(TAG, "Date  str : " + date);
-            String dateTime = convertValToDateTime(date);
-            Log.d(TAG, "Date time : " + dateTime);
-            list.add(dateTime);
+        if (sign != 0) {
+            Log.d(TAG, "negative matissa");
+            // get signed 24 bits mantissa value
+            int value = (int) Math.pow(2, 24);
+            int signed24BitVal = ~(value - tempMantissa);
+            mantissa = signed24BitVal;
+            Log.d(TAG, "neg mantissa : " + mantissa);
+        } else {
+            mantissa = tempMantissa;
+            Log.d(TAG, "positive mantissa : " + mantissa);
         }
 
-        if ((flagVal & 0x04) == 4) {
-            String tempType = value.substring(24, 26);
-            Log.d(TAG, "TempType  str : " + tempType);
-            Log.d(TAG, "Temp Type : " + Integer.parseInt(tempType, 16));
-            list.add(tempTypeMap.get(Integer.valueOf(tempType)));
-        }
-
-        Log.d(TAG, "parseTempMeasurement : " + list.size());
-        return list;
+        // value = 10 pow (exponent) * mantissa
+        float floatValue = (float) Math.pow(10, exp) * mantissa;
+        return floatValue;
     }
+
+   private ArrayList<String> parseTempMeasurement(String value) {
+       Log.d(TAG, "parseTempMeasurement " );
+       ArrayList<String> list = new ArrayList<String>();
+       String tempValStr = "";
+
+       String flags = value.substring(0, 2);
+       int flagVal = Integer.parseInt(flags, 16);
+
+       String temStr = value.substring(2, 10);
+       Log.d(TAG, "Temp msr str : " + temStr);
+
+       String revHexStr = reverseHexStr(temStr);
+       if(revHexStr.equals("007FFFFE") || revHexStr.equals("00800002")) {
+           tempValStr = "infinity";
+           list.add(tempValStr);
+       } else if (revHexStr.equals("007FFFFF") ||
+                  revHexStr.equals("00800000") ||
+                  revHexStr.equals("00800001")) {
+           tempValStr = "invalid number";
+           list.add(tempValStr);
+       } else {
+           tempValStr = String.valueOf(getIEEE11073FloatFromHex(revHexStr));
+
+           if ((flagVal & 0x01) == 1) {
+               tempValStr = tempValStr + " F";
+           }
+           if ((flagVal & 0x01) == 0) {
+               tempValStr = tempValStr + " C";
+           }
+           list.add(tempValStr);
+
+           if ((flagVal & 0x02) == 2) {
+               String date = value.substring(10, 24);
+               Log.d(TAG, "Date  str : " + date);
+               String dateTime = convertValToDateTime(date);
+               Log.d(TAG, "Date time : " + dateTime);
+               list.add(dateTime);
+           }
+
+           if ((flagVal & 0x04) == 4) {
+               String tempType = value.substring(24, 26);
+               Log.d(TAG, "TempType  str : " + tempType);
+               Log.d(TAG, "Temp Type : " + Integer.parseInt(tempType, 16));
+               list.add(tempTypeMap.get(Integer.valueOf(tempType)));
+           }
+           Log.d(TAG, "parseTempMeasurement : " + list.size());
+       }
+       return list;
+   }
 
     private void updateCharValue(ParcelUuid uuid) {
         if (!updateCharacteristic(uuid)) {
