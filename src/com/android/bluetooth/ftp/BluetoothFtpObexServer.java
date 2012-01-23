@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010,2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012 Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -1067,7 +1067,8 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
             return ResponseCodes.OBEX_HTTP_OK;
         }
 
-        int folderlistStringLen = folderlistString.length();
+        byte [] folderListing = folderlistString.getBytes();
+        int folderlistStringLen = folderListing.length;
         if (D) Log.d(TAG, "Send Data: len=" + folderlistStringLen);
 
         OutputStream outputStream = null;
@@ -1084,7 +1085,7 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
         int outputBufferSize = op.getMaxPacketSize();
         if (V) Log.v(TAG, "outputBufferSize = " + outputBufferSize);
         while (position != folderlistStringLen) {
-            if (sIsAborted) {
+            if (((ServerOperation)op).isAborted()) {
                 ((ServerOperation)op).isAborted = true;
                 sIsAborted = false;
                 break;
@@ -1094,9 +1095,9 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
             if (folderlistStringLen - position < outputBufferSize) {
                 readLength = folderlistStringLen - position;
             }
-            String subStr = folderlistString.substring(position, position + readLength);
+
             try {
-                outputStream.write(subStr.getBytes(), 0, readLength);
+                outputStream.write(folderListing, position, readLength);
             } catch (IOException e) {
                 Log.e(TAG, "write outputstrem failed" + e.toString());
                 pushResult = ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
