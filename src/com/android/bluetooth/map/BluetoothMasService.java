@@ -379,7 +379,10 @@ public class BluetoothMasService extends Service {
                     }
                     break;
                 case MSG_INTERNAL_USER_TIMEOUT:
-                    Intent intent = new Intent(USER_CONFIRM_TIMEOUT_ACTION);
+                    Intent intent = new Intent(BluetoothDevice.ACTION_CONNECTION_ACCESS_CANCEL);
+                    intent.setClassName(ACCESS_AUTHORITY_PACKAGE, ACCESS_AUTHORITY_CLASS);
+                    intent.putExtra(BluetoothDevice.EXTRA_ACCESS_REQUEST_TYPE,
+                       BluetoothDevice.REQUEST_TYPE_MESSAGE_ACCESS);
                     sendBroadcast(intent);
                     removeMapNotification(NOTIFICATION_ID_ACCESS);
                     if (VERBOSE) Log.v(TAG, "MAS access request notification flag off");
