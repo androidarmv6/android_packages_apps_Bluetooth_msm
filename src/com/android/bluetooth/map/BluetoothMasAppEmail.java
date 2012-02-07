@@ -356,7 +356,6 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
                 } catch (IOException ei) {
                     Log.e(TAG, "Error while closing stream"+ ei.toString());
                 }
-                return rsp;
             }
         }
 
