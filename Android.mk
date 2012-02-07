@@ -12,4 +12,6 @@ LOCAL_STATIC_JAVA_LIBRARIES := com.android.vcard
 
 LOCAL_CERTIFICATE := platform
 
+LOCAL_PROGUARD_FLAG_FILES := proguard.flags
+
 include $(BUILD_PACKAGE)
