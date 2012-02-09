@@ -388,7 +388,7 @@ public class BluetoothPbapVcardManager {
         }
         String SearchOnlyNumber = onlyphoneNumber.toString();
         Cursor contactCursor = null;
-        Uri uri = Data.CONTENT_URI;
+        Uri uri = Phone.CONTENT_URI;
 
         try {
             contactCursor = mResolver.query(uri, PHONES_PROJECTION, CLAUSE_ONLY_VISIBLE,
