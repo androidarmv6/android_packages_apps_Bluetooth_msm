@@ -45,6 +45,7 @@ import com.android.bluetooth.map.MapUtils.CommonUtils.BluetoothMasMessageListing
 import com.android.bluetooth.map.MapUtils.CommonUtils.BluetoothMasMessageRsp;
 import com.android.bluetooth.map.MapUtils.CommonUtils.BluetoothMsgListRsp;
 import com.android.bluetooth.map.MapUtils.SmsMmsUtils.VcardContent;
+import com.android.bluetooth.map.MapUtils.MapUtils.ServiceUnavailableException;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -423,21 +424,21 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
         public String Number;
     }
 
-    protected OwnerInfo getOwnerInfo() {
+    protected OwnerInfo getOwnerInfo() throws ServiceUnavailableException {
         OwnerInfo info = new OwnerInfo();
         TelephonyManager tm = (TelephonyManager)mContext.getSystemService(Context.TELEPHONY_SERVICE);
         if (tm != null) {
-            String sLocalPhoneNum = tm.getLine1Number();
-            String sLocalPhoneName = tm.getLine1AlphaTag();
+            String localPhoneNum = tm.getLine1Number();
+            String localPhoneName = tm.getLine1AlphaTag();
 
-            if (TextUtils.isEmpty(sLocalPhoneNum)) {
-                sLocalPhoneNum = "0000000000";
+            if (TextUtils.isEmpty(localPhoneNum)) {
+                throw new ServiceUnavailableException("Phone number is unavailable");
             }
-            if (TextUtils.isEmpty(sLocalPhoneName)) {
-                sLocalPhoneName = "QCOM";
+            if (TextUtils.isEmpty(localPhoneName)) {
+                localPhoneName = mContext.getString(android.R.string.unknownName);
             }
-            info.Name = sLocalPhoneName;
-            info.Number = sLocalPhoneNum;
+            info.Name = localPhoneName;
+            info.Number = localPhoneNum;
         }
         return info;
     }
@@ -447,7 +448,7 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
     /**
      * Get the owners name
      */
-    protected String getOwnerName() {
+    protected String getOwnerName() throws ServiceUnavailableException {
         if (ownerInfo == null) {
             ownerInfo = getOwnerInfo();
         }
@@ -457,7 +458,7 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
     /**
      * Get the owners phone number
      */
-    protected String getOwnerNumber() {
+    protected String getOwnerNumber() throws ServiceUnavailableException {
         if (ownerInfo == null) {
             ownerInfo = getOwnerInfo();
         }
@@ -474,7 +475,8 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
      * @return
      */
     protected abstract BluetoothMsgListRsp msgListingSpecific(List<MsgListingConsts> msgList,
-            String name, BluetoothMasMessageListingRsp rsp, BluetoothMasAppParams appParams);
+            String name, BluetoothMasMessageListingRsp rsp, BluetoothMasAppParams appParams)
+            throws ServiceUnavailableException;
 
     /**
      * Get the list of messages in the given folder
@@ -493,9 +495,15 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
             return null;
         }
 
-        BluetoothMsgListRsp specificRsp = msgListingSpecific(msgList, name, rsp, appParams);
-        msgList = specificRsp.msgList;
-        rsp = specificRsp.rsp;
+        BluetoothMsgListRsp specificRsp;
+        try {
+            specificRsp = msgListingSpecific(msgList, name, rsp, appParams);
+            msgList = specificRsp.msgList;
+            rsp = specificRsp.rsp;
+        } catch (ServiceUnavailableException e) {
+            Log.w(TAG, e.toString(), e);
+            rsp.rsp = ResponseCodes.OBEX_HTTP_UNAVAILABLE;
+        }
         if (rsp.rsp != ResponseCodes.OBEX_HTTP_OK) {
             return rsp;
         }
@@ -565,7 +573,8 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
     }
 
     protected abstract BluetoothMasMessageRsp getMessageSpecific(long msgHandle,
-            BluetoothMasMessageRsp rsp, BluetoothMasAppParams bluetoothMasAppParams);
+            BluetoothMasMessageRsp rsp, BluetoothMasAppParams bluetoothMasAppParams)
+            throws ServiceUnavailableException;
 
     /**
      * Get the message for the given message handle
@@ -585,7 +594,13 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
             rsp.rsp = ResponseCodes.OBEX_HTTP_NOT_FOUND;
             return rsp;
         }
-        return getMessageSpecific(handle, rsp, bluetoothMasAppParams);
+        try {
+            rsp = getMessageSpecific(handle, rsp, bluetoothMasAppParams);
+        } catch (ServiceUnavailableException e) {
+            Log.w(TAG, e.toString(), e);
+            rsp.rsp = ResponseCodes.OBEX_HTTP_UNAVAILABLE;
+        }
+        return rsp;
     }
 
     /**

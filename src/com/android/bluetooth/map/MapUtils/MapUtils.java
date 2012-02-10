@@ -1699,6 +1699,12 @@ public class MapUtils {
         }
     }
 
+    public static class ServiceUnavailableException extends Exception {
+        public ServiceUnavailableException(String reason) {
+            super("ServiceUnavailableException: " + reason);
+        }
+    }
+
     public static class RecipientVCard implements VCardInterpreter {
         String mName = "";
         String mFormattedName = "";

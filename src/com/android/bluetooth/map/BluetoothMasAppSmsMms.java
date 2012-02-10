@@ -54,6 +54,7 @@ import com.android.bluetooth.map.MapUtils.CommonUtils.BluetoothMasMessageRsp;
 import com.android.bluetooth.map.MapUtils.CommonUtils.BluetoothMasPushMsgRsp;
 import com.android.bluetooth.map.MapUtils.CommonUtils.BluetoothMsgListRsp;
 import com.android.bluetooth.map.MapUtils.MapUtils.BadRequestException;
+import com.android.bluetooth.map.MapUtils.MapUtils.ServiceUnavailableException;
 import com.android.bluetooth.map.MapUtils.SmsMmsUtils.VcardContent;
 
 import java.io.File;
@@ -147,7 +148,8 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
 
     @Override
     protected BluetoothMsgListRsp msgListingSpecific(List<MsgListingConsts> msgList, String name,
-            BluetoothMasMessageListingRsp rsp, BluetoothMasAppParams appParams) {
+            BluetoothMasMessageListingRsp rsp, BluetoothMasAppParams appParams)
+            throws ServiceUnavailableException {
         BluetoothMsgListRsp bmlr = new BluetoothMsgListRsp();
         String fullPath = (name == null || name.length() == 0) ? mCurrentPath :
                 CommonUtils.getFullPath(name, mContext, getCompleteFolderList(), mCurrentPath);
@@ -227,8 +229,8 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
     }
 
     @Override
-    protected BluetoothMasMessageRsp getMessageSpecific(long msgHandle,
-            BluetoothMasMessageRsp rsp, BluetoothMasAppParams bluetoothMasAppParams) {
+    protected BluetoothMasMessageRsp getMessageSpecific(long msgHandle, BluetoothMasMessageRsp rsp,
+            BluetoothMasAppParams bluetoothMasAppParams) throws ServiceUnavailableException {
         final long handle = Long.valueOf(msgHandle);
 
         if (handle >= MMS_OFFSET_START) { // MMS
@@ -1217,7 +1219,8 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
     /**
      * Build an MMS bMessage when given a message handle
      */
-    private BluetoothMasMessageRsp bldMmsBmsg(long msgID, BluetoothMasMessageRsp rsp) {
+    private BluetoothMasMessageRsp bldMmsBmsg(long msgID, BluetoothMasMessageRsp rsp)
+            throws ServiceUnavailableException {
         Cursor cr = null;
         Uri uri = Uri.parse("content://mms/");
         String whereClause = " _id = " + msgID;
@@ -1313,8 +1316,8 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
      * This method constructs an MMS message that is added to the message list
      * which is used to construct a message listing
      */
-    private MsgListingConsts bldMmsMsgLstItem(long mmsMsgID,
-            BluetoothMasAppParams appParams, String folderName, String datetimeStr) {
+    private MsgListingConsts bldMmsMsgLstItem(long mmsMsgID, BluetoothMasAppParams appParams,
+            String folderName, String datetimeStr) throws ServiceUnavailableException {
 
         MsgListingConsts ml = new MsgListingConsts();
 
@@ -1694,7 +1697,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
     }
 
     private String bldSmsBmsg(long msgHandle, Context context, Cursor cr,
-                BluetoothMasAppParams bluetoothMasAppParams) {
+                BluetoothMasAppParams bluetoothMasAppParams) throws ServiceUnavailableException {
         String str = null;
         if (cr.getCount() > 0) {
             cr.moveToFirst();
@@ -1767,7 +1770,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
 
     private MsgListingConsts bldSmsMsgLstItem(BluetoothMasAppParams appParams,
                 String subject, String timestamp, String address, String msgId,
-                String readStatus, int msgType){
+                String readStatus, int msgType) throws ServiceUnavailableException{
         MsgListingConsts ml = new MsgListingConsts();
         ml.setMsg_handle(Integer.valueOf(msgId));
 
@@ -1899,8 +1902,9 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
 
         return ml;
     }
-    private BluetoothMsgListRsp msgListSms(List<MsgListingConsts> msgList,
-                String folder, BluetoothMasMessageListingRsp rsp, BluetoothMasAppParams appParams){
+    private BluetoothMsgListRsp msgListSms(List<MsgListingConsts> msgList, String folder,
+            BluetoothMasMessageListingRsp rsp, BluetoothMasAppParams appParams)
+            throws ServiceUnavailableException{
         BluetoothMsgListRsp bmlr = new BluetoothMsgListRsp();
         String url = "content://sms/";
         Uri uri = Uri.parse(url);
@@ -2051,8 +2055,9 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         return bmlr;
     }
 
-    private BluetoothMsgListRsp msgListMms(List<MsgListingConsts> msgList,
-                String name, BluetoothMasMessageListingRsp rsp, BluetoothMasAppParams appParams){
+    private BluetoothMsgListRsp msgListMms(List<MsgListingConsts> msgList, String name,
+            BluetoothMasMessageListingRsp rsp, BluetoothMasAppParams appParams)
+            throws ServiceUnavailableException {
         BluetoothMsgListRsp bmlr = new BluetoothMsgListRsp();
 
         if (getNumMmsMsgs(name) != 0) {
@@ -2095,7 +2100,8 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
     }
 
     private BluetoothMasMessageRsp getMessageSms(long msgHandle, Context context,
-            BluetoothMasMessageRsp rsp, BluetoothMasAppParams bluetoothMasAppParams) {
+            BluetoothMasMessageRsp rsp, BluetoothMasAppParams bluetoothMasAppParams)
+            throws ServiceUnavailableException {
         long smsHandle = msgHandle - SMS_OFFSET_START;
         Cursor cr = null;
         Uri uri = Uri.parse("content://sms/");
@@ -2141,7 +2147,8 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         return rsp;
     }
 
-    private BluetoothMasMessageRsp getMessageMms(long msgHandle, BluetoothMasMessageRsp rsp) {
+    private BluetoothMasMessageRsp getMessageMms(long msgHandle, BluetoothMasMessageRsp rsp)
+            throws ServiceUnavailableException {
         long mmsMsgID = 0;
         try {
             mmsMsgID = getMmsMsgHndToID(msgHandle);
