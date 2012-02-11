@@ -904,7 +904,15 @@ public class BluetoothFtpObexServer extends ServerRequestHandler {
         }
         bis = new BufferedInputStream(fileInputStream, 0x4000);
         starttimestamp = System.currentTimeMillis();
+        /*
+         * Some Devices expect Length, send Legth Header also
+        */
         try {
+            HeaderSet reply = new HeaderSet();
+            if (reply != null) {
+                reply.setHeader(HeaderSet.LENGTH, filelength);
+                op.sendHeaders (reply);
+            }
             while ((position != filelength)) {
                 if (sIsAborted) {
                     ((ServerOperation)op).isAborted = true;
