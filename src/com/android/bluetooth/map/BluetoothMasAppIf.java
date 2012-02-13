@@ -322,6 +322,8 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
                     .getLong(PHONELOOKUP_ID_COLUMN_INDEX);
             String lookupKey = cursorContacts
                     .getString(PHONELOOKUP_LOOKUP_KEY_COLUMN_INDEX);
+            vCard.name = cursorContacts
+                    .getString(PHONELOOKUP_DISPLAY_NAME_COLUMN_INDEX);
 
             Uri lookUpUri = Contacts.getLookupUri(contactId, lookupKey);
             String Id = lookUpUri.getLastPathSegment();
@@ -331,8 +333,6 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
                     new String[] { Id }, null);
             if (crEm != null) {
                 if (crEm.moveToFirst()) {
-                    vCard.name = cursorContacts
-                            .getString(PHONELOOKUP_DISPLAY_NAME_COLUMN_INDEX);
                     vCard.email = "";
                     if (crEm.moveToFirst()) {
                         do {
