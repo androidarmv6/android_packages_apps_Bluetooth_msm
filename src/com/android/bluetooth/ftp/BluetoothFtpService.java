@@ -174,8 +174,6 @@ public class BluetoothFtpService extends Service {
 
     private static final int USER_CONFIRM_TIMEOUT_VALUE = 30000;
 
-    private static final int TIME_TO_WAIT_VALUE = 6000;
-
     // Ensure not conflict with Opp notification ID
     private static final int NOTIFICATION_ID_ACCESS = -1000005;
 
@@ -249,8 +247,8 @@ public class BluetoothFtpService extends Service {
 
             int state = mAdapter.getState();
             if (state == BluetoothAdapter.STATE_ON) {
-                mSessionStatusHandler.sendMessageDelayed(mSessionStatusHandler
-                        .obtainMessage(MSG_INTERNAL_START_LISTENER), TIME_TO_WAIT_VALUE);
+                mSessionStatusHandler.sendMessage(mSessionStatusHandler
+                        .obtainMessage(MSG_INTERNAL_START_LISTENER));
             }
         }
     }
