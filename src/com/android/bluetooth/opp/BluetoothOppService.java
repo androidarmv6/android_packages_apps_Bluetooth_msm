@@ -563,7 +563,15 @@ public class BluetoothOppService extends Service {
         }
 
     }
-
+    boolean isBppAvailable(BluetoothClass c) {
+        if(!(c.hasService (BluetoothClass.Service.OBJECT_TRANSFER|BluetoothClass.Service.RENDER)))
+            return false;
+        if(c.getMajorDeviceClass() == BluetoothClass.Device.Major.IMAGING ) {
+            if(!(c.getDeviceClass () == BluetoothClass.Device.IMAGING_PRINTER))
+                return false;
+        }
+        return true;
+    }
     private void insertShare(Cursor cursor, int arrayPos) {
         BluetoothOppShareInfo info = new BluetoothOppShareInfo(
                 cursor.getInt(cursor.getColumnIndexOrThrow(BluetoothShare._ID)),
@@ -650,7 +658,7 @@ public class BluetoothOppService extends Service {
             if(c != null){
                 if (V) Log.v(TAG, "BT Device Class: 0x" + Integer.toHexString(c.getDeviceClass()));
 
-                if (c.getDeviceClass() == BluetoothClass.Device.IMAGING_PRINTER) {
+                if (isBppAvailable (c)) {
                     /* BPP Profile*/
                     markBatchOwnership(this, info.mId, BluetoothShare.OWNER_BPP);
                     info.mOwner = BluetoothShare.OWNER_BPP;
@@ -676,7 +684,7 @@ public class BluetoothOppService extends Service {
                 if (info.mDirection == BluetoothShare.DIRECTION_OUTBOUND) {
                     if (V) Log.v(TAG, "Service start transfer new Batch " + newBatch.mId
                                 + " for info " + info.mId);
-                    if ((c != null) && (c.getDeviceClass() == BluetoothClass.Device.IMAGING_PRINTER)) {
+                    if ((c != null) && (isBppAvailable (c))) {
                         BluetoothBppTransfer BppTransfer =
                             new BluetoothBppTransfer(this, mPowerManager, newBatch);
                         if (BppTransfer != null) {
@@ -748,7 +756,7 @@ public class BluetoothOppService extends Service {
                     if (V) Log.v(TAG, "Service add new Batch " + newBatch.mId + " for info " +
                             info.mId);
                     if (info.mDirection == BluetoothShare.DIRECTION_OUTBOUND) {
-                        if ((c != null) && (c.getDeviceClass() == BluetoothClass.Device.IMAGING_PRINTER)) {
+                        if ((c != null) && (isBppAvailable (c))) {
                             BluetoothBppTransfer BppTransfer =
                             new BluetoothBppTransfer(this, mPowerManager, newBatch);
                             if(BppTransfer != null) {
