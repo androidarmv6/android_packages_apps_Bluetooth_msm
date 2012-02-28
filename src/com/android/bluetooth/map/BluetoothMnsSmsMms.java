@@ -97,28 +97,33 @@ public class BluetoothMnsSmsMms extends MnsClient {
     }
 
     private static final String[] MMS_PROJECTION = new String[] {Mms._ID, Mms.MESSAGE_BOX,
-        Mms.THREAD_ID, Mms.MESSAGE_TYPE};
+        Mms.THREAD_ID, Mms.MESSAGE_TYPE, Mms.DATE};
     private static final int MMS_ID_COL = 0;
     private static final int MMS_BOX_TYPE_COL = 1;
     private static final int MMS_THREAD_ID_COL = 2;
     private static final int MMS_MSG_TYPE_COL = 3;
+    private static final int MMS_DATE_COL = 4;
 
-    private static final String[] SMS_PROJECTION = new String[] {Sms._ID, Sms.TYPE, Sms.THREAD_ID};
+    private static final String[] SMS_PROJECTION = new String[] {Sms._ID, Sms.TYPE, Sms.THREAD_ID,
+        Sms.DATE};
     private static final int SMS_ID_COL = 0;
     private static final int SMS_TYPE_COL = 1;
     private static final int SMS_THREAD_ID_COL = 2;
+    private static final int SMS_DATE_COL = 3;
 
     static class Message {
         long mId;
         String mFolderName;
         int mType;
         long mThreadId;
+        long mDate;
 
-        public Message(long id, String folderName, int type, long threadId) {
+        public Message(long id, String folderName, int type, long threadId, long date) {
             mId = id;
             mFolderName = folderName;
             mType = type;
             mThreadId = threadId;
+            mDate = date;
         }
     }
 
@@ -185,10 +190,13 @@ public class BluetoothMnsSmsMms extends MnsClient {
                         final long id = crSms.getLong(SMS_ID_COL);
                         final int type = crSms.getInt(SMS_TYPE_COL);
                         final long threadId = crSms.getLong(SMS_THREAD_ID_COL);
+                        final long date = crSms.getLong(SMS_DATE_COL);
                         if (type > 0 && type < MSG_TO_MAP.length) {
-                            final Message msg = new Message(id, MSG_TO_MAP[type], type, threadId);
+                            final Message msg = new Message(id, MSG_TO_MAP[type], type, threadId,
+                                    date);
                             newSmsList.put(id, msg);
-                            if (oldSmsList.remove(id) == null && !init) {
+                            final Message oldMsg = oldSmsList.remove(id);
+                            if (!init && (oldMsg == null || oldMsg.mDate != date)) {
                                 mSmsAddedList.put(id, msg);
                             }
                         }
@@ -215,13 +223,15 @@ public class BluetoothMnsSmsMms extends MnsClient {
                         final int boxType = crMms.getInt(MMS_BOX_TYPE_COL);
                         final long threadId = crMms.getLong(MMS_THREAD_ID_COL);
                         final int msgType = crMms.getInt(MMS_MSG_TYPE_COL);
+                        final long date = crMms.getLong(MMS_DATE_COL);
                         // TODO need to filter out Pdu by message type?
                         if (msgType != PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND &&
                                 msgType != PduHeaders.MESSAGE_TYPE_DELIVERY_IND) {
                             final Message msg = new Message(id, MSG_TO_MAP[boxType],
-                                    boxType, threadId);
+                                    boxType, threadId, date);
                             newMmsList.put(id, msg);
-                            if (oldMmsList.remove(id) == null && !init) {
+                            final Message oldMsg = oldMmsList.remove(id);
+                            if (!init && (oldMsg == null || oldMsg.mDate != date)) {
                                 mMmsAddedList.put(id, msg);
                             }
                         }
