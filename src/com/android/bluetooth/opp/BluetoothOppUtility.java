@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2008-2009, Motorola, Inc.
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved
  *
  * All rights reserved.
  *
@@ -97,10 +98,13 @@ public class BluetoothOppUtility {
                     Uri u = Uri.parse(info.mFileUri);
                     /* Ensure the file exists before we try to check the mime type */
                     File f = new File(info.mFileName);
-                    if (!f.exists()) {
-                        if (V) Log.v(TAG,"File doesnot exist so not reading mime type"+ info.mStatus);
-                        cursor.close();
-                        return info;
+                    if ((f != null) && (info.mDirection == BluetoothShare.DIRECTION_INBOUND)) {
+                       if (!f.exists()) {
+                         if (V) Log.v (TAG,"File doesnot exist so not reading mime type" +
+                                            info.mStatus);
+                         cursor.close();
+                         return info;
+                       }
                     }
                     info.mFileType = context.getContentResolver().getType(u);
                 } else {
