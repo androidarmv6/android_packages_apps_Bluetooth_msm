@@ -208,6 +208,7 @@ public class BluetoothMasService extends Service {
     private ContentObserver mEmailAccountObserver;
 
     private void updateEmailAccount() {
+        if (VERBOSE) Log.v(TAG, "updateEmailAccount()");
         List<Long> list = EmailUtils.getEmailAccountIdList(this);
         ArrayList<Long> notAssigned = new ArrayList<Long>();
         EmailUtils.removeMasIdIfNotPresent(list);
@@ -255,7 +256,6 @@ public class BluetoothMasService extends Service {
                 Log.v(TAG, "BT is not ON, no start");
             }
         }
-        updateEmailAccount();
         getContentResolver().registerContentObserver(
                 EmailUtils.EMAIL_ACCOUNT_URI, true, mEmailAccountObserver);
     }
@@ -312,6 +312,7 @@ public class BluetoothMasService extends Service {
                         Log.e(TAG, "No BluetoothDevice from intent");
                     }
                 }
+                updateEmailAccount();
                 mConnectionManager.initiateObexServerSession(device);
             } else {
                 mConnectionManager.stopObexServerSessionWaiting();

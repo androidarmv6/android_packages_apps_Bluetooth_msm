@@ -843,7 +843,7 @@ public class EmailUtils {
     }
 
     public static List<Long> getEmailAccountIdList(Context context) {
-        if (V) Log.v(TAG, "getDefaultEmailAccountId()");
+        if (V) Log.v(TAG, "getEmailAccountIdList()");
         long id = -1;
         ArrayList<Long> list = new ArrayList<Long>();
         Cursor cursor = context.getContentResolver().query(EMAIL_ACCOUNT_URI,
