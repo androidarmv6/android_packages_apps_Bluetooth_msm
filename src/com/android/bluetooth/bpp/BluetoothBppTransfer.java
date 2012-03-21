@@ -218,6 +218,11 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
         if (V) Log.v(TAG, "BPP Operation got Emergency Stop!!");
         mForceClose = true;
 
+        if (BluetoothOppService.mBppTransfer.size() > 0) {
+           mStatusFinal = BluetoothShare.STATUS_BPP_DISCONNECTED;
+           markBatchResult(mStatusFinal);
+        }
+
         mSessionHandler.obtainMessage(BluetoothBppTransfer.CANCEL, -1).sendToTarget();
 
         if(BluetoothBppStatusActivity.mContext != null){
@@ -468,8 +473,8 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                 case BluetoothBppObexClientSession.MSG_SESSION_STOP:
                     if (V) Log.v(TAG, "receive MSG_SESSION_STOP");
                     /* Disconnect Job Channel */
-                    if ((!mSessionEvent.bs.mFileSending || mSessionEvent.mEnforceClose)
-                         &&(mSession != null)) {
+                    if ((!mSessionEvent.bs.mFileSending || mSessionEvent.mEnforceClose
+                         || mForceClose) && (mSession != null)) {
                         mSession.stop();
                     }
                     break;

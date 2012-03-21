@@ -239,7 +239,7 @@ public class BluetoothBppPrintPrefActivity extends PreferenceActivity implements
             ||(mOPPstop && (tm.getCallState() != TelephonyManager.CALL_STATE_RINGING))) {
             if (!bf.mForceClose) {
                 bf.mStatusFinal = BluetoothShare.STATUS_CANCELED;
-                bf.printResultMsg();                
+                bf.printResultMsg();
             }
             finish();
         }
