@@ -37,6 +37,8 @@ import android.os.ParcelUuid;
 public class LEProximityDevice {
     public BluetoothDevice BDevice = null;
     public BluetoothGattService gattService = null;
+    public boolean isConnectionParamSet = false;
+    public boolean isConnectionParamUpdated = false;
     public HashMap<String, String> uuidObjPathMap;
     public HashMap<String, String> objPathUuidMap;
     public HashMap<ParcelUuid, BluetoothGattService> uuidGattSrvMap = null;
