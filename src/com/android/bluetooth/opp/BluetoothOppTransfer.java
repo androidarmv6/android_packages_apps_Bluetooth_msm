@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -190,9 +190,11 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                             INSTANCE.setObexVariant(
                                 mBatch.mDestination, OPUSH_UUID16,
                                 BluetoothOppPreference.OBEX_OVER_L2CAP);
-                            mConnectThread =
-                                new SocketConnectThread(mBatch.mDestination, SocketConnectThread.SOCKET_TYPE_L2CAP, msg.arg2, false);
-                            mConnectThread.start();
+                            if (mConnectThread == null) {
+                                mConnectThread =
+                                    new SocketConnectThread(mBatch.mDestination, SocketConnectThread.SOCKET_TYPE_L2CAP, msg.arg2, false);
+                                mConnectThread.start();
+                            }
                         } else {
                             Log.e(TAG, "Batch failed!");
                             markBatchFailed(BluetoothShare.STATUS_CONNECTION_ERROR);
@@ -204,9 +206,11 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                                 mBatch.mDestination, OPUSH_UUID16,
                                 BluetoothOppPreference.OBEX_OVER_RFCOMM);
                         }
-                        mConnectThread =
-                           new SocketConnectThread(mBatch.mDestination, SocketConnectThread.SOCKET_TYPE_RFCOMM, msg.arg1,false) ;
-                        mConnectThread.start();
+                        if (mConnectThread == null) {
+                            mConnectThread =
+                                new SocketConnectThread(mBatch.mDestination, SocketConnectThread.SOCKET_TYPE_RFCOMM, msg.arg1,false) ;
+                            mConnectThread.start();
+                        }
                     } else {
                         /* SDP query fail case */
                         Log.e(TAG, "SDP query failed!");
