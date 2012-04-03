@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012 Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -848,8 +848,7 @@ public class BluetoothOppService extends Service {
                 && newConfirm != BluetoothShare.USER_CONFIRMATION_PENDING) {
             confirmed = true;
         }
-        info.mConfirm = cursor.getInt(cursor
-                .getColumnIndexOrThrow(BluetoothShare.USER_CONFIRMATION));
+        info.mConfirm = newConfirm;
         int newStatus = cursor.getInt(statusColumn);
 
         if (!BluetoothShare.isStatusCompleted(info.mStatus)
