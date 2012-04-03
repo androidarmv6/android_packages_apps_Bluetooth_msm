@@ -386,9 +386,9 @@ public class BluetoothBppEvent {
                                 status = BluetoothShare.STATUS_OBEX_DATA_ERROR;
                                 return status;
                             } else {
-                                /* In case that a remote send a length for SOAP response 
-                                                            right away after SOAP request.
-                                                            */
+                                /* In case that a remote send a length for SOAP response
+                                 * right away after SOAP request.
+                                 */
                                 if ((getOperation.getLength()!= -1) && (readBuff == null)) {
                                     if (V) Log.v(TAG, "#1 Get OBEX Length - "
                                         + getOperation.getLength());
