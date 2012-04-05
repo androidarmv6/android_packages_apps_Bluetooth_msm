@@ -64,6 +64,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.UUID;
 
 import java.util.Date;
@@ -119,7 +121,7 @@ public class GattServerAppService extends Service {
 
     private GattServiceParser gattServiceParser = null;
 
-    private BluetoothAdapter bluetoothAdapter = null;
+    private final BluetoothAdapter bluetoothAdapter = null;
 
     public Context mContext = null;
 
@@ -128,6 +130,8 @@ public class GattServerAppService extends Service {
     private BluetoothGatt gattProfile = null;
 
     public static final String BLUETOOTH_BASE_UUID = "0000xxxx00001000800000805f9b34fb";
+
+    public boolean is_registered = false;
 
     // Handles events sent by GattServerAppActivity.
     private class IncomingHandler extends Handler {
@@ -147,29 +151,29 @@ public class GattServerAppService extends Service {
                     unregisterApp();
                     break;
                 case MSG_REG_GATT_SERVER_SUCCESS:
-                        text = "GATT Server registration was successful!";
-                        duration = Toast.LENGTH_LONG;
-                        toast = Toast.makeText(context, text, duration);
-                        toast.show();
-                        break;
+                    text = "GATT Server registration was successful!";
+                    duration = Toast.LENGTH_LONG;
+                    toast = Toast.makeText(context, text, duration);
+                    toast.show();
+                    break;
                 case MSG_REG_GATT_SERVER_FAILURE:
-                        text = "GATT Server registration was not successful!";
-                        duration = Toast.LENGTH_LONG;
-                        toast = Toast.makeText(context, text, duration);
-                        toast.show();
-                        break;
+                    text = "GATT Server registration was not successful!";
+                    duration = Toast.LENGTH_LONG;
+                    toast = Toast.makeText(context, text, duration);
+                    toast.show();
+                    break;
                 case MSG_UNREG_GATT_SERVER_SUCCESS:
-                        text = "GATT Server Unregistration was successful!";
-                        duration = Toast.LENGTH_LONG;
-                        toast = Toast.makeText(context, text, duration);
-                        toast.show();
-                        break;
+                    text = "GATT Server Unregistration was successful!";
+                    duration = Toast.LENGTH_LONG;
+                    toast = Toast.makeText(context, text, duration);
+                    toast.show();
+                    break;
                 case MSG_UNREG_GATT_SERVER_FAILURE:
-                        text = "GATT Server Unregistration was not successful!";
-                        duration = Toast.LENGTH_LONG;
-                        toast = Toast.makeText(context, text, duration);
-                        toast.show();
-                        break;
+                    text = "GATT Server Unregistration was not successful!";
+                    duration = Toast.LENGTH_LONG;
+                    toast = Toast.makeText(context, text, duration);
+                    toast.show();
+                    break;
                 default:
                     super.handleMessage(msg);
             }
@@ -203,13 +207,17 @@ public class GattServerAppService extends Service {
 
         gattServiceParser = new GattServiceParser();
         raw = getResources().openRawResource(R.raw.genericservice);
-
         if (raw != null) {
             Log.d(TAG, "Inside the Service.. XML is read");
             gattServiceParser.parse(raw);
 
             //update data structures from characteristic_values file
             updateDataStructuresFromFile();
+
+
+            //send periodic Notifications/Indications
+            sendPeriodicNotificationsIndications();
+
 
             Log.d(TAG, "Attribute data list");
             Log.d(TAG, "Messages length : " + gattHandleToAttributes.size());
@@ -243,6 +251,8 @@ public class GattServerAppService extends Service {
             Log.d(TAG, "Server MIN RANGE : " + serverMinHandle);
             Log.d(TAG, "Server MAX RANGE : " + serverMaxHandle);
         }
+        //Register the Server app with frameworks
+        registerApp();
     }
 
     @Override
@@ -275,6 +285,7 @@ public class GattServerAppService extends Service {
     // Callbacks to handle connection set up and disconnection clean up.
     private final BluetoothProfile.ServiceListener mBluetoothServiceListener =
             new BluetoothProfile.ServiceListener() {
+        @Override
         public void onServiceConnected(int profile, BluetoothProfile proxy) {
             if (profile == BluetoothProfile.GATT) {
                 gattProfile = (BluetoothGatt) proxy;
@@ -283,6 +294,7 @@ public class GattServerAppService extends Service {
             }
         }
 
+        @Override
         public void onServiceDisconnected(int profile) {
             if (profile == BluetoothProfile.GATT) {
                 Log.d(TAG, "onServiceDisconnected to profile: " + profile);
@@ -296,6 +308,7 @@ public class GattServerAppService extends Service {
      * API requests coming from the client device.
     */
     private final BluetoothGattCallback bluetoothGattCallBack = new BluetoothGattCallback() {
+        @Override
         public void onGattAppConfigurationStatusChange(BluetoothGattAppConfiguration config,
                 int status) {
             Log.d(TAG, "onGattAppConfigurationStatusChange: " + config + "Status: " + status);
@@ -303,17 +316,21 @@ public class GattServerAppService extends Service {
 
             switch(status) {
                 case BluetoothGatt.GATT_CONFIG_REGISTRATION_SUCCESS:
-                        sendMessage(GattServerAppService.MSG_REG_GATT_SERVER_SUCCESS, 0);
-                        break;
+                    sendMessage(GattServerAppService.MSG_REG_GATT_SERVER_SUCCESS, 0);
+                    is_registered = true;
+                    break;
                 case BluetoothGatt.GATT_CONFIG_REGISTRATION_FAILURE:
-                        sendMessage(GattServerAppService.MSG_REG_GATT_SERVER_FAILURE, 0);
-                        break;
+                    sendMessage(GattServerAppService.MSG_REG_GATT_SERVER_FAILURE, 0);
+                    is_registered = false;
+                    break;
                 case BluetoothGatt.GATT_CONFIG_UNREGISTRATION_SUCCESS:
-                        sendMessage(GattServerAppService.MSG_UNREG_GATT_SERVER_SUCCESS, 0);
-                        break;
+                    sendMessage(GattServerAppService.MSG_UNREG_GATT_SERVER_SUCCESS, 0);
+                    is_registered = false;
+                    break;
                 case BluetoothGatt.GATT_CONFIG_UNREGISTRATION_FAILURE:
-                        sendMessage(GattServerAppService.MSG_UNREG_GATT_SERVER_FAILURE, 0);
-                        break;
+                    sendMessage(GattServerAppService.MSG_UNREG_GATT_SERVER_FAILURE, 0);
+                    is_registered = true;
+                    break;
             }
         }
 
@@ -325,11 +342,12 @@ public class GattServerAppService extends Service {
          * Processes the Discover Primary Services Request from client and sends the response
          * to the client.
         */
+        @Override
         public void onGattDiscoverPrimaryServiceRequest(BluetoothGattAppConfiguration config,
-                        int startHandle, int endHandle, int requestHandle) {
+                int startHandle, int endHandle, int requestHandle) {
             int j, k, hdlFoundStatus =0;
             int startAttrHdl = 0, endAttrHdl = 0;
-            int status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+            int status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
             ParcelUuid uuid = null;
             String uuid1=null;
             boolean retVal;
@@ -337,7 +355,7 @@ public class GattServerAppService extends Service {
             if(gattAttribTypeToHandle != null) {
                 for(Map.Entry<String, List<Integer>> entry : gattAttribTypeToHandle.entrySet()) {
                     if("00002800-0000-1000-8000-00805F9B34FB".
-                                equalsIgnoreCase(entry.getKey().toString())) {
+                            equalsIgnoreCase(entry.getKey().toString())) {
                         //List of primary service handles
                         hndlList = entry.getValue();
                     }
@@ -377,7 +395,7 @@ public class GattServerAppService extends Service {
                     }
                     if(j == (hndlList.size()-1)) {
                         Log.d(TAG, "Status failure ::");
-                        status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+                        status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
                         break;
                     }
                 }
@@ -390,7 +408,7 @@ public class GattServerAppService extends Service {
             Log.d(TAG, "Service uuid String ::"+uuid1);
 
             retVal = gattProfile.discoverPrimaryServiceResponse(config, requestHandle, status,
-                        startAttrHdl, endAttrHdl, uuid);
+                    startAttrHdl, endAttrHdl, uuid);
             Log.d(TAG, "onGattDiscoverPrimaryServiceRequest: " + retVal);
         }
 
@@ -398,18 +416,19 @@ public class GattServerAppService extends Service {
          * Processes the Discover Primary Services by UUID Request from client and sends the
          * response to the client.
         */
+        @Override
         public void onGattDiscoverPrimaryServiceByUuidRequest(BluetoothGattAppConfiguration config,
-                        int startHandle, int endHandle, ParcelUuid uuid, int requestHandle) {
+                int startHandle, int endHandle, ParcelUuid uuid, int requestHandle) {
             int j, k, hdlFoundStatus =0;
             int startAttrHdl = 0, endAttrHdl = 0;
-            int status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+            int status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
             boolean retVal;
             List<Integer> hndlList = null;
             if(gattAttribTypeToHandle != null) {
                 Log.d(TAG, "Handles available ::");
                 for(Map.Entry<String, List<Integer>> entry : gattAttribTypeToHandle.entrySet()) {
                     if("00002800-0000-1000-8000-00805F9B34FB".
-                                equalsIgnoreCase(entry.getKey().toString())) {
+                            equalsIgnoreCase(entry.getKey().toString())) {
                         //List of primary service handles
                         hndlList = entry.getValue();
                     }
@@ -430,13 +449,12 @@ public class GattServerAppService extends Service {
                                         startAttrHdl = attr.startHandle;
                                         endAttrHdl = attr.endHandle;
                                         if(attr.uuid != null &&
-                                                        attr.uuid.equalsIgnoreCase(uuid.toString())) {
+                                                attr.uuid.equalsIgnoreCase(uuid.toString())) {
                                             Log.d(TAG, "Primary Handle with UUID available ::");
                                             hdlFoundStatus = 1;
                                             status = BluetoothGatt.GATT_SUCCESS;
                                             break;
                                         }
-
                                     }
                                 }
                             }
@@ -449,7 +467,7 @@ public class GattServerAppService extends Service {
                     }
                     if(j == (hndlList.size()-1)) {
                         Log.d(TAG, "Primary Handle not found, failure ::");
-                        status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+                        status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
                         break;
                     }
                 }
@@ -461,7 +479,7 @@ public class GattServerAppService extends Service {
             Log.d(TAG, "Service uuid Parcel UUId::"+uuid);
 
             retVal = gattProfile.discoverPrimaryServiceByUuidResponse(config, requestHandle, status,
-                        startAttrHdl, endAttrHdl, uuid);
+                    startAttrHdl, endAttrHdl, uuid);
             Log.d(TAG, "onGattDiscoverPrimaryServiceByUuidRequest: " + retVal);
         }
 
@@ -469,11 +487,12 @@ public class GattServerAppService extends Service {
          * Processes the Find Included Services Request from client and sends the response
          * to the client.
         */
+        @Override
         public void onGattFindIncludedServiceRequest(BluetoothGattAppConfiguration config,
-                        int startHandle, int endHandle, int requestHandle) {
+                int startHandle, int endHandle, int requestHandle) {
             int j, k, hdlFoundStatus =0;
             int inclSvcHdl = 0, startInclSvcHdl = 0, endInclSvcHdl = 0;
-            int status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+            int status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
             boolean retVal;
             String svcUuid, inclSvcUuid = null;
             ParcelUuid pInclSvcUuid = null;
@@ -481,7 +500,7 @@ public class GattServerAppService extends Service {
             if(gattAttribTypeToHandle != null) {
                 for(Map.Entry<String, List<Integer>> entry : gattAttribTypeToHandle.entrySet()) {
                     if("00002802-0000-1000-8000-00805F9B34FB".
-                                equalsIgnoreCase(entry.getKey().toString())) {
+                            equalsIgnoreCase(entry.getKey().toString())) {
                         //List of included service handles
                         hndlList = entry.getValue();
                     }
@@ -520,7 +539,7 @@ public class GattServerAppService extends Service {
                     }
                     if(j == (hndlList.size()-1)) {
                         Log.d(TAG, "Included service handle not found, failure::");
-                        status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+                        status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
                         break;
                     }
                 }
@@ -534,7 +553,7 @@ public class GattServerAppService extends Service {
             Log.d(TAG, "Service uuid Parcel UUId::"+pInclSvcUuid);
 
             retVal = gattProfile.findIncludedServiceResponse(config, requestHandle, status,
-                        inclSvcHdl, startInclSvcHdl, endInclSvcHdl, pInclSvcUuid);
+                    inclSvcHdl, startInclSvcHdl, endInclSvcHdl, pInclSvcUuid);
             Log.d(TAG, "onGattFindIncludedServiceRequest: " + retVal);
         }
 
@@ -542,10 +561,11 @@ public class GattServerAppService extends Service {
          * Processes the Discover Characteristic Descriptors Request from client and sends the
          * response to the client.
         */
+        @Override
         public void onGattDiscoverCharacteristicDescriptorRequest(BluetoothGattAppConfiguration
-                        config, int startHandle, int endHandle, int requestHandle) {
+                config, int startHandle, int endHandle, int requestHandle) {
             int k, hdlFoundStatus =0;
-            int status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+            int status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
             boolean retVal;
             ParcelUuid descUuid = null;
             int attrCurrHandle, attrNextHandle=0;
@@ -556,8 +576,8 @@ public class GattServerAppService extends Service {
                 Log.d(TAG, "Inside gattHandleToAttributes ::");
                 //To get the attribute values
                 for(k=0; k<gattHandleToAttributes.size(); k++) {
-                        attrNext = null;
-                        attrPrev = null;
+                    attrNext = null;
+                    attrPrev = null;
                     Attribute attrCurr = gattHandleToAttributes.get(k);
                     if(attrCurr.handle >= startHandle && attrCurr.handle <= endHandle) {
                         if(k > 0) {
@@ -578,8 +598,8 @@ public class GattServerAppService extends Service {
                                 equalsIgnoreCase("00002803-0000-1000-8000-00805F9B34FB")) {
                             Log.d(TAG, "Previous Attribute is a Characteristic ::");
                             if(attrNext != null && attrNextHandle >= startHandle && attrNextHandle <= endHandle &&
-                                        (attrNext.uuid == null || attrNext.uuid.length() == 0
-                                        || attrNext.uuid.equalsIgnoreCase(""))) {
+                                    (attrNext.uuid == null || attrNext.uuid.length() == 0
+                                    || attrNext.uuid.equalsIgnoreCase(""))) {
                                 Log.d(TAG, "Next attr handle"+attrNextHandle);
                                 Log.d(TAG, "Next attr UUID"+attrNext.uuid);
                                 Log.d(TAG, "Curr attr handle"+attrCurr.handle);
@@ -613,7 +633,7 @@ public class GattServerAppService extends Service {
                     }
                     if(k == (gattHandleToAttributes.size()-1)) {
                         Log.d(TAG, "Descriptor handle not found, failure::");
-                        status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+                        status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
                         break;
                     }
                 }
@@ -625,7 +645,7 @@ public class GattServerAppService extends Service {
             Log.d(TAG, "Descriptor UUID::"+descUuid);
 
             retVal = gattProfile.discoverCharacteristicDescriptorResponse(config, requestHandle,
-                        status, descHandle, descUuid);
+                    status, descHandle, descUuid);
             Log.d(TAG, "onGattDiscoverCharacteristicDescriptorRequest: " + retVal);
         }
 
@@ -633,11 +653,12 @@ public class GattServerAppService extends Service {
          * Processes the Discover Characteristics Request from client and sends the response
          * to the client.
         */
+        @Override
         public void onGattDiscoverCharacteristicRequest(BluetoothGattAppConfiguration config,
-                        int startHandle, int endHandle, int requestHandle) {
+                int startHandle, int endHandle, int requestHandle) {
             int j, k, hdlFoundStatus =0;
             int charHdl = 0, charValueHdl = 0;
-            int status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+            int status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
             ParcelUuid charUuid = null;
             byte charProperty = 0;
             boolean retVal;
@@ -646,7 +667,7 @@ public class GattServerAppService extends Service {
                 Log.d(TAG, "Inside gattAttributeTypeToHandle ::");
                 for(Map.Entry<String, List<Integer>> entry : gattAttribTypeToHandle.entrySet()) {
                     if("00002803-0000-1000-8000-00805F9B34FB".
-                                equalsIgnoreCase(entry.getKey().toString())) {
+                            equalsIgnoreCase(entry.getKey().toString())) {
                         //List of characteristic handles
                         hndlList = entry.getValue();
                     }
@@ -688,7 +709,7 @@ public class GattServerAppService extends Service {
                     }
                     if(j == (hndlList.size()-1)) {
                         Log.d(TAG, "Status failure ::");
-                        status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+                        status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
                         break;
                     }
                 }
@@ -701,7 +722,7 @@ public class GattServerAppService extends Service {
             Log.d(TAG, "Characteristic UUID ::"+charUuid);
 
             retVal = gattProfile.discoverCharacteristicResponse(config, status, requestHandle,
-                        charHdl, charProperty, charValueHdl, charUuid);
+                    charHdl, charProperty, charValueHdl, charUuid);
             Log.d(TAG, "onGattDiscoverCharacteristicRequest: " + retVal);
         }
 
@@ -709,11 +730,11 @@ public class GattServerAppService extends Service {
          * Processes the Read By Attribute Type Request from client and sends the response
          * to the client.
         */
+        @Override
         public void onGattReadByTypeRequest(BluetoothGattAppConfiguration config, ParcelUuid uuid,
                 int startHandle, int endHandle, String authentication, int requestHandle) {
-            int i, j, k, hdlFoundStatus=0, status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+            int i, j, k, hdlFoundStatus=0, status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
             boolean retVal;
-
             String attrUuidStr;
             int attrHandle=-1, startAttrHdl =-1, endAttrHdl=-1, attrHandleNext =-1;
             String uuidStr=null;
@@ -730,6 +751,8 @@ public class GattServerAppService extends Service {
             String attributeType = uuid.toString();
             int charValueAttrType = 0;
             boolean is_permission_available = false;
+            int security_status_code = 0;//1 means not authorized, 2 means not authenticated
+            int handle = -1;
 
             //update data structures from characteristic_values file
             updateDataStructuresFromFile();
@@ -744,7 +767,7 @@ public class GattServerAppService extends Service {
             }
             if(hndlList != null) {
                 for(j=0; j< hndlList.size(); j++) {
-                    int handle = hndlList.get(j);
+                    handle = hndlList.get(j);
                     if(handle >= 0) {
                         if((handle >= startHandle) && (handle <= endHandle)){
                             hdlFoundStatus = 1;
@@ -765,6 +788,10 @@ public class GattServerAppService extends Service {
                                                 is_permission_available = true;
                                                 Log.d(TAG, "Inside read with authorization");
                                             }
+                                            else {
+                                                //not authorized
+                                                security_status_code = 1;
+                                            }
                                         }
                                         else if((attrPermission > 0) &&
                                                 ((attrPermission & 0x02) == 0x02)) {
@@ -772,10 +799,14 @@ public class GattServerAppService extends Service {
                                                 is_permission_available = true;
                                                 Log.d(TAG, "Inside read with authentication");
                                             }
+                                            else {
+                                                //not authenticated
+                                                security_status_code = 2;
+                                            }
                                         }
                                         else if(attrPermission == 0 ||
-                                                attrPermission == 0x04 ||
-                                                authentication.equalsIgnoreCase("None")) {
+                                                (((attrPermission & 0x01) != 0x01)
+                                                && ((attrPermission & 0x02) != 0x02))) {
                                             is_permission_available = true;
                                             Log.d(TAG, "Read without auth/authorization");
                                         }
@@ -813,8 +844,8 @@ public class GattServerAppService extends Service {
                                                     attrTypeStr.equalsIgnoreCase("00002801-0000-1000-8000-00805F9B34FB") ||
                                                     attrTypeStr.equalsIgnoreCase("00002802-0000-1000-8000-00805F9B34FB"))){
                                                     //need to check whether attribute is readable before reading
+                                                attrHandle = attr.handle;
                                                 if((attrProperties > 0) && ((attrProperties & 0x02) == 0x02)) {
-                                                    attrHandle = attr.handle;
                                                     startAttrHdl = attr.startHandle;
                                                     endAttrHdl = attr.endHandle;
                                                     attrValue = attr.value;
@@ -822,12 +853,18 @@ public class GattServerAppService extends Service {
                                                     status = BluetoothGatt.GATT_SUCCESS;
                                                 }
                                                 else {
-                                                    status = BluetoothGatt.ATT_ECODE_READ_NOT_PERM;
+                                                    uuid = null;
+                                                    status = BluetoothGatt.ATT_READ_NOT_PERM;
                                                 }
                                             }
                                         }
                                         else {
-                                            status = BluetoothGatt.ATT_ECODE_AUTHORIZATION;
+                                            if(security_status_code == 1) {
+                                                status = BluetoothGatt.ATT_AUTHORIZATION;
+                                            }
+                                            else if(security_status_code == 2) {
+                                                status = BluetoothGatt.ATT_AUTHENTICATION;
+                                            }
                                         }
                                         break;
                                     }
@@ -860,7 +897,7 @@ public class GattServerAppService extends Service {
                     }
                     else if(j == (hndlList.size()-1)) {
                         Log.d(TAG, "Status failure ::");
-                        status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+                        status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
                         break;
                     }
                 }
@@ -958,7 +995,7 @@ public class GattServerAppService extends Service {
 
                             if(bytes!=null) {
                                 for(i=((bytes.length)-1);i >= 0; i--) {
-                                payload[cnt++] = bytes[i];
+                                    payload[cnt++] = bytes[i];
                                 }
                             }
 
@@ -972,11 +1009,14 @@ public class GattServerAppService extends Service {
                     }
                     //Characteristic Value declaration/ Descriptors
                     else if(charValueAttrType == 1 ||
-                                attributeType.equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")
-                                || attributeType.equalsIgnoreCase("00002900-0000-1000-8000-00805F9B34FB")) {
+                            attributeType.equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")
+                            || attributeType.equalsIgnoreCase("00002900-0000-1000-8000-00805F9B34FB")
+                            || attributeType.equalsIgnoreCase("00002901-0000-1000-8000-00805F9B34FB")
+                            || attributeType.equalsIgnoreCase("00002904-0000-1000-8000-00805F9B34FB")) {
                         Log.d(TAG,"Inside characteristic Value payload creation::");
                         Log.d(TAG,"Inside Client Characteristic descriptor payload creation::");
                         Log.d(TAG,"Inside Characteristic Extended Properties payload creation::");
+                        Log.d(TAG,"Inside Characteristic Presentation Format payload creation::");
                         if(((attrProperties > 0) && ((attrProperties & 0x02) == 0x02))) {
                             List<Byte> byteArrList= new ArrayList<Byte>();
                             int cnt = 0;
@@ -986,10 +1026,81 @@ public class GattServerAppService extends Service {
                                     byteArrList.add(attrValue[i]);
                                 }
                             }
-                            payload = new byte[byteArrList.size()];
-                            //Transfer Arraylist contents to byte array
-                            for(i=(byteArrList.size()-1); i >= 0; i--) {
+                            if(attrTypeStr.equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
+                                payload = new byte[2];
+                                payload[0] = 0x00;
+                                payload[1] = 0x00;
+                                Log.d(TAG,"The payload data::");
+                                if(payload != null) {
+                                    for(i=0; i < payload.length; i++) {
+                                        Log.d(TAG,""+payload[i]);
+                                    }
+                                }
+                            }
+                            else {
+                                payload = new byte[byteArrList.size()];
+                                //Transfer Arraylist contents to byte array
+                                for(i=(byteArrList.size()-1); i >= 0; i--) {
                                     payload[cnt++] = byteArrList.get(i).byteValue();
+                                }
+                                Log.d(TAG,"The payload data::");
+                                if(payload != null) {
+                                    for(i=0; i < payload.length; i++) {
+                                        Log.d(TAG,"\n"+payload[i]);
+                                    }
+                                }
+                            }
+                            if(attrTypeStr.equalsIgnoreCase("00002901-0000-1000-8000-00805F9B34FB")) {
+                                String attrValStr = new String(payload);
+                                Log.d(TAG, attrValStr);
+                            }
+                        }
+                    }
+                    //Characteristic Aggregate Format descriptor
+                    else if(attributeType.equalsIgnoreCase("00002905-0000-1000-8000-00805F9B34FB")) {
+                        Log.d(TAG,"Inside characteristic Aggregate Format descriptor payload creation::");
+                        int charHandle = -1;
+                        int charStartHdl = -1;
+                        int charEndHdl = -1;
+                        if(((attrProperties > 0) && ((attrProperties & 0x02) == 0x02))) {
+                            List<Integer> descHdlList = null;
+                            List<Byte> byteArrList= new ArrayList<Byte>();
+                            int cnt = 0;
+                            if(gattAttribTypeToHandle != null) {
+                                for(Map.Entry<String, List<Integer>> entry : gattAttribTypeToHandle.entrySet()) {
+                                    if("00002904-0000-1000-8000-00805F9B34FB".
+                                            equalsIgnoreCase(entry.getKey().toString())) {
+                                        //List of characteristic presentation format handles
+                                        descHdlList = entry.getValue();
+                                    }
+                                }
+                            }
+                            if(gattHandleToAttributes != null) {
+                                Attribute attrDesc = gattHandleToAttributes.get(handle);
+                                Attribute attrCharValue = gattHandleToAttributes.get(attrDesc.referenceHandle);
+                                Attribute attrChar = gattHandleToAttributes.get(attrCharValue.referenceHandle);
+                                charHandle = attrChar.handle;
+                                charStartHdl = attrChar.startHandle;
+                                charEndHdl = attrChar.endHandle;
+                            }
+                            if(descHdlList != null) {
+                                byteArrList = new ArrayList<Byte>();
+                                //convert Int ArryList to byte ArrayList
+                                for(int index=0; index<descHdlList.size(); index++) {
+                                    int descHdl = descHdlList.get(index);
+                                    if((descHdl >= charStartHdl) && (descHdl <= charEndHdl)) {
+                                        byte msbDescHdl = (byte)(descHdl & 0xFF00);
+                                        byte lsbDescHdl = (byte)(descHdl & 0x00FF);
+                                        byteArrList.add(lsbDescHdl);
+                                        byteArrList.add(msbDescHdl);
+                                    }
+                                }
+
+                                payload = new byte[byteArrList.size()];
+                                //Transfer Arraylist contents to byte array
+                                for(i=0; i < byteArrList.size();i++) {
+                                    payload[cnt++] = byteArrList.get(i).byteValue();
+                                }
                             }
                             Log.d(TAG,"The payload data::");
                             if(payload != null) {
@@ -1001,9 +1112,9 @@ public class GattServerAppService extends Service {
                     }
                 }
             }
-
+            Log.d(TAG, "Status:"+status);
             retVal = gattProfile.readByTypeResponse(config, requestHandle, status, uuid,
-                        attrHandle, payload);
+                    attrHandle, payload);
             Log.d(TAG, "onGattReadByTypeRequest: " + retVal);
         }
 
@@ -1011,9 +1122,10 @@ public class GattServerAppService extends Service {
          * Processes the Read Request from client and sends the response
          * to the client.
         */
+        @Override
         public void onGattReadRequest(BluetoothGattAppConfiguration config, int handle,
-                        String authentication, int requestHandle) {
-            int i, k, hdlFoundStatus=0, status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+                String authentication, int requestHandle) {
+            int i, k, hdlFoundStatus=0, status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
             boolean retVal;
             byte[] payload = null;
             byte[] attrValue = null;
@@ -1028,6 +1140,7 @@ public class GattServerAppService extends Service {
             int endAttrHdl = -1;
             String uuidStr = null;
             int attrHandleNext = -1;
+            int security_status_code = 0;//1 means not authorized, 2 means not authenticated
 
             //update data structures from characteristic_values file
             updateDataStructuresFromFile();
@@ -1036,7 +1149,7 @@ public class GattServerAppService extends Service {
                 if(gattHandleToAttributes != null) {
                     //To get the attribute values for the particular handle
                     for(k=0; k<gattHandleToAttributes.size(); k++) {
-                        if(handle == (int)gattHandleToAttributes.get(k).handle) {
+                        if(handle == gattHandleToAttributes.get(k).handle) {
                             hdlFoundStatus = 1;
                             Attribute attr = gattHandleToAttributes.get(k);
                             attrPermission = attr.permBits;
@@ -1048,15 +1161,23 @@ public class GattServerAppService extends Service {
                                     is_permission_available = true;
                                     Log.d(TAG, "Inside read with authorization");
                                 }
+                                else {
+                                    //not authorized
+                                    security_status_code = 1;
+                                }
                             }
                             else if((attrPermission > 0) && ((attrPermission & 0x02) == 0x02)) {
                                 if(authentication.equalsIgnoreCase("Authenticated")) {
                                     is_permission_available = true;
                                     Log.d(TAG, "Inside read with authentication");
                                 }
+                                else {
+                                    //not authenticated
+                                    security_status_code = 2;
+                                }
                             }
-                            else if(attrPermission == 0 || attrPermission == 0x04 ||
-                                    authentication.equalsIgnoreCase("None")) {
+                            else if(attrPermission == 0 || (((attrPermission & 0x01) != 0x01)
+                                    && ((attrPermission & 0x02) != 0x02))) {
                                 is_permission_available = true;
                                 Log.d(TAG, "Inside read without authentication and authorization");
                             }
@@ -1085,12 +1206,12 @@ public class GattServerAppService extends Service {
                                         (attrTypeStr.equalsIgnoreCase("00002800-0000-1000-8000-00805F9B34FB") ||
                                         attrTypeStr.equalsIgnoreCase("00002801-0000-1000-8000-00805F9B34FB") ||
                                         attrTypeStr.equalsIgnoreCase("00002802-0000-1000-8000-00805F9B34FB"))) {
-                                        uuid = ParcelUuid.fromString(attrTypeStr);
-                                        attrValue = attr.value;
-                                        startAttrHdl = attr.startHandle;
+                                    uuid = ParcelUuid.fromString(attrTypeStr);
+                                    attrValue = attr.value;
+                                    startAttrHdl = attr.startHandle;
                                     endAttrHdl = attr.endHandle;
                                     uuidStr = attr.uuid;
-                                        status = BluetoothGatt.GATT_SUCCESS;
+                                    status = BluetoothGatt.GATT_SUCCESS;
                                 }
                                 else if(attrTypeStr !=null &&
                                         !(attrTypeStr.equalsIgnoreCase("00002800-0000-1000-8000-00805F9B34FB") ||
@@ -1106,12 +1227,17 @@ public class GattServerAppService extends Service {
                                         status = BluetoothGatt.GATT_SUCCESS;
                                     }
                                     else {
-                                        status = BluetoothGatt.ATT_ECODE_READ_NOT_PERM;
+                                        status = BluetoothGatt.ATT_READ_NOT_PERM;
                                     }
                                 }
                             }
                             else {
-                                status = BluetoothGatt.ATT_ECODE_AUTHORIZATION;
+                                if(security_status_code == 1) {
+                                    status = BluetoothGatt.ATT_AUTHORIZATION;
+                                }
+                                else if(security_status_code == 2) {
+                                    status = BluetoothGatt.ATT_AUTHENTICATION;
+                                }
                             }
                             break;
                         }
@@ -1139,7 +1265,7 @@ public class GattServerAppService extends Service {
                     }
                     else if(k == (gattHandleToAttributes.size()-1)) {
                         Log.d(TAG, "Status failure ::");
-                        status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+                        status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
                     }
                 }
             }
@@ -1252,28 +1378,102 @@ public class GattServerAppService extends Service {
                     //Client characteristic configuration descriptor or Characteristic Value
                     else if(charValueAttrType == 1 ||
                             attrTypeStr.equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB") ||
-                            attrTypeStr.equalsIgnoreCase("00002900-0000-1000-8000-00805F9B34FB")) {
+                            attrTypeStr.equalsIgnoreCase("00002900-0000-1000-8000-00805F9B34FB")
+                            || attrTypeStr.equalsIgnoreCase("00002901-0000-1000-8000-00805F9B34FB")
+                            || attrTypeStr.equalsIgnoreCase("00002904-0000-1000-8000-00805F9B34FB")) {
                         if(((attrProperties > 0) && ((attrProperties & 0x02) == 0x02))) {
-	                        if(attrValue!=null && attrValue.length > 0) {
+                            if(attrValue!=null && attrValue.length > 0) {
                                 List<Byte> byteArrList= new ArrayList<Byte>();
 
-                                //Characteristic Config bits Value
+                                //Descriptor Value
                                 if(attrValue!=null && attrValue.length > 0) {
                                     for(i=0; i< attrValue.length; i++) {
                                         byteArrList.add(attrValue[i]);
                                     }
                                 }
+                                if(attrTypeStr.equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
+                                    //Client config bits value
+                                    payload = new byte[2];
+                                    payload[0] = 0x00;
+                                    payload[1] = 0x00;
+                                    Log.d(TAG,"The payload data::");
+                                    if(payload != null) {
+                                        for(i=0; i < payload.length; i++) {
+                                            Log.d(TAG,""+payload[i]);
+                                        }
+                                    }
+                                }
+                                else {
+                                    payload = new byte[byteArrList.size()];
+                                    //Transfer Arraylist contents to byte array
+                                    for(i=(byteArrList.size()-1); i >= 0; i--) {
+                                        payload[i] = byteArrList.get(i).byteValue();
+                                    }
+                                    Log.d(TAG,"The payload data::");
+                                    if(payload != null) {
+                                        for(i=0; i < payload.length; i++) {
+                                            Log.d(TAG,""+payload[i]);
+                                        }
+                                    }
+                                }
+                                if(attrTypeStr.equalsIgnoreCase("00002901-0000-1000-8000-00805F9B34FB")) {
+                                    String attrValStr = new String(payload);
+                                    Log.d(TAG, attrValStr);
+                                }
+                            }
+                        }
+                    }
+                    //Characteristic Aggregate Format descriptor
+                    else if(attrTypeStr.equalsIgnoreCase("00002905-0000-1000-8000-00805F9B34FB")) {
+                        Log.d(TAG,"Inside characteristic Aggregate Format descriptor payload creation::");
+                        int charHandle = -1;
+                        int charStartHdl = -1;
+                        int charEndHdl = -1;
+                        if(((attrProperties > 0) && ((attrProperties & 0x02) == 0x02))) {
+                                List<Integer> descHdlList = null;
+                                List<Byte> byteArrList= new ArrayList<Byte>();
+                                int cnt = 0;
+                            if(gattAttribTypeToHandle != null) {
+                                for(Map.Entry<String, List<Integer>> entry : gattAttribTypeToHandle.entrySet()) {
+                                    if("00002904-0000-1000-8000-00805F9B34FB".
+                                            equalsIgnoreCase(entry.getKey().toString())) {
+                                        //List of characteristic presentation format handles
+                                        descHdlList = entry.getValue();
+                                    }
+                                }
+                            }
+                            if(gattHandleToAttributes != null) {
+                                Attribute attrDesc = gattHandleToAttributes.get(handle);
+                                Attribute attrCharValue = gattHandleToAttributes.get(attrDesc.referenceHandle);
+                                Attribute attrChar = gattHandleToAttributes.get(attrCharValue.referenceHandle);
+                                charHandle = attrChar.handle;
+                                charStartHdl = attrChar.startHandle;
+                                charEndHdl = attrChar.endHandle;
+                            }
+                            if(descHdlList != null) {
+                                byteArrList = new ArrayList<Byte>();
+                                //convert Int ArryList to byte ArrayList
+                                for(int index=0; index<descHdlList.size(); index++) {
+                                    int descHdl = descHdlList.get(index);
+                                    Log.d(TAG,"desc handle::"+descHdl);
+                                    if((descHdl >= charStartHdl) && (descHdl <= charEndHdl)) {
+                                        byte msbDescHdl = (byte)(descHdl & 0xFF00);
+                                        byte lsbDescHdl = (byte)(descHdl & 0x00FF);
+                                        byteArrList.add(lsbDescHdl);
+                                        byteArrList.add(msbDescHdl);
+                                    }
+                                }
 
                                 payload = new byte[byteArrList.size()];
                                 //Transfer Arraylist contents to byte array
-                                for(i=(byteArrList.size()-1); i >= 0; i--) {
-                                    payload[i] = byteArrList.get(i).byteValue();
+                                for(i=0; i < byteArrList.size();i++) {
+                                    payload[cnt++] = byteArrList.get(i).byteValue();
                                 }
-                                Log.d(TAG,"The payload data::");
-                                if(payload != null) {
-                                    for(i=0; i < payload.length; i++) {
-                                        Log.d(TAG,""+payload[i]);
-                                    }
+                            }
+                            Log.d(TAG,"The payload data::");
+                            if(payload != null) {
+                                for(i=0; i < payload.length; i++) {
+                                    Log.d(TAG,"\n"+payload[i]);
                                 }
                             }
                         }
@@ -1291,31 +1491,37 @@ public class GattServerAppService extends Service {
          * Processes the Write Request from client and sends the response
          * to the client.
         */
+        @Override
         public void onGattReliableWriteRequest(BluetoothGattAppConfiguration config, int handle,
-                        byte value[], String authentication, int sessionHandle,
-                        int requestHandle) {
+                byte value[], String authentication, int sessionHandle,
+                int requestHandle) {
             Log.d(TAG,"Inside onGattReliableWriteRequest");
             Log.d(TAG," config:: "+config+" handle:: "+handle+" value::"+value+" authentication::"+authentication+
                     "sessionHandle::"+sessionHandle);
             Log.d(TAG,"The characteristic value::");
-            for(int z=0; z < value.length; z++) {
-                Log.d(TAG, ""+value[z]);
+            if(value != null) {
+                for(int z=0; z < value.length; z++) {
+                    Log.d(TAG, ""+value[z]);
+                }
             }
-            int i, k, hdlFoundStatus=0, status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+            int i, k, hdlFoundStatus=0, status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
             boolean retVal = false;
             int attrHandleNext = 0;
-            String attrUuidPrev, attrTypePrev, attrTypeStr;
+            String attrUuidPrev, attrTypePrev, attrTypeStr = null;
             int charValueAttrType = 0;
             byte attrProperties =0;
+            byte attrCharProperties = 0;
             ParcelUuid uuid = null;
             boolean is_permission_available = false;
+            boolean is_attr_writable = false;
+            int security_status_code = 0;//1 means not authorized, 2 means not authenticated
             if(handle >= 0) {
                 Log.d(TAG,"Inside handle >= 0");
                 if(gattHandleToAttributes != null) {
                         Log.d(TAG,"Inside gattHandleToAttributes not null");
                     //To get the attribute values for the particular handle
                     for(k=0; k<gattHandleToAttributes.size(); k++) {
-                        if(handle == (int)gattHandleToAttributes.get(k).handle) {
+                        if(handle == gattHandleToAttributes.get(k).handle) {
                             Log.d(TAG, "Attribute match found");
                             hdlFoundStatus = 1;
                             Attribute attr = gattHandleToAttributes.get(k);
@@ -1331,13 +1537,19 @@ public class GattServerAppService extends Service {
                                     attrProperties = (byte)gattHandleToAttributes.get(k-1).properties;
                                     Log.d(TAG, "Attribute type set to Characteristic value");
                                 }
+                                else if(attrTypeStr.
+                                        equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
+                                    Attribute charValueAttr = gattHandleToAttributes.get(attr.referenceHandle);
+                                    Attribute charAttr = gattHandleToAttributes.get(charValueAttr.referenceHandle);
+                                    attrCharProperties = (byte) charAttr.properties;
+                                    attrProperties = (byte)attr.properties;
+                                }
                                 else {
                                     attrProperties = (byte)attr.properties;
                                 }
                             }
                             Log.d(TAG, "Attribute properties::"+attrProperties);
-                            if((attrProperties > 0) && ((attrProperties & 0x04) == 0x04) ||
-                                    ((attrProperties & 0x08) == 0x08)) {
+                            if((attrProperties > 0) && ((attrProperties & 0x08) == 0x08)) {
                                 //If the Attribute type is Characteristic value
                                 if(charValueAttrType == 1) {
                                     Log.d(TAG, "Onwrite request: Attr type: characteristic value");
@@ -1352,27 +1564,43 @@ public class GattServerAppService extends Service {
                                             is_permission_available = true;
                                             Log.d(TAG, "Inside write with authorization");
                                         }
+                                        else {
+                                            //not authorized
+                                            security_status_code = 1;
+                                        }
                                     }
                                     else if((attrPermBits > 0) && ((attrPermBits & 0x10) == 0x10)) {
                                         if(authentication.equalsIgnoreCase("Authenticated")) {
                                             is_permission_available = true;
                                             Log.d(TAG, "Inside write with authentication");
                                         }
+                                        else {
+                                            //not authenticated
+                                            security_status_code = 2;
+                                        }
                                     }
-                                    else if(attrPermBits == 0 || attrPermBits == 0x04 ||
-                                            authentication.equalsIgnoreCase("None")) {
+                                    else if(attrPermBits == 0 || (((attrPermBits & 0x08) != 0x08) &&
+                                            ((attrPermBits & 0x10) != 0x10))) {
                                         is_permission_available = true;
                                         Log.d(TAG, "write without auth/authorization");
                                     }
-                                    if(is_permission_available) {
+                                    if(is_permission_available && (value != null)) {
                                         Log.d(TAG, "Authorized/Authenticated to write");
                                         attr.value = value;
-                                        attr.sessionHandle = sessionHandle;
+                                        //attr.sessionHandle = sessionHandle;
+                                        if(attr.sessionHandle != null &&
+                                                !attr.sessionHandle.contains(sessionHandle)) {
+                                            attr.sessionHandle.add(sessionHandle);
+                                        }
+                                        else if(attr.sessionHandle == null) {
+                                            attr.sessionHandle = new ArrayList<Integer>();
+                                            attr.sessionHandle.add(sessionHandle);
+                                        }
                                         uuid = ParcelUuid.fromString(attrTypeStr);
                                         status = BluetoothGatt.GATT_SUCCESS;
                                         //reading and checking whether the char value file exists
                                         //already
-                                        byte[] buffer = new byte[255];
+                                        byte[] buffer = new byte[2000];
                                         List<Byte> byteArrList= new ArrayList<Byte>();
                                         List<Byte> hdlsArrList= new ArrayList<Byte>();
                                         HashMap<Integer, Integer> hdlIndexMap =
@@ -1396,6 +1624,13 @@ public class GattServerAppService extends Service {
                                                     hdlIndexMap.put(hdlValue, (i+3));
                                                     i= i+4+buffer[i+2];
                                                 }
+                                                Log.d(TAG, "Handle Index Map values:");
+                                                if(hdlIndexMap != null) {
+                                                    for(Map.Entry<Integer, Integer> entry : hdlIndexMap.entrySet()) {
+                                                        Log.d(TAG, "Key::"+entry.getKey());
+                                                        Log.d(TAG, "Value::"+entry.getValue());
+                                                    }
+                                                }
                                                 byte handleLSB = (byte)(handle & 0x00FF);
                                                 byte handleMSB = (byte)((handle & 0xFF00) >> 8);
 
@@ -1406,48 +1641,56 @@ public class GattServerAppService extends Service {
                                                 if(hdlsArrList != null && hdlsArrList.size() >0) {
                                                     for(i=0;i<hdlsArrList.size();i++) {
                                                         if((hdlsArrList.get(i) == handleMSB) &&
-                                                                    (hdlsArrList.get(i+1) == handleLSB)){
-                                                          Log.d(TAG, "Onwrite request: Char value handle " +
+                                                                (hdlsArrList.get(i+1) == handleLSB)){
+                                                            Log.d(TAG, "Onwrite request: Char value handle " +
                                                                     "already present in file");
-                                                          isHdlInFile = 1;
-                                                          int index = hdlIndexMap.get(handle);
-                                                          byte[] bufferTemp = new byte[255];
-                                                          int tmpIndex=0;
-                                                          if(buffer != null) {
-                                                              int z = 0;
-                                                              //Get the index for '\n' after the handle
-                                                              for(z=index; z < bytesRead; z++) {
-                                                                  if(buffer[z] == ((byte)'\n')) {
-                                                                          break;
-                                                                  }
-                                                              }
-                                                              //Store the remaining byte array values in
-                                                              //a temp byte array
+                                                            isHdlInFile = 1;
 
-                                                              for(tmpIndex=0; tmpIndex < (bytesRead-(z+1)); tmpIndex++) {
-                                                                      bufferTemp[tmpIndex] = buffer[tmpIndex+z+1];
-                                                              }
-                                                          }
-                                                          //Write the char value and update the length
-                                                          buffer[index-1] = (byte)value.length;
-                                                          for(int j=0; j < value.length; j++) {
-                                                            buffer[index++] = value[j];
-                                                          }
-                                                          //append '\n' after every char value
-                                                          buffer[index++] = (byte)'\n';
-                                                          //append the remaining byte array elements again
-                                                          for(int y=0; y < tmpIndex; y++) {
-                                                              buffer[index++] = bufferTemp[y];
-                                                          }
-                                                          //For testing
-                                                          Log.d(TAG, "buffer printed");
-                                                          for(int r=0; r< index; r++) {
-                                                              Log.d(TAG, ""+buffer[r]);
-                                                          }
-                                                          for(i=0; i< index; i++) {
-                                                              byteArrList.add(buffer[i]);
-                                                          }
+                                                            Log.d(TAG, "handle::"+handle);
+                                                            byte hdlValTmpMSB = (byte)((handle & 0xFF00) >> 8);
+                                                            byte hdlValTmpLSB = (byte)(handle & 0x00FF);
+                                                            int hdlValTmp = (hdlValTmpMSB << 8) + (hdlValTmpLSB);
+                                                            Log.d(TAG, "hdl value Tmp::"+hdlValTmp);
+                                                            int index = hdlIndexMap.get(hdlValTmp);
+                                                            Log.d(TAG, "Index of Handle::"+index);
 
+                                                            byte[] bufferTemp = new byte[2000];
+                                                            int tmpIndex=0;
+                                                            if(buffer != null) {
+                                                                Log.d(TAG, "bytes read::"+bytesRead);
+                                                                int z = 0;
+                                                                //Get the index for '\n' after the handle
+                                                                for(z=index; z < bytesRead; z++) {
+                                                                    if(buffer[z] == ((byte)'\n')) {
+                                                                        break;
+                                                                    }
+                                                                }
+                                                                //Store the remaining byte array values in
+                                                                //a temp byte array
+
+                                                                for(tmpIndex=0; tmpIndex < (bytesRead-(z+1)); tmpIndex++) {
+                                                                    bufferTemp[tmpIndex] = buffer[tmpIndex+z+1];
+                                                                }
+                                                            }
+                                                            //Write the char value and update the length
+                                                            buffer[index-1] = (byte)value.length;
+                                                            for(int j=0; j < value.length; j++) {
+                                                              buffer[index++] = value[j];
+                                                            }
+                                                            //append '\n' after every char value
+                                                            buffer[index++] = (byte)'\n';
+                                                            //append the remaining byte array elements again
+                                                            for(int y=0; y < tmpIndex; y++) {
+                                                                buffer[index++] = bufferTemp[y];
+                                                            }
+                                                            //For testing
+                                                            Log.d(TAG, "buffer printed");
+                                                            for(int r=0; r< index; r++) {
+                                                                Log.d(TAG, ""+buffer[r]);
+                                                            }
+                                                            for(i=0; i< index; i++) {
+                                                                byteArrList.add(buffer[i]);
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -1465,13 +1708,13 @@ public class GattServerAppService extends Service {
                                                 }
                                             }
                                             fis.close();
-                                            }
-                                            catch (FileNotFoundException e) {
-                                                e.printStackTrace();
-                                            }
-                                            catch (IOException e) {
-                                                e.printStackTrace();
-                                            }
+                                        }
+                                        catch (FileNotFoundException e) {
+                                            e.printStackTrace();
+                                        }
+                                        catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
                                         //write to a file
                                         Log.d(TAG, "Writing to Char values file::");
 
@@ -1516,18 +1759,25 @@ public class GattServerAppService extends Service {
                                                 e.printStackTrace();
                                             }
                                             catch (IOException e) {
-                                                 e.printStackTrace();
+                                                e.printStackTrace();
                                             }
                                     }
-                                    else {
-                                        //need to change to not authorized
-                                        status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;;
+                                    else if(value == null) {
+                                        status = 0x80; //Application error
+                                    }
+                                    if(security_status_code == 1) {
+                                        status = BluetoothGatt.ATT_AUTHORIZATION;
+                                    }
+                                    else if(security_status_code == 2) {
+                                        status = BluetoothGatt.ATT_AUTHENTICATION;
                                     }
                                 }
                                 //If the attribute type is client characteristic descriptor
                                 else if(attrTypeStr.
-                                        equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
-                                        Log.d(TAG, "Onwrite request: Attr type: client char desc value");
+                                        equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")
+                                        || attrTypeStr.
+                                        equalsIgnoreCase("00002901-0000-1000-8000-00805F9B34FB")) {
+                                    Log.d(TAG, "Onwrite request: Attr type: client char desc value");
                                     String attrPermission = attr.permission;
                                     byte attrPermBits = attr.permBits;
                                     is_permission_available = false;
@@ -1537,46 +1787,185 @@ public class GattServerAppService extends Service {
                                                 authentication.equalsIgnoreCase("Authorized")) {
                                             is_permission_available = true;
                                         }
+                                        else {
+                                            //not authorized
+                                            security_status_code = 1;
+                                        }
                                     }
                                     //if the client char config descriptor is authenticated
                                     else if((attrPermBits > 0) && ((attrPermBits & 0x10) == 0x10)) {
                                         if(authentication.equalsIgnoreCase("Authenticated")) {
                                             is_permission_available = true;
                                         }
+                                        else {
+                                            //not authenticated
+                                            security_status_code = 2;
+                                        }
                                     }
-                                    else if(attrPermBits == 0 || attrPermBits == 0x04 ||
-                                            authentication.equalsIgnoreCase("None")) {
+                                    else if(attrPermBits == 0 || (((attrPermBits & 0x08) != 0x08) &&
+                                            ((attrPermBits & 0x10) != 0x10))) {
                                         is_permission_available = true;
                                     }
                                     if(is_permission_available) {
-                                        attr.value = value;
-                                        attr.sessionHandle = sessionHandle;
-                                        uuid = ParcelUuid.fromString(attrTypeStr);
-                                        status = BluetoothGatt.GATT_SUCCESS;
+                                        if(value != null) {
+                                            if(attrTypeStr.
+                                                    equalsIgnoreCase("00002901-0000-1000-8000-00805F9B34FB")) {
+                                                is_attr_writable = checkWritePermission(attr.handle);
+                                                if(is_attr_writable) {
+                                                    attr.value = value;
+                                                    if((attr.sessionHandle != null &&
+                                                            !attr.sessionHandle.contains(sessionHandle))) {
+                                                        attr.sessionHandle.add(sessionHandle);
+                                                    }
+                                                    else if(attr.sessionHandle == null) {
+                                                        attr.sessionHandle = new ArrayList<Integer>();
+                                                        attr.sessionHandle.add(sessionHandle);
+                                                    }
+                                                    uuid = ParcelUuid.fromString(attrTypeStr);
+                                                    status = BluetoothGatt.GATT_SUCCESS;
+                                                }
+                                            }
+                                            else if(attrTypeStr.
+                                                    equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
+                                                Log.d(TAG, "The attribute value::"+value[0]);
+                                                //Check whether the Char properties is notifiable
+                                                if(value != null && value[0] == 0x01) {
+                                                    if((attrCharProperties > 0) && ((attrCharProperties & 0x10) == 0x10)) {
+                                                        Log.d(TAG, "Allowed to write 0x01 for notification");
+                                                        if(attr.attrValue != null) {
+                                                            attr.attrValue.put(sessionHandle, value[0]);
+                                                        }
+                                                        else if(attr.attrValue == null) {
+                                                            attr.attrValue = new HashMap<Integer, Byte>();
+                                                            attr.attrValue.put(sessionHandle, value[0]);
+                                                        }
+                                                        //attr.value = value; //TODO commented as of now
+                                                        uuid = ParcelUuid.fromString(attrTypeStr);
+                                                        status = BluetoothGatt.GATT_SUCCESS;
+                                                        if((attr.sessionHandle != null &&
+                                                                !attr.sessionHandle.contains(sessionHandle))) {
+                                                            attr.sessionHandle.add(sessionHandle);
+                                                        }
+                                                        else if(attr.sessionHandle == null) {
+                                                            attr.sessionHandle = new ArrayList<Integer>();
+                                                            attr.sessionHandle.add(sessionHandle);
+                                                        }
+                                                    }
+                                                    else {
+                                                        status = 0x80;
+                                                    }
+                                                }
+                                                //Check whether the Char properties is indicatable
+                                                else if(value != null && value[0] == 0x02) {
+                                                    if((attrCharProperties > 0) && ((attrCharProperties & 0x20) == 0x20)) {
+                                                        Log.d(TAG, "Allowed to write 0x02 for indication");
+                                                        if(attr.attrValue != null) {
+                                                            attr.attrValue.put(sessionHandle, value[0]);
+                                                        }
+                                                        else if(attr.attrValue == null) {
+                                                            attr.attrValue = new HashMap<Integer, Byte>();
+                                                            attr.attrValue.put(sessionHandle, value[0]);
+                                                        }
+                                                        uuid = ParcelUuid.fromString(attrTypeStr);
+                                                        status = BluetoothGatt.GATT_SUCCESS;
+                                                        if((attr.sessionHandle != null &&
+                                                                !attr.sessionHandle.contains(sessionHandle))) {
+                                                            attr.sessionHandle.add(sessionHandle);
+                                                        }
+                                                        else if(attr.sessionHandle == null) {
+                                                            attr.sessionHandle = new ArrayList<Integer>();
+                                                            attr.sessionHandle.add(sessionHandle);
+                                                        }
+                                                    }
+                                                    else {
+                                                        status = 0x80;
+                                                    }
+                                                }
+                                                else if(value != null && value[0] == 0x00) {
+                                                    if(attr.attrValue != null) {
+                                                        attr.attrValue.put(sessionHandle, value[0]);
+                                                    }
+                                                    else if(attr.attrValue == null) {
+                                                        attr.attrValue = new HashMap<Integer, Byte>();
+                                                        attr.attrValue.put(sessionHandle, value[0]);
+                                                    }
+                                                    uuid = ParcelUuid.fromString(attrTypeStr);
+                                                    status = BluetoothGatt.GATT_SUCCESS;
+                                                    if((attr.sessionHandle != null &&
+                                                            !attr.sessionHandle.contains(sessionHandle))) {
+                                                        attr.sessionHandle.add(sessionHandle);
+                                                    }
+                                                    else if(attr.sessionHandle == null) {
+                                                        attr.sessionHandle = new ArrayList<Integer>();
+                                                        attr.sessionHandle.add(sessionHandle);
+                                                    }
+                                                }
+                                                else {
+                                                    status = 0x80;
+                                                }
+                                            }
+                                            else {
+                                                attr.value = value;
+                                                //attr.sessionHandle = sessionHandle;
+                                                if(attr.sessionHandle != null &&
+                                                        !attr.sessionHandle.contains(sessionHandle)) {
+                                                    attr.sessionHandle.add(sessionHandle);
+                                                }
+                                                else if(attr.sessionHandle == null) {
+                                                        attr.sessionHandle = new ArrayList<Integer>();
+                                                        attr.sessionHandle.add(sessionHandle);
+                                                }
+                                                uuid = ParcelUuid.fromString(attrTypeStr);
+                                                status = BluetoothGatt.GATT_SUCCESS;
+                                            }
+                                        }
+                                        else if(value == null) {
+                                            status = 0x80; //Application error
+                                        }
                                     }
                                     else {
-                                        //need to change to not authorized
-                                        status = BluetoothGatt.ATT_ECODE_AUTHORIZATION;
+                                        if(security_status_code == 1) {
+                                            status = BluetoothGatt.ATT_AUTHORIZATION;
+                                        }
+                                        else if(security_status_code == 2) {
+                                            status = BluetoothGatt.ATT_AUTHENTICATION;
+                                        }
                                     }
                                 }
-                                break;
                             }
                             else {
                                 //need to change the error to NOT_AUTHORIZED
-                                status = BluetoothGatt.ATT_ECODE_WRITE_NOT_PERM;
+                                status = BluetoothGatt.ATT_WRITE_NOT_PERM;
                             }
+                            break;
                         }
                     }
                     if(hdlFoundStatus == 1) {
-                        if(is_permission_available && ((attrProperties > 0) && ((attrProperties & 0x04) == 0x04) ||
-                                ((attrProperties & 0x08) == 0x08))) {
-                            Log.d(TAG, "Status success ::");
-                            status = BluetoothGatt.GATT_SUCCESS;
+                        if(is_permission_available && ((attrProperties > 0) && ((attrProperties & 0x08) == 0x08))) {
+                            if(attrTypeStr.
+                                    equalsIgnoreCase("00002901-0000-1000-8000-00805F9B34FB")) {
+                                if(is_attr_writable && value != null) {
+                                    Log.d(TAG, "Status success ::");
+                                    status = BluetoothGatt.GATT_SUCCESS;
+                                }
+                            }
+                            else if(attrTypeStr.
+                                    equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
+                                if((value != null) && (value[0] >= 0x00) && (value[0] <= 0x02)
+                                        && (status != BluetoothGatt.ATT_ATTR_NOT_FOUND) && !(status > 0x00)) {
+                                    Log.d(TAG, "Status success ::");
+                                    status = BluetoothGatt.GATT_SUCCESS;
+                                }
+                            }
+                            else if(value != null){
+                                Log.d(TAG, "Status success ::");
+                                status = BluetoothGatt.GATT_SUCCESS;
+                            }
                         }
                     }
                     else if(k == (gattHandleToAttributes.size()-1)) {
                         Log.d(TAG, "Status failure ::");
-                        status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+                        status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
                     }
                 }
             }
@@ -1588,9 +1977,12 @@ public class GattServerAppService extends Service {
             if(is_permission_available && hdlFoundStatus == 1) {
                 //send notification/indication for the particular
                 //client char config handle
-                if((value != null) && (value.length > 0)) {
-                    if(value[0] > 0x00) {
-                        sendNotificationIndicationHandle(handle);
+                if(attrTypeStr.
+                        equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
+                    if((value != null) && (value.length > 0)) {
+                        if(value[0] > 0x00) {
+                            sendNotificationIndicationHandle(handle, sessionHandle);
+                        }
                     }
                 }
             }
@@ -1600,22 +1992,26 @@ public class GattServerAppService extends Service {
          * Processes the Write Request from client and sends the response
          * to the client.
         */
+        @Override
         public void onGattWriteRequest(BluetoothGattAppConfiguration config, int handle,
-                        byte value[], String authentication) {
-                Log.d(TAG,"Inside onGattWriteRequest");
-            int i, k, hdlFoundStatus=0, status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+                byte value[], String authentication) {
+            Log.d(TAG,"Inside onGattWriteRequest");
+            int i, k, hdlFoundStatus=0, status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
             boolean retVal = false;
             int attrHandleNext = 0;
-            String attrUuidPrev, attrTypePrev, attrTypeStr;
+            String attrUuidPrev, attrTypePrev, attrTypeStr = null;
             int charValueAttrType = 0;
             byte attrProperties =0;
+            byte attrCharProperties = 0;
             ParcelUuid uuid = null;
             boolean is_permission_available = false;
+            boolean is_attr_writable = false;
+            int security_status_code = 0;//1 means not authorized, 2 means not authenticated
             if(handle >= 0) {
                 if(gattHandleToAttributes != null) {
                     //To get the attribute values for the particular handle
                     for(k=0; k<gattHandleToAttributes.size(); k++) {
-                        if(handle == (int)gattHandleToAttributes.get(k).handle) {
+                        if(handle == gattHandleToAttributes.get(k).handle) {
                             hdlFoundStatus = 1;
                             Attribute attr = gattHandleToAttributes.get(k);
                             attrTypeStr = attr.type;
@@ -1623,11 +2019,18 @@ public class GattServerAppService extends Service {
                                 attrUuidPrev = gattHandleToAttributes.get(k-1).uuid;
                                 attrTypePrev = gattHandleToAttributes.get(k-1).type;
                                 if(attrTypeStr.equalsIgnoreCase(attrUuidPrev) &&
-                                            attrTypePrev.
-                                            equalsIgnoreCase("00002803-0000-1000-8000-00805F9B34FB")) {
+                                        attrTypePrev.
+                                        equalsIgnoreCase("00002803-0000-1000-8000-00805F9B34FB")) {
                                     charValueAttrType = 1;
                                     attrProperties = (byte)gattHandleToAttributes.get(k-1).properties;
                                     Log.d(TAG, "Attribute type set to Characteristic value");
+                                }
+                                else if(attrTypeStr.
+                                        equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
+                                    Attribute charValueAttr = gattHandleToAttributes.get(attr.referenceHandle);
+                                    Attribute charAttr = gattHandleToAttributes.get(charValueAttr.referenceHandle);
+                                    attrCharProperties = (byte) charAttr.properties;
+                                    attrProperties = (byte)attr.properties;
                                 }
                                 else {
                                     attrProperties = (byte)attr.properties;
@@ -1635,8 +2038,7 @@ public class GattServerAppService extends Service {
                             }
                             Log.d(TAG, "Attribute properties::"+attrProperties);
                             //need to check whether attribute is writable before writing
-                            if((attrProperties > 0) && ((attrProperties & 0x04) == 0x04) ||
-                                    ((attrProperties & 0x08) == 0x08)) {
+                            if((attrProperties > 0) && ((attrProperties & 0x04) == 0x04)) {
                                 //If the Attribute type is Characteristic value
                                 if(charValueAttrType == 1) {
                                     Log.d(TAG, "Onwrite request: Attr type: characteristic value");
@@ -1646,9 +2048,13 @@ public class GattServerAppService extends Service {
                                     //if the char value is authorized/authenticated
                                     if((attrPermBits > 0) && ((attrPermBits & 0x08) == 0x08)) {
                                         if(authentication.equalsIgnoreCase("Authenticated") ||
-                                                        authentication.equalsIgnoreCase("Authorized")) {
+                                                authentication.equalsIgnoreCase("Authorized")) {
                                             is_permission_available = true;
                                             Log.d(TAG, "Inside write with authorization");
+                                        }
+                                        else {
+                                            //not authorized
+                                            security_status_code = 1;
                                         }
                                     }
                                     else if((attrPermBits > 0) && ((attrPermBits & 0x10) == 0x10)) {
@@ -1656,104 +2062,115 @@ public class GattServerAppService extends Service {
                                             is_permission_available = true;
                                             Log.d(TAG, "Inside write with authentication");
                                         }
+                                        else {
+                                            //not authenticated
+                                            security_status_code = 2;
+                                        }
                                     }
-                                    else if(attrPermBits == 0 || attrPermBits == 0x04 ||
-                                                authentication.equalsIgnoreCase("None")) {
+                                    else if(attrPermBits == 0 || (((attrPermBits & 0x08) != 0x08) &&
+                                            ((attrPermBits & 0x10) != 0x10))) {
                                         is_permission_available = true;
                                         Log.d(TAG, "write without auth/authorization");
                                     }
                                     if(is_permission_available) {
                                         Log.d(TAG, "Authorized/Authenticated to write");
-                                        attr.value = value;
-                                        //attr.sessionHandle = sessionHandle;
-                                        uuid = ParcelUuid.fromString(attrTypeStr);
-                                        status = BluetoothGatt.GATT_SUCCESS;
-                                        //reading and checking whether the char value file exists
-                                        //already
-                                        byte[] buffer = new byte[255];
-                                        List<Byte> byteArrList= new ArrayList<Byte>();
-                                        List<Byte> hdlsArrList= new ArrayList<Byte>();
-                                        HashMap<Integer, Integer> hdlIndexMap =
-                                                        new HashMap<Integer, Integer>();
-                                        int isHdlInFile = 0;
-                                        String FILENAME = "characteristic_values";
-                                        Context context = getApplicationContext();
-                                        try {
-                                            Log.d(TAG,"File path ::"+
+                                        if(value != null) {
+                                            attr.value = value;
+                                            uuid = ParcelUuid.fromString(attrTypeStr);
+                                            status = BluetoothGatt.GATT_SUCCESS;
+                                            //reading and checking whether the char value file exists
+                                            //already
+                                            byte[] buffer = new byte[2000];
+                                            List<Byte> byteArrList= new ArrayList<Byte>();
+                                            List<Byte> hdlsArrList= new ArrayList<Byte>();
+                                            HashMap<Integer, Integer> hdlIndexMap =
+                                                    new HashMap<Integer, Integer>();
+                                            int isHdlInFile = 0;
+                                            String FILENAME = "characteristic_values";
+                                            Context context = getApplicationContext();
+                                            try {
+                                                Log.d(TAG,"File path ::"+
                                                         context.getFilesDir().getAbsolutePath());
-                                            FileInputStream fis =
-                                                    new FileInputStream(context.getFilesDir().getAbsolutePath()
-                                                    + "/" + FILENAME);
-                                            int bytesRead = fis.read(buffer);
-                                            if(bytesRead > 0) {
-                                                Log.d(TAG, "Onwrite request: Bytes read > 0");
-                                                for(i=0; i< bytesRead;) {
-                                                    hdlsArrList.add(buffer[i]);//handle msb
-                                                    hdlsArrList.add(buffer[i+1]);//handle lsb
-                                                    int hdlValue = (buffer[i] << 8) + (buffer[i+1]);
-                                                    hdlIndexMap.put(hdlValue, (i+3));
-                                                    //4 below represents handle-2 bytes,
-                                                    //length-1 byte,"\n"-1 byte
-                                                    i= i+4+buffer[i+2];
-                                                }
-                                                byte handleLSB = (byte)(handle & 0x00FF);
-                                                byte handleMSB = (byte)((handle & 0xFF00) >> 8);
+                                                FileInputStream fis =
+                                                        new FileInputStream(context.getFilesDir().getAbsolutePath()
+                                                        + "/" + FILENAME);
+                                                int bytesRead = fis.read(buffer);
+                                                if(bytesRead > 0) {
+                                                    Log.d(TAG, "Onwrite request: Bytes read > 0");
+                                                    for(i=0; i< bytesRead;) {
+                                                        hdlsArrList.add(buffer[i]);//handle msb
+                                                        hdlsArrList.add(buffer[i+1]);//handle lsb
+                                                        int hdlValue = (buffer[i] << 8) + (buffer[i+1]);
+                                                        hdlIndexMap.put(hdlValue, (i+3));
+                                                        //4 below represents handle-2 bytes,
+                                                        //length-1 byte,"\n"-1 byte
+                                                        i= i+4+buffer[i+2];
+                                                    }
+                                                    byte handleLSB = (byte)(handle & 0x00FF);
+                                                    byte handleMSB = (byte)((handle & 0xFF00) >> 8);
 
-                                                //check if the char value handle is already
-                                                //present in the File.
-                                                //If present, get the handle and the index
-                                                //and update the char value at the correct index
-                                                if(hdlsArrList != null && hdlsArrList.size() >0) {
-                                                    for(i=0;i<hdlsArrList.size();i++) {
-                                                        if((hdlsArrList.get(i) == handleMSB) &&
-                                                                (hdlsArrList.get(i+1) == handleLSB)){
-                                                          Log.d(TAG, "Onwrite request: Char value handle " +
-                                                                    "already present in file");
-                                                          isHdlInFile = 1;
-                                                          int index = hdlIndexMap.get(handle);
-                                                          byte[] bufferTemp = new byte[255];
-                                                          int tmpIndex=0;
-                                                          if(buffer != null) {
-                                                              int z = 0;
-                                                              //Get the index for '\n' after the handle
-                                                              for(z=index; z < bytesRead; z++) {
-                                                                  if(buffer[z] == ((byte)'\n')) {
-                                                                      break;
+                                                    //check if the char value handle is already
+                                                    //present in the File.
+                                                    //If present, get the handle and the index
+                                                    //and update the char value at the correct index
+                                                    if(hdlsArrList != null && hdlsArrList.size() >0) {
+                                                        for(i=0;i<hdlsArrList.size();i++) {
+                                                            if((hdlsArrList.get(i) == handleMSB) &&
+                                                                    (hdlsArrList.get(i+1) == handleLSB)){
+                                                              Log.d(TAG, "Onwrite request: Char value handle " +
+                                                                        "already present in file");
+                                                              isHdlInFile = 1;
+
+                                                              Log.d(TAG, "handle::"+handle);
+                                                              byte hdlValTmpMSB = (byte)((handle & 0xFF00) >> 8);
+                                                              byte hdlValTmpLSB = (byte)(handle & 0x00FF);
+                                                              int hdlValTmp = (hdlValTmpMSB << 8) + (hdlValTmpLSB);
+                                                              Log.d(TAG, "hdl value Tmp::"+hdlValTmp);
+                                                              int index = hdlIndexMap.get(hdlValTmp);
+
+                                                              byte[] bufferTemp = new byte[2000];
+                                                              int tmpIndex=0;
+                                                              if(buffer != null) {
+                                                                  int z = 0;
+                                                                  //Get the index for '\n' after the handle
+                                                                  for(z=index; z < bytesRead; z++) {
+                                                                      if(buffer[z] == ((byte)'\n')) {
+                                                                          break;
+                                                                      }
+                                                                  }
+                                                                  //Store the remaining byte array values in
+                                                                  //a temp byte array
+                                                                  for(tmpIndex=0; tmpIndex < (bytesRead-(z+1)); tmpIndex++) {
+                                                                      bufferTemp[tmpIndex] = buffer[tmpIndex+z+1];
                                                                   }
                                                               }
-                                                              //Store the remaining byte array values in
-                                                              //a temp byte array
-                                                              for(tmpIndex=0; tmpIndex < (bytesRead-(z+1)); tmpIndex++) {
-                                                                  bufferTemp[tmpIndex] = buffer[tmpIndex+z+1];
+                                                              //Write the char value
+                                                              buffer[index-1] = (byte)value.length;
+                                                              for(int j=0; j < value.length; j++) {
+                                                                  buffer[index++] = value[j];
                                                               }
-                                                          }
-                                                          //Write the char value
-                                                          buffer[index-1] = (byte)value.length;
-                                                          for(int j=0; j < value.length; j++) {
-                                                            buffer[index++] = value[j];
-                                                          }
-                                                          //append '\n' after every char value
-                                                          buffer[index++] = (byte)'\n';
-                                                          //append the remaining byte array elements again
-                                                          for(int y=0; y < tmpIndex; y++) {
+                                                              //append '\n' after every char value
+                                                              buffer[index++] = (byte)'\n';
+                                                              //append the remaining byte array elements again
+                                                              for(int y=0; y < tmpIndex; y++) {
                                                                   buffer[index++] = bufferTemp[y];
-                                                          }
-                                                          for(i=0; i< index; i++) {
-                                                              byteArrList.add(buffer[i]);
-                                                          }
+                                                              }
+                                                              for(i=0; i< index; i++) {
+                                                                  byteArrList.add(buffer[i]);
+                                                              }
+                                                            }
+                                                        }
+                                                    }
+                                                    //If char value handle is not already present in the
+                                                    //file, just store the values read from file into
+                                                    //the byte array list
+                                                    if(isHdlInFile == 0) {
+                                                        for(i=0; i< bytesRead; i++) {
+                                                            byteArrList.add(buffer[i]);
                                                         }
                                                     }
                                                 }
-                                                //If char value handle is not already present in the
-                                                //file, just store the values read from file into
-                                                //the byte array list
-                                                if(isHdlInFile == 0) {
-                                                    for(i=0; i< bytesRead; i++) {
-                                                        byteArrList.add(buffer[i]);
-                                                    }
-                                                }
-                                            }
-                                            fis.close();
+                                                fis.close();
                                             }
                                             catch (FileNotFoundException e) {
                                                 e.printStackTrace();
@@ -1761,37 +2178,37 @@ public class GattServerAppService extends Service {
                                             catch (IOException e) {
                                                 e.printStackTrace();
                                             }
-                                        //write to a file
-                                        Log.d(TAG, "Writing to Char values file::");
+                                            //write to a file
+                                            Log.d(TAG, "Writing to Char values file::");
 
-                                        if(isHdlInFile == 0) {
-                                            //Creating the byte array for a char value
-                                            //writing the new char value data not already in file
-                                            //into arraylist
-                                            //big endian
-                                            byte handleLSB = (byte)(handle & 0x00FF);
-                                            byte handleMSB = (byte)((handle & 0xFF00) >> 8);
+                                            if(isHdlInFile == 0) {
+                                                //Creating the byte array for a char value
+                                                //writing the new char value data not already in file
+                                                //into arraylist
+                                                //big endian
+                                                byte handleLSB = (byte)(handle & 0x00FF);
+                                                byte handleMSB = (byte)((handle & 0xFF00) >> 8);
 
-                                            byteArrList.add(handleMSB);
-                                            byteArrList.add(handleLSB);
-                                            byteArrList.add((byte)value.length);
+                                                byteArrList.add(handleMSB);
+                                                byteArrList.add(handleLSB);
+                                                byteArrList.add((byte)value.length);
 
-                                            if(value!=null && value.length > 0) {
-                                                for(i=0; i< value.length; i++) {
-                                                    byteArrList.add(value[i]);
+                                                if(value!=null && value.length > 0) {
+                                                    for(i=0; i< value.length; i++) {
+                                                        byteArrList.add(value[i]);
+                                                    }
                                                 }
+                                                byteArrList.add((byte)'\n');
                                             }
-                                            byteArrList.add((byte)'\n');
-                                        }
 
-                                        byte[] charValueBytes = new byte[byteArrList.size()];
-                                        //Transfer Arraylist contents to byte array
-                                        for(i=0; i < byteArrList.size(); i++) {
-                                            charValueBytes[i] = byteArrList.get(i).byteValue();
-                                        }
-                                        Log.d(TAG, "Onwrite request: Char value bytes to " +
-                                                "be written to file::"+charValueBytes);
-                                        Log.d(TAG, "The data written to file onWriteRequest");
+                                            byte[] charValueBytes = new byte[byteArrList.size()];
+                                            //Transfer Arraylist contents to byte array
+                                            for(i=0; i < byteArrList.size(); i++) {
+                                                charValueBytes[i] = byteArrList.get(i).byteValue();
+                                            }
+                                            Log.d(TAG, "Onwrite request: Char value bytes to " +
+                                                    "be written to file::"+charValueBytes);
+                                            Log.d(TAG, "The data written to file onWriteRequest");
                                             for(i=0; i< charValueBytes.length; i++) {
                                                 Log.d(TAG,""+charValueBytes[i]);
                                             }
@@ -1807,15 +2224,25 @@ public class GattServerAppService extends Service {
                                             catch (IOException e) {
                                                  e.printStackTrace();
                                             }
+                                        }
+                                        else if(value == null){
+                                            status = 0x80;//Application error
+                                        }
                                     }
                                     else {
-                                        //need to change to not authorized
-                                        status = BluetoothGatt.ATT_ECODE_AUTHORIZATION;
+                                        if(security_status_code == 1) {
+                                            status = BluetoothGatt.ATT_AUTHORIZATION;
+                                        }
+                                        else if(security_status_code == 2) {
+                                            status = BluetoothGatt.ATT_AUTHENTICATION;
+                                        }
                                     }
                                 }
                                 //If the attribute type is client characteristic descriptor
                                 else if(attrTypeStr.
-                                        equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
+                                        equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")
+                                        || attrTypeStr.
+                                        equalsIgnoreCase("00002901-0000-1000-8000-00805F9B34FB")) {
                                     String attrPermission = attr.permission;
                                     byte attrPermBits = attr.permBits;
                                     is_permission_available = false;
@@ -1825,53 +2252,131 @@ public class GattServerAppService extends Service {
                                                 authentication.equalsIgnoreCase("Authorized")) {
                                             is_permission_available = true;
                                         }
+                                        else {
+                                            //not authorized
+                                            security_status_code = 1;
+                                        }
                                     }
                                     //if the client char config descriptor is authenticated
                                     else if((attrPermBits > 0) && ((attrPermBits & 0x10) == 0x10)) {
                                         if(authentication.equalsIgnoreCase("Authenticated")) {
                                             is_permission_available = true;
                                         }
+                                        else {
+                                            //not authenticated
+                                            security_status_code = 2;
+                                        }
                                     }
-                                    else if(attrPermBits == 0 || attrPermBits == 0x04 ||
-                                                authentication.equalsIgnoreCase("None")) {
+                                    else if(attrPermBits == 0 || (((attrPermBits & 0x08) != 0x08) &&
+                                            ((attrPermBits & 0x10) != 0x10))) {
                                         is_permission_available = true;
                                     }
                                     if(is_permission_available) {
-                                        attr.value = value;
-                                        //attr.sessionHandle = sessionHandle;
-                                        uuid = ParcelUuid.fromString(attrTypeStr);
-                                        status = BluetoothGatt.GATT_SUCCESS;
+                                        if(value != null) {
+                                            if(attrTypeStr.
+                                                    equalsIgnoreCase("00002901-0000-1000-8000-00805F9B34FB")) {
+                                                is_attr_writable = checkWritePermission(attr.handle);
+                                                if(is_attr_writable) {
+                                                    attr.value = value;
+                                                    uuid = ParcelUuid.fromString(attrTypeStr);
+                                                    status = BluetoothGatt.GATT_SUCCESS;
+                                                }
+                                            }
+                                            else if(attrTypeStr.
+                                                equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
+                                                    //Check whether the Char properties is notifiable
+                                                if(value != null && value[0] == 0x01) {
+                                                    if((attrCharProperties > 0) && ((attrCharProperties & 0x10) == 0x10)) {
+                                                        attr.value = value;
+                                                        uuid = ParcelUuid.fromString(attrTypeStr);
+                                                        status = BluetoothGatt.GATT_SUCCESS;
+                                                    }
+                                                    else {
+                                                        status = 0x80;
+                                                    }
+                                                }
+                                                //Check whether the Char properties is indicatable
+                                                else if(value != null && value[0] == 0x02) {
+                                                    if((attrCharProperties > 0) && ((attrCharProperties & 0x20) == 0x20)) {
+                                                            attr.value = value;
+                                                        uuid = ParcelUuid.fromString(attrTypeStr);
+                                                        status = BluetoothGatt.GATT_SUCCESS;
+                                                    }
+                                                    else {
+                                                        status = 0x80;
+                                                    }
+                                                }
+                                                else if(value != null && value[0] == 0x00) {
+                                                    attr.value = value;
+                                                    uuid = ParcelUuid.fromString(attrTypeStr);
+                                                    status = BluetoothGatt.GATT_SUCCESS;
+                                                }
+                                                else {
+                                                    status = 0x80;
+                                                }
+                                            }
+                                            else {
+                                                attr.value = value;
+                                                uuid = ParcelUuid.fromString(attrTypeStr);
+                                                status = BluetoothGatt.GATT_SUCCESS;
+                                            }
+                                        }
+                                        else if(value == null) {
+                                            status = 0x80;//Application error
+                                        }
                                     }
                                     else {
-                                        //need to change to not authorized
-                                        status = BluetoothGatt.ATT_ECODE_AUTHORIZATION;
+                                        if(security_status_code == 1) {
+                                            status = BluetoothGatt.ATT_AUTHORIZATION;
+                                        }
+                                        else if(security_status_code == 2) {
+                                            status = BluetoothGatt.ATT_AUTHENTICATION;
+                                        }
                                     }
                                 }
-                                break;
                             }
                             else {
-                                //need to change the error to NOT_AUTHORIZED
-                                status = BluetoothGatt.ATT_ECODE_WRITE_NOT_PERM;
+                                status = BluetoothGatt.ATT_WRITE_NOT_PERM;
                             }
+                            break;
                         }
                     }
                     if(hdlFoundStatus == 1) {
-                        if(is_permission_available && ((attrProperties > 0) && ((attrProperties & 0x04) == 0x04) ||
-                                ((attrProperties & 0x08) == 0x08))) {
-                            Log.d(TAG, "Status success ::");
-                            status = BluetoothGatt.GATT_SUCCESS;
+                        if(is_permission_available && ((attrProperties > 0) && ((attrProperties & 0x04) == 0x04))) {
+                            if(attrTypeStr.
+                                    equalsIgnoreCase("00002901-0000-1000-8000-00805F9B34FB")) {
+                                if(is_attr_writable) {
+                                    Log.d(TAG, "Status success ::");
+                                    status = BluetoothGatt.GATT_SUCCESS;
+                                }
+                            }
+                            else if(attrTypeStr.
+                                    equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
+                                if((value != null) && (value[0] >= 0x00) && (value[0] <= 0x02)
+                                        && (status != BluetoothGatt.ATT_ATTR_NOT_FOUND) && !(status > 0x00)) {
+                                    Log.d(TAG, "Status success ::");
+                                    status = BluetoothGatt.GATT_SUCCESS;
+                                }
+                            }
+                            else if(value != null){
+                                Log.d(TAG, "Status success ::");
+                                status = BluetoothGatt.GATT_SUCCESS;
+                            }
                         }
                     }
                     else if(k == (gattHandleToAttributes.size()-1)) {
                         Log.d(TAG, "Status failure ::");
-                        status = BluetoothGatt.ATT_ECODE_ATTR_NOT_FOUND;
+                        status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
                     }
                     if(is_permission_available && hdlFoundStatus == 1) {
                         //send notification/indication for the particular
                         //client char config handle
-                        if((value != null) && (value.length > 0)) {
-                            if(value[0] > 0x00) {
-                                sendNotificationIndicationHandle(handle);
+                        if(attrTypeStr.
+                                equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
+                            if((value != null) && (value.length > 0)) {
+                                if(value[0] > 0x00) {
+                                    //sendNotificationIndicationHandle(handle);
+                                }
                             }
                         }
                     }
@@ -1879,12 +2384,59 @@ public class GattServerAppService extends Service {
             }
         }
 
+        @Override
         public void onGattSetClientConfigDescriptor(BluetoothGattAppConfiguration config,
-                        int handle, byte[] value, int sessionHandle) {
+                int handle, byte[] value, int sessionHandle) {
+            byte attrProperties = 0;
+            if(gattHandleToAttributes != null) {
+                Attribute attr = gattHandleToAttributes.get(handle);
+                Attribute charValueAttr = gattHandleToAttributes.get(attr.referenceHandle);
+                Attribute charAttr = gattHandleToAttributes.get(charValueAttr.referenceHandle);
+                attrProperties = (byte)charAttr.properties;
+                if(value != null && (value.length > 0)) {
+                        if(attr.attrValue != null && attr.attrValue.containsKey(sessionHandle)) {
+                                byte descValue = attr.attrValue.get(sessionHandle);
+                            //If value is 0, remove the session handle
+                            if(value[0] == 0) {
+                                attr.attrValue.put(sessionHandle, value[0]);
+                                int index = attr.sessionHandle.indexOf(sessionHandle);
+                                attr.sessionHandle.remove(index);
+                            }
+                            //If value is 1 or 2, add the session handle to notify/indicate
+                            else if(value[0] == 0x01) {
+                                if((attrProperties > 0) && ((attrProperties & 0x10) == 0x10)) {
+                                        attr.attrValue.put(sessionHandle, value[0]);
+                                    if(attr.sessionHandle != null &&
+                                            !attr.sessionHandle.contains(sessionHandle)) {
+                                        attr.sessionHandle.add(sessionHandle);
+                                    }
+                                    else if(attr.sessionHandle == null) {
+                                        attr.sessionHandle = new ArrayList<Integer>();
+                                        attr.sessionHandle.add(sessionHandle);
+                                    }
+                                }
+                            }
+                            else if(value[0] == 0x02) {
+                                if((attrProperties > 0) && ((attrProperties & 0x20) == 0x20)) {
+                                        attr.attrValue.put(sessionHandle, value[0]);
+                                    if(attr.sessionHandle != null &&
+                                            !attr.sessionHandle.contains(sessionHandle)) {
+                                        attr.sessionHandle.add(sessionHandle);
+                                    }
+                                    else if(attr.sessionHandle == null) {
+                                        attr.sessionHandle = new ArrayList<Integer>();
+                                        attr.sessionHandle.add(sessionHandle);
+                                    }
+                                }
+                            }
+                        }
+                }
+            }
             //send notification/indication for the particular client char config handle
             if((value != null) && (value.length > 0)) {
-                if(value[0] > 0x00) {
-                    sendNotificationIndicationHandle(handle);
+                if(value[0] > 0x00 && ((attrProperties > 0) && (((attrProperties & 0x20) == 0x20) ||
+                        ((attrProperties & 0x10) == 0x10)))) {
+                    sendNotificationIndicationHandle(handle, sessionHandle);
                 }
             }
         }
@@ -1899,8 +2451,8 @@ public class GattServerAppService extends Service {
         }
 
         try {
-                //mClient.
-                mMessenger.send(Message.obtain(null, what, value, 0));
+            //mClient.
+            mMessenger.send(Message.obtain(null, what, value, 0));
         } catch (RemoteException e) {
             // Unable to reach client.
             e.printStackTrace();
@@ -1962,7 +2514,7 @@ public class GattServerAppService extends Service {
         for (int i = 0; i < len; i += 2) {
             if(((i+1) < len)) {
                 data[cnt++] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
-                                + Character.digit(s.charAt(i+1), 16));
+                        + Character.digit(s.charAt(i+1), 16));
             }
             else if(((i+1) >= len)) {
                 data[cnt++] = (byte) (Character.digit(s.charAt(i), 16));
@@ -1991,15 +2543,14 @@ public class GattServerAppService extends Service {
         int second = cal.get(Calendar.SECOND);
         Date today = new Date();
         String todaystring = today.toString();
-        Log.d(TAG, "Today's date"+todaystring);
-
         int i=0;
         List<Integer> hndlList = null;
         int j=0;
+        boolean is_permitted = false;
         if(gattAttribTypeToHandle != null) {
             for(Map.Entry<String, List<Integer>> entry : gattAttribTypeToHandle.entrySet()) {
                 if("00002902-0000-1000-8000-00805F9B34FB".
-                                equalsIgnoreCase(entry.getKey().toString())) {
+                        equalsIgnoreCase(entry.getKey().toString())) {
                     //List of client characteristic configuration descriptor handles
                     hndlList = entry.getValue();
                 }
@@ -2014,59 +2565,84 @@ public class GattServerAppService extends Service {
                         for(int k=0; k<gattHandleToAttributes.size(); k++) {
                             if(handle == gattHandleToAttributes.get(k).handle) {
                                 Attribute attr = gattHandleToAttributes.get(k);
-                                int sessionHdl = attr.sessionHandle;
-                                if((attr.value != null) && (attr.value.length > 0)) {
-                                    if(attr.value[0] > 0x00) {
-                                        int charValueHdl = attr.referenceHandle;
-                                        Attribute attrCharValue =
+                                ArrayList<Integer> sessionHdlList = attr.sessionHandle;
+                                if(sessionHdlList != null) {
+                                    for(int index=0; index < sessionHdlList.size(); index++) {
+                                        int sessionHdl = sessionHdlList.get(index);
+                                        if(attr.attrValue != null && (attr.attrValue.containsKey(sessionHdl))) {
+                                            byte descValue = attr.attrValue.get(sessionHdl);
+                                            if((descValue > 0x00) && (descValue <= 0x02)) {
+                                                int charValueHdl = attr.referenceHandle;
+                                                Attribute attrCharValue =
                                                         gattHandleToAttributes.get(charValueHdl);
-                                        byte[] charValue = new byte[attrCharValue.value.length + 6];
-                                        for(i=0; i < attrCharValue.value.length; i++) {
-                                            charValue[i] = attrCharValue.value[i];
-                                        }
-                                        charValue[i++]= (byte)day;
-                                        charValue[i++]= (byte)month;
-                                        charValue[i++]= (byte)year1;
-                                        charValue[i++]= (byte)hour;
-                                        charValue[i++]= (byte)minute;
-                                        charValue[i++]= (byte)second;
+                                                byte[] charValue = new byte[attrCharValue.value.length + 6];
+                                                for(i=0; i < attrCharValue.value.length; i++) {
+                                                    charValue[i] = attrCharValue.value[i];
+                                                }
+                                                charValue[i++]= (byte)day;
+                                                charValue[i++]= (byte)month;
+                                                charValue[i++]= year1;
+                                                charValue[i++]= (byte)hour;
+                                                charValue[i++]= (byte)minute;
+                                                charValue[i++]= (byte)second;
 
-                                        boolean notify = false;
-                                        if(attr.value[0] == 0x01) {
-                                            notify = true;
-                                        }
-                                        else if(attr.value[0] == 0x02) {
-                                            notify = false;
-                                        }
-                                        Log.d(TAG, "The client config handle is :"+handle);
-                                        Log.d(TAG, "The characteristic values notified/indicated " +
-                                                        "are as follows:");
+                                                int charHandle = attrCharValue.referenceHandle;
+                                                Attribute attrChar = gattHandleToAttributes.get(charHandle);
+                                                int charProperties = attrChar.properties;
+                                                boolean notify = false;
+                                                if(descValue == 0x01) {
+                                                    Log.d(TAG, "Inside attrvalue = 1::");
+                                                    notify = true;
+                                                    //check for permission from Characteristic properties
+                                                    if(charProperties > 0 && ((charProperties & 0x10) == 0x10)) {
+                                                        is_permitted = true;
+                                                    }
+                                                }
+                                                else if(descValue == 0x02) {
+                                                    Log.d(TAG, "Inside attrvalue = 2::");
+                                                    notify = false;
+                                                    //check for permission from Characteristic properties
+                                                    if(charProperties > 0 && ((charProperties & 0x20) == 0x20)) {
+                                                        is_permitted = true;
+                                                    }
+                                                }
+                                                Log.d(TAG, "The client config handle is :"+handle);
+                                                Log.d(TAG, "The client config descriptor value is :"+descValue);
+                                                Log.d(TAG, "The char value handle is :"+charValueHdl);
+                                                Log.d(TAG, "The sessionhandle  is :"+sessionHdl);
 
-                                        for(int z=0; z<i; z++) {
-                                            Log.d(TAG, ""+charValue[z]);
+                                                if(descValue <= 0x02 && (is_permitted)) {
+                                                    Log.d(TAG, "Today's date"+todaystring);
+                                                    Log.d(TAG, "The characteristic values notified/indicated " +
+                                                            "are as follows:");
+                                                    for(int z=0; z<i; z++) {
+                                                        Log.d(TAG, ""+charValue[z]);
+                                                    }
+                                                    boolean result = gattProfile.sendIndication(
+                                                            serverConfiguration, charValueHdl,
+                                                            charValue, notify, sessionHdl);
+                                                    Log.d(TAG, "SendIndication result::"+result);
+                                                }
+                                            }
                                         }
-
-                                        boolean result = gattProfile.sendIndication(
-                                                        serverConfiguration, charValueHdl,
-                                                charValue, notify, sessionHdl);
-                                        Log.d(TAG, "SendIndication result::"+result);
-                                        break;
                                     }
                                 }
+                                break;
                             }
                         }
                     }
                 }
             }
         }
-        }
+    }
 
     /**
      * Sends notifications and indications for a specific attribute handle
      * to the client
      *
     */
-    void sendNotificationIndicationHandle(int handle) {
+    void sendNotificationIndicationHandle(int handle, int sessionHandle) {
+        //Log.d(TAG, "Inside sendNotificationIndicationHandle::");
         Calendar cal = Calendar.getInstance();
         int day = cal.get(Calendar.DAY_OF_MONTH);
         int month = cal.get(Calendar.MONTH) + 1;
@@ -2080,46 +2656,68 @@ public class GattServerAppService extends Service {
         int i =0;
         Date today = new Date();
         String todaystring = today.toString();
-        Log.d(TAG, "Today's date"+todaystring);
+        boolean is_permitted = false;
 
         if(gattHandleToAttributes != null) {
             //To get the attribute values for the particular handle
             for(int k=0; k<gattHandleToAttributes.size(); k++) {
                 if(handle == gattHandleToAttributes.get(k).handle) {
                     Attribute attr = gattHandleToAttributes.get(k);
-                    int sessionHdl = attr.sessionHandle;
-                    if((attr.value != null) && (attr.value.length > 0)) {
-                        if(attr.value[0] > 0x00) {
-                            int charValueHdl = attr.referenceHandle;
-                            Attribute attrCharValue = gattHandleToAttributes.get(charValueHdl);
-                            byte[] charValue = new byte[attrCharValue.value.length + 6];
-                            for(i=0; i < attrCharValue.value.length; i++) {
-                                charValue[i] = attrCharValue.value[i];
-                            }
-                            charValue[i++]= (byte)day;
-                            charValue[i++]= (byte)month;
-                            charValue[i++]= (byte)year1;
-                            charValue[i++]= (byte)hour;
-                            charValue[i++]= (byte)minute;
-                            charValue[i++]= (byte)second;
-                            boolean notify = false;
-                            if(attr.value[0] == 0x01) {
-                                notify = true;
-                            }
-                            else if(attr.value[0] == 0x02) {
-                                notify = false;
-                            }
-                            Log.d(TAG, "The client config handle is :"+handle);
-                            Log.d(TAG, "The characteristic values notified/indicated " +
-                                        "are as follows:");
+                    int sessionHdl = sessionHandle;
+                    String attrTypeStr = attr.type;
+                    if(attrTypeStr!=null && attrTypeStr.
+                            equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
+                        if(attr.attrValue != null && (attr.attrValue.containsKey(sessionHandle))) {
+                            byte descValue = attr.attrValue.get(sessionHandle);
+                            if((descValue > 0x00) && (descValue <= 0x02)) {
+                                int charValueHdl = attr.referenceHandle;
+                                Attribute attrCharValue = gattHandleToAttributes.get(charValueHdl);
+                                byte[] charValue = new byte[attrCharValue.value.length + 6];
+                                for(i=0; i < attrCharValue.value.length; i++) {
+                                    charValue[i] = attrCharValue.value[i];
+                                }
+                                charValue[i++]= (byte)day;
+                                charValue[i++]= (byte)month;
+                                charValue[i++]= year1;
+                                charValue[i++]= (byte)hour;
+                                charValue[i++]= (byte)minute;
+                                charValue[i++]= (byte)second;
+                                int charHandle = attrCharValue.referenceHandle;
+                                Attribute attrChar =
+                                        gattHandleToAttributes.get(charHandle);
+                                int charProperties = attrChar.properties;
 
-                            for(int z=0; z<i; z++) {
-                                Log.d(TAG, ""+charValue[z]);
+                                boolean notify = false;
+                                if(descValue == 0x01) {
+                                    notify = true;
+                                    //check for permission from Characteristic properties
+                                    if(charProperties > 0 && ((charProperties & 0x10) == 0x10)) {
+                                        is_permitted = true;
+                                    }
+                                }
+                                else if(descValue == 0x02) {
+                                    notify = false;
+                                    //check for permission from Characteristic properties
+                                    if(charProperties > 0 && ((charProperties & 0x20) == 0x20)) {
+                                        is_permitted = true;
+                                    }
+                                }
+                                Log.d(TAG, "The client config handle is :"+handle);
+                                Log.d(TAG, "The client config descriptor value is :"+descValue);
+
+                                if(descValue <= 0x02 && (is_permitted)) {
+                                    Log.d(TAG, "Today's date"+todaystring);
+                                    Log.d(TAG, "The characteristic values notified/indicated " +
+                                            "are as follows:");
+                                    for(int z=0; z<i; z++) {
+                                        Log.d(TAG, ""+charValue[z]);
+                                    }
+                                    boolean result = gattProfile.sendIndication(serverConfiguration,
+                                            charValueHdl, charValue, notify, sessionHdl);
+                                    Log.d(TAG, "SendIndication result::"+result);
+                                }
+                                break;
                             }
-                            boolean result = gattProfile.sendIndication(serverConfiguration,
-                                        charValueHdl, charValue, notify, sessionHdl);
-                            Log.d(TAG, "SendIndication result::"+result);
-                            break;
                         }
                     }
                 }
@@ -2135,12 +2733,12 @@ public class GattServerAppService extends Service {
         //logic for updating the Hashmap and  Arraylist from characteristic_values file
         Log.d(TAG, "Reading Characteristic value file from phone in readbyTypeRequest::");
         String FILENAME = "characteristic_values";
-        byte[] buffer = new byte[255];
+        byte[] buffer = new byte[2000];
         Context context = getApplicationContext();
         try {
             Log.d(TAG,"File path::"+context.getFilesDir().getAbsolutePath());
             FileInputStream fis = new FileInputStream(context.getFilesDir().getAbsolutePath()
-                        + "/" + FILENAME);
+                    + "/" + FILENAME);
 
             int bytesRead = fis.read(buffer);
             Log.d(TAG,"Data read from file");
@@ -2173,4 +2771,58 @@ public class GattServerAppService extends Service {
             e.printStackTrace();
         }
     }
-}
+    /**
+     * Checks the write permission of "Characteristic User
+     * Description" descriptor by checking the value of
+     * "Characteristic Extended Properties" descriptor value
+     *
+    */
+    boolean checkWritePermission(int descHandle) {
+        boolean is_writable = false;
+        int charValueHandle = -1;
+        int charHandle = -1;
+        int startHdl = -1;
+        int endHdl = -1;
+        byte[] attrValue = null;
+
+        if(gattHandleToAttributes != null) {
+            charValueHandle = gattHandleToAttributes.get(descHandle).referenceHandle;
+            charHandle = gattHandleToAttributes.get(charValueHandle).referenceHandle;
+            startHdl = gattHandleToAttributes.get(charHandle).startHandle;
+            endHdl = gattHandleToAttributes.get(charHandle).endHandle;
+            for(int k=0; k<gattHandleToAttributes.size(); k++) {
+                int handle = gattHandleToAttributes.get(k).handle;
+                if(handle >= startHdl && handle <= endHdl) {
+                    if(gattHandleToAttributes.get(k).
+                            type.equalsIgnoreCase("00002900-0000-1000-8000-00805F9B34FB")) {
+                        Attribute attr = gattHandleToAttributes.get(k);
+                        attrValue = attr.value;
+                        if(attrValue != null && (attrValue.length > 0)) {
+                            if((attrValue[0] & 0x02) == 0x02) {
+                                is_writable = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return is_writable;
+    }
+    /**
+     * Sends periodic Notifications/Indications
+     * to the remote client devices
+    */
+    void sendPeriodicNotificationsIndications() {
+        int delay = 1000; // delay for 1 sec.
+        int period = 10000; // repeat every 10 sec.
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask()
+        {
+            @Override
+            public void run()
+            {
+                sendNotificationIndication();
+            }
+        }, delay, period);
+    }
+ }

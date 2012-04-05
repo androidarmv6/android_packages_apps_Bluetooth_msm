@@ -28,6 +28,9 @@
 */
 package com.android.bluetooth.test;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+
 public class Attribute {
     public static final int VALUE_SIZE = 128;
     public int handle = -1;
@@ -46,5 +49,6 @@ public class Attribute {
     public byte [] value = null;
     public int min_range = 0;
     public int max_range = 0;
-    int sessionHandle = -1;
+    ArrayList<Integer> sessionHandle;
+    HashMap<Integer, Byte> attrValue;
 }
