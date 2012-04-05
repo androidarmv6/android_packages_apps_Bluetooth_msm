@@ -49,6 +49,8 @@ public class LEProximityReceiver extends BroadcastReceiver {
 
     private static Handler handler = null;
 
+    private static boolean sendDisconnectMsg = true;
+
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = (intent == null) ? null : intent.getAction();
@@ -97,18 +99,21 @@ public class LEProximityReceiver extends BroadcastReceiver {
             }
         } else if (action.equals(BluetoothDevice.ACTION_ACL_DISCONNECTED)) {
             Log.d(TAG, "Received ACTION_ACL_DISCONNECTED intent");
-            BluetoothDevice remoteDevice = intent
-                                           .getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+            if(sendDisconnectMsg) {
+                BluetoothDevice remoteDevice = intent
+                                               .getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
-            String disconnDevAddr = remoteDevice.getAddress();
-            Log.d(TAG, "Received ACTION_ACL_DISCONNECTED, bt device: "
-                  + disconnDevAddr);
+                String disconnDevAddr = remoteDevice.getAddress();
+                Log.d(TAG, "Received ACTION_ACL_DISCONNECTED, bt device: "
+                      + disconnDevAddr);
 
-            sendConnectionStatusMsg(disconnDevAddr,
-                                    LEProximityServices.GATT_SERVICE_DISCONNECTED);
+                sendConnectionStatusMsg(disconnDevAddr,
+                                        LEProximityServices.GATT_SERVICE_DISCONNECTED);
+            }
 
         } else if (action.equals(BluetoothDevice.ACTION_ACL_CONNECTED)) {
             Log.d(TAG, "Received ACTION_ACL_CONNECTED intent");
+            sendDisconnectMsg = true;
             BluetoothDevice remoteDevice = intent
                                            .getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
@@ -161,5 +166,10 @@ public class LEProximityReceiver extends BroadcastReceiver {
     public static void registerHandler(Handler handle) {
         Log.d(TAG, " Registered Proximity Service Handler ::");
         handler = handle;
+    }
+
+    public static void setSendDisconnect(boolean sendDisconnect) {
+        Log.d(TAG, " setting sendDisconnect ::");
+        sendDisconnectMsg = sendDisconnect;
     }
 }

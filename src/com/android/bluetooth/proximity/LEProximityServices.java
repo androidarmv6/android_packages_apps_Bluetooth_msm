@@ -411,6 +411,7 @@ public class LEProximityServices extends Service {
                     gattService.close();
                     Log.d(TAG, "removing Gatt service for UUID : " + srvUuid);
                     mDevice.uuidGattSrvMap.remove(srvUuid);
+                    LEProximityReceiver.setSendDisconnect(false);
                     return true;
                 } catch (Exception e) {
                     Log.e(TAG,
