@@ -464,7 +464,7 @@ public class BluetoothFtpService extends Service {
             try {
                 // It is mandatory for PSE to support initiation of bonding and
                 // encryption.
-                mL2capServerSocket = mAdapter.listenUsingInsecureEl2capOn(DEFAULT_FTP_PSM);
+                mL2capServerSocket = mAdapter.listenUsingEl2capOn(DEFAULT_FTP_PSM);
                 initSocketOK = true;
             } catch (IOException e) {
                 Log.e(TAG, "Error create L2capServerSocket " + e.toString());
