@@ -430,7 +430,7 @@ public class BluetoothBppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                     BluetoothOppShareInfo info = (BluetoothOppShareInfo)msg.obj;
                     if (V) Log.v(TAG, "receive MSG_SHARE_COMPLETE for info " + info.mId);
                     if (mStatusFinal == 0) {
-                        mStatusFinal = info.mStatus;
+                        mStatusFinal = msg.arg1;
                     }
                     if (mBatch.mDirection == BluetoothShare.DIRECTION_OUTBOUND) {
                         BluetoothOppShareInfo newShare = mBatch.getPendingShare();
