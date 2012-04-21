@@ -32,6 +32,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.UUID;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
@@ -71,6 +73,36 @@ public class LEProximityServices extends Service {
 
     private static final int SIZE_TWO = 2;
 
+    private static final byte PROHIBIT_REMOTE_CHG = 0;
+
+    private static final byte FILTER_POLICY = 0;
+
+    private static final int AGRESSIVE_SCAN_INTERVAL = 96;
+
+    private static final int SCAN_INTERVAL = 4096;
+
+    private static final int AGRESSIVE_SCAN_WINDOW = 48;
+
+    private static final int SCAN_WINDOW = 18;
+
+    private static final int CONNECTION_INTERVAL_MIN = 8;
+
+    private static final int CONNECTION_INTERVAL_MAX = 256;
+
+    private static final int SUPERVISION_TIMEOUT = 192;
+
+    private static final int MIN_CE_LEN = 1;
+
+    private static final int MAX_CE_LEN = 1;
+
+    private static final int CONNECTION_ATTEMPT_TIMEOUT = 30;
+
+    private static final int CONNECTION_ATTEMPT_INFINITE_TIMEOUT = 0;
+
+    private static final int RECONNECTION_TASK_TIMEOUT = 31000;
+
+    private static final int LATENCY = 0;
+
     private static final String TAG = "LEProximityServices";
 
     private int mStartId = -1;
@@ -82,6 +114,8 @@ public class LEProximityServices extends Service {
     private boolean mHasStarted = false;
 
     public static ParcelUuid GATTServiceUUID = null;
+
+    private Timer timer = null;
 
     public static final String USER_DEFINED = "UserDefined";
 
@@ -242,13 +276,13 @@ public class LEProximityServices extends Service {
                                         PROXIMITY_SERVICE_OP_DEV_DISCONNECTED, true, values);
 
                     /* Attempt to connect back to the service */
-                    readUpdatedCharValue(
-                                        convertStrToParcelUUID(ALERT_LEVEL_UUID),
-                                        convertStrToParcelUUID(LINK_LOSS_SERVICE_UUID));
+                    Log.d(TAG, "Attempting to reconnect back");
+                    gattReconnect(convertStrToParcelUUID(LINK_LOSS_SERVICE_UUID));
                 }
                 break;
             case GATT_SERVICE_CONNECTED:
                 Log.d(TAG, "Received GATT_SERVICE_CONNECTED message");
+                cleanUpTimer();
                 String connAddr = msg.getData().getString(
                                                          ACTION_GATT_SERVICE_EXTRA_DEVICE);
 
@@ -269,7 +303,7 @@ public class LEProximityServices extends Service {
                 break;
             case REMOTE_DEVICE_RSSI_UPDATE:
                 Log.d(TAG, "Received REMOTE_DEVICE_RSSI_UPDATE message");
-                ArrayList<String> rssiDataList = msg.getData()
+                                    ArrayList<String> rssiDataList = msg.getData()
                                                  .getStringArrayList(ACTION_RSSI_UPDATE_EXTRA_OBJ);
                 int len = rssiDataList.size();
                 Log.d(TAG, "RSSI data list len : " + len);
@@ -380,6 +414,12 @@ public class LEProximityServices extends Service {
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy proximity service");
+
+        cleanUpTimer();
+        //cancel gatt reconnect request if pending.
+        boolean res = gattReconnectCancel();
+        Log.d(TAG, "Gatt reconnect cancel : " + res);
+
         closeAllProximityServices();
         Log.d(TAG, "Unregistering the receiver");
         if (this.receiver != null) {
@@ -660,7 +700,12 @@ public class LEProximityServices extends Service {
                                                                       writeCharUUID)) {
             Log.d(TAG, "writing the alert level Charactersitics for service : "
                   + srvUuid);
-            result = writeAlertLevel(uuid, srvUuid, value);
+            ParcelUuid linkLossUuid = convertStrToParcelUUID(LINK_LOSS_SERVICE_UUID);
+            if(linkLossUuid.toString().equals(srvUuid.toString()))
+               result = writeAlertLevel(uuid, srvUuid, value, true);
+            else
+                result = writeAlertLevel(uuid, srvUuid, value, false);
+
             if (result
                 && (srvUuid.toString().
                     equals(convertStrToParcelUUID(LINK_LOSS_SERVICE_UUID).toString()))) {
@@ -803,6 +848,57 @@ public class LEProximityServices extends Service {
                       mDevice.isConnectionParamSet);
         }
     }
+    private boolean gattReconnect(ParcelUuid srvUuid) {
+        boolean result;
+        //fast connection
+        result = gattConnect(srvUuid, PROHIBIT_REMOTE_CHG, FILTER_POLICY, AGRESSIVE_SCAN_INTERVAL,
+                             AGRESSIVE_SCAN_WINDOW, CONNECTION_INTERVAL_MIN,
+                             CONNECTION_INTERVAL_MAX, LATENCY, SUPERVISION_TIMEOUT, MIN_CE_LEN,
+                             MAX_CE_LEN, CONNECTION_ATTEMPT_TIMEOUT);
+        if(result) {
+            Log.d(TAG, "Scheduling timer for 30 seconds");
+            cleanUpTimer();
+            timer = new Timer();
+            timer.schedule(new reconnectTask(), RECONNECTION_TASK_TIMEOUT);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean gattConnect(ParcelUuid srvUuid, byte prohibitRemoteChg, byte filterPolicy,
+                                int scanInterval, int scanWindow, int intervalMin, int intervalMax,
+                                int latency, int superVisionTimeout, int minCeLen, int maxCeLen,
+                                int connTimeout) {
+        BluetoothGattService gattService = mDevice.uuidGattSrvMap.get(srvUuid);
+        if (gattService != null) {
+            //Fast Connection parameters for first 30 seconds.
+            return gattService.gattConnect(prohibitRemoteChg, filterPolicy, scanInterval,
+                                           scanWindow, intervalMin, intervalMax,
+                                           latency, superVisionTimeout, minCeLen, maxCeLen,
+                                           connTimeout);
+        }
+        Log.d(TAG, "Gatt service is null.. cannot connect to gatt service");
+        return false;
+    }
+
+    private boolean gattReconnectCancel() {
+        ParcelUuid srvUuid = convertStrToParcelUUID(LINK_LOSS_SERVICE_UUID);
+        BluetoothGattService gattService = mDevice.uuidGattSrvMap.get(srvUuid);
+        if(gattService != null) {
+            return gattService.gattConnectCancel();
+        }
+        Log.d(TAG, "Gatt service does not exist");
+        return false;
+    }
+
+    private void cleanUpTimer() {
+        if(timer != null) {
+            Log.d(TAG,"Cancel the timer");
+            timer.cancel();
+            timer.purge();
+            timer = null;
+        }
+    }
 
     private void getTXPowerLevelVal(ParcelUuid srvUUID) {
         ParcelUuid txCharUuid = convertStrToParcelUUID(TX_POWER_LEVEL_UUID);
@@ -815,7 +911,8 @@ public class LEProximityServices extends Service {
     }
 
     private boolean writeCharacteristic(ParcelUuid charUUID,
-                                        ParcelUuid srvUUID, byte[] data) {
+                                        ParcelUuid srvUUID, byte[] data,
+                                        boolean writeWithResponse) {
         String objPath = mDevice.uuidObjPathMap.get(srvUUID + ":" + charUUID);
         BluetoothGattService gattService = mDevice.uuidGattSrvMap.get(srvUUID);
         Boolean result;
@@ -827,12 +924,12 @@ public class LEProximityServices extends Service {
         }
 
         Log.d(TAG, "Writing characterisitcs with uuid : " + charUUID
-              + " and objPath : " + objPath);
+              + " and objPath : " + objPath + "write response : " + writeWithResponse);
         for (int i = 0; i < data.length; i++) {
             Log.d(TAG, "data : " + Integer.toHexString(0xFF & data[i]));
         }
         try {
-            result = gattService.writeCharacteristicRaw(objPath, data, false);
+            result = gattService.writeCharacteristicRaw(objPath, data, writeWithResponse);
             Log.d(TAG, "gattService.writeCharacteristicRaw : " + result);
         } catch (Exception e) {
             result = false;
@@ -863,7 +960,7 @@ public class LEProximityServices extends Service {
     }
 
     private boolean writeAlertLevel(ParcelUuid uuid, ParcelUuid srvUuid,
-                                    String value) {
+                                    String value, boolean writeWithResp) {
         boolean result;
         int intVal;
         try {
@@ -878,7 +975,7 @@ public class LEProximityServices extends Service {
         }
         byte[] valBytes = new byte[1];
         valBytes[0] = (byte) intVal;
-        result = writeCharacteristic(uuid, srvUuid, valBytes);
+        result = writeCharacteristic(uuid, srvUuid, valBytes, writeWithResp);
         return result;
     }
 
@@ -973,4 +1070,16 @@ public class LEProximityServices extends Service {
         }
     }
 
+    class reconnectTask extends TimerTask {
+        @Override
+        public void run() {
+            Log.d(TAG, "Inside reconnect task");
+            ParcelUuid srvUuid = convertStrToParcelUUID(LINK_LOSS_SERVICE_UUID);
+            //try to reconnect after 30 sec with less agressive value and infinite timeout.
+            gattConnect(srvUuid, PROHIBIT_REMOTE_CHG, FILTER_POLICY, SCAN_INTERVAL, SCAN_WINDOW,
+                        CONNECTION_INTERVAL_MIN, CONNECTION_INTERVAL_MAX, LATENCY,
+                        SUPERVISION_TIMEOUT, MIN_CE_LEN, MAX_CE_LEN,
+                        CONNECTION_ATTEMPT_INFINITE_TIMEOUT);
+        }
+    };
 }
