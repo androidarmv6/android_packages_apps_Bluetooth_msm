@@ -213,13 +213,17 @@ public class LEProximityServices extends Service {
                 Log.d(TAG, "GATT Service uuidStr : " + uuidStr);
                 ParcelUuid selectedUUID = ParcelUuid.fromString(uuidStr);
                 Log.d(TAG, "ParcelUUID rep of selectedUUID : " + selectedUUID);
-                mDevice.uuidObjPathMap.put(uuidStr + ":" + uuidStr,
-                                           selectedServiceObjPath);
-                mDevice.objPathUuidMap.put(selectedServiceObjPath, uuidStr
-                                           + ":" + uuidStr);
 
-                Log.d(TAG, "getBluetoothGattService");
-                getBluetoothGattService(selectedServiceObjPath, selectedUUID);
+                if(isProximityProfileService(selectedUUID)) {
+                    Log.d(TAG, "Proceed to creating proximity profile gatt service");
+                    mDevice.uuidObjPathMap.put(uuidStr + ":" + uuidStr,
+                                               selectedServiceObjPath);
+                    mDevice.objPathUuidMap.put(selectedServiceObjPath, uuidStr
+                                               + ":" + uuidStr);
+                    Log.d(TAG, "getBluetoothGattService");
+                    getBluetoothGattService(selectedServiceObjPath, selectedUUID);
+                }
+
                 break;
             case GATT_SERVICE_DISCONNECTED:
                 Log.d(TAG, "Received GATT_SERVICE_DISCONNECTED message");
@@ -672,6 +676,18 @@ public class LEProximityServices extends Service {
         }
         return result;
 
+    }
+
+    private boolean isProximityProfileService(ParcelUuid uuid) {
+        if(convertStrToParcelUUID(LINK_LOSS_SERVICE_UUID).toString().
+           equals(uuid.toString()) ||
+           convertStrToParcelUUID(IMMEDIATE_ALERT_SERVICE_UUID).toString().
+           equals(uuid.toString()) ||
+           convertStrToParcelUUID(TX_POWER_SERVICE_UUID).toString().
+           equals(uuid.toString())) {
+            return true;
+        }
+        return false;
     }
 
     private boolean getGattServices(ParcelUuid uuid, BluetoothDevice btDevice) {

@@ -211,9 +211,13 @@ public class BluetoothThermometerServices extends Service {
                       + uuidStr);
                 ParcelUuid selectedUUID = ParcelUuid.fromString(uuidStr);
                 Log.d(TAG, "ParcelUUID rep of selectedUUID : " + selectedUUID);
-                mDevice.uuidObjPathMap.put(selectedUUID, selectedServiceObjPath);
-                mDevice.objPathUuidMap.put(selectedServiceObjPath, selectedUUID);
-                getBluetoothGattService(selectedServiceObjPath, selectedUUID);
+
+                if(isThermometerProfileService(selectedUUID)) {
+                    Log.d(TAG, "Proceed to creating thermometer profile gatt service");
+                    mDevice.uuidObjPathMap.put(selectedUUID, selectedServiceObjPath);
+                    mDevice.objPathUuidMap.put(selectedServiceObjPath, selectedUUID);
+                    getBluetoothGattService(selectedServiceObjPath, selectedUUID);
+                }
                 break;
             default:
                 break;
@@ -731,6 +735,16 @@ public class BluetoothThermometerServices extends Service {
             return closeService(srvUuid);
         }
     };
+
+    private boolean isThermometerProfileService(ParcelUuid uuid) {
+        if(convertStrToParcelUUID(HEALTH_THERMOMETER_SERVICE_UUID).toString().
+           equals(uuid.toString()) ||
+           convertStrToParcelUUID(DEVICE_INFORMATION_SERVICE_UUID).toString().
+           equals(uuid.toString())) {
+            return true;
+        }
+        return false;
+    }
 
     private boolean getGattServices(ParcelUuid uuid, BluetoothDevice btDevice) {
         mDevice.BDevice = btDevice;
