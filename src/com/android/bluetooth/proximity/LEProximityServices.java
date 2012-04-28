@@ -676,6 +676,8 @@ public class LEProximityServices extends Service {
 
     private boolean getGattServices(ParcelUuid uuid, BluetoothDevice btDevice) {
         mDevice.BDevice = btDevice;
+        Log.d(TAG, "Setting Preferred Connection Parameters");
+        setPreferredConnParameters();
         Log.d(TAG, "GATT Extra Bt Device : " + mDevice.BDevice);
         Log.d(TAG, "GATT UUID : " + uuid);
         Log.d(TAG, "Calling  btDevice.getGattServices");
@@ -751,6 +753,9 @@ public class LEProximityServices extends Service {
                       "Created map with size : "
                       + mDevice.uuidObjPathMap.size());
 
+                Log.d(TAG, "update LE Connection Parameters");
+                updateConnectionParameters();
+
                 getTXPowerLevelVal(srvUUID);
 
                 bundleAndSendResult(srvUUID,
@@ -763,6 +768,24 @@ public class LEProximityServices extends Service {
             Log.e(TAG, "Gatt service is null for UUID :" + srvUUID);
         }
 
+    }
+
+    private void updateConnectionParameters() {
+        if(!mDevice.isConnectionParamUpdated) {
+            mDevice.isConnectionParamUpdated = mDevice.BDevice.
+                        updateLEConnectionParams((byte)0, 8, 256, 0, 192);
+            Log.d(TAG, "update LE connection parameters result : " +
+                          mDevice.isConnectionParamUpdated);
+        }
+    }
+
+    private void setPreferredConnParameters() {
+        if(!mDevice.isConnectionParamSet) {
+            mDevice.isConnectionParamSet = mDevice.BDevice.
+                    setLEConnectionParams((byte)0, (byte)0, 4, 4, 8, 256, 0, 192, 1, 1);
+            Log.d(TAG, "Set preferred LE connection parameters result : " +
+                      mDevice.isConnectionParamSet);
+        }
     }
 
     private void getTXPowerLevelVal(ParcelUuid srvUUID) {
