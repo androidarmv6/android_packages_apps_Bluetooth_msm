@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2008-2009, Motorola, Inc.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * All rights reserved.
  *
@@ -43,6 +44,8 @@ import android.provider.ContactsContract.Contacts;
 import android.provider.ContactsContract.Data;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.provider.ContactsContract.PhoneLookup;
+import android.provider.ContactsContract.Profile;
+
 import android.telephony.PhoneNumberUtils;
 import android.text.TextUtils;
 import android.util.Log;
@@ -53,10 +56,12 @@ import com.android.vcard.VCardComposer;
 import com.android.vcard.VCardConfig;
 import com.android.internal.telephony.CallerInfo;
 import com.android.vcard.VCardPhoneNumberTranslationCallback;
+import android.content.res.AssetFileDescriptor;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.io.FileInputStream;
 
 import javax.obex.ServerOperation;
 import javax.obex.Operation;
@@ -96,11 +101,20 @@ public class BluetoothPbapVcardManager {
             Contacts.DISPLAY_NAME, // 1
     };
 
+    static final String[] PROFILE_PROJECTION = new String[] {
+            Contacts._ID, // 0
+            Contacts.LOOKUP_KEY, // 1
+    };
+
     static final int CONTACTS_ID_COLUMN_INDEX = 0;
 
     static final int CONTACTS_NAME_COLUMN_INDEX = 1;
 
     private static final int CONTACTS_DISPLAY_NAME_COLUMN_INDEX = 4;
+
+    static final int PROFILE_ID_COLUMN_INDEX = 0;
+
+    static final int PROFILE_LOOKUP_KEY_COLUMN_INDEX = 1;
 
     // call histories use dynamic handles, and handles should order by date; the
     // most recently one should be the first handle. In table "calls", _id and
@@ -116,12 +130,59 @@ public class BluetoothPbapVcardManager {
     }
 
     public final String getOwnerPhoneNumberVcard(final boolean vcardType21) {
-        BluetoothPbapCallLogComposer composer = new BluetoothPbapCallLogComposer(mContext);
-        String name = BluetoothPbapService.getLocalPhoneName();
-        String number = BluetoothPbapService.getLocalPhoneNum();
-        String vcard = composer.composeVCardForPhoneOwnNumber(Phone.TYPE_MOBILE, name, number,
+        final Uri myProfileUri = Profile.CONTENT_URI;
+        Cursor profileContactCursor = null;
+        String vCard = null;
+        FileInputStream fIstream = null;
+        AssetFileDescriptor assetFd = null;
+        try {
+            profileContactCursor = mContext.getContentResolver().query(myProfileUri,
+            PROFILE_PROJECTION, null, null, null);
+            if ((profileContactCursor != null) && profileContactCursor.moveToFirst()){
+                Log.v(TAG," getOwnerPhoneNumberVcard: Fetching MyProfile Contact details  ");
+                final long myContactID = profileContactCursor.getLong(PROFILE_ID_COLUMN_INDEX);
+                final String lookupKey = profileContactCursor.getString(PROFILE_LOOKUP_KEY_COLUMN_INDEX);
+                profileContactCursor.close();
+                profileContactCursor = null;
+                Uri shareUri = Uri.withAppendedPath(Contacts.CONTENT_VCARD_URI, lookupKey);
+                Log.v(TAG," shareUri:  " + shareUri);
+                assetFd = mContext.getContentResolver().openAssetFileDescriptor(shareUri, "r");
+                fIstream = assetFd.createInputStream();
+                byte[] buf = new byte[(int) assetFd.getDeclaredLength()];
+                fIstream.read(buf);
+                vCard = new String(buf);
+                Log.v(TAG," MyProfile Contact details: myVcard: " + vCard);
+            }
+            else
+            {
+                BluetoothPbapCallLogComposer composer = new BluetoothPbapCallLogComposer(mContext);
+                String name = BluetoothPbapService.getLocalPhoneName();
+                String number = BluetoothPbapService.getLocalPhoneNum();
+                vCard = composer.composeVCardForPhoneOwnNumber(Phone.TYPE_MOBILE, name, number,
                 vcardType21);
-        return vcard;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (profileContactCursor != null) {
+                profileContactCursor.close();
+            }
+            if (fIstream != null) {
+                try {
+                    fIstream.close();
+                } catch (IOException e1) {
+                    if (V) Log.v(TAG, "inputStream.close IOException : " + e1);
+                }
+            }
+            if (assetFd != null) {
+                try {
+                    assetFd.close();
+                } catch (IOException e2) {
+                    if (V) Log.v(TAG, "fileDescriptor.close IOException : " + e2);
+                }
+            }
+        }
+        return vCard;
     }
 
     public final int getPhonebookSize(final int type) {
@@ -233,12 +294,24 @@ public class BluetoothPbapVcardManager {
     }
     public final ArrayList<String> getSIMPhonebookNameList(final int orderByWhat) {
         ArrayList<String> nameList = new ArrayList<String>();
-        nameList.add(BluetoothPbapService.getLocalPhoneName());
-        //Since owner card should always be 0.vcf, maintaing a separate list to avoid sorting
         ArrayList<String> allnames = new ArrayList<String>();
         final Uri myUri = Uri.parse(SIM_URI);
         Cursor contactCursor = null;
+        final Uri myProfileUri = Profile.CONTENT_URI;
+        Cursor profileContactCursor = null;
         try {
+            profileContactCursor = mContext.getContentResolver().query(myProfileUri,
+            CONTACTS_PROJECTION, null, null, null);
+            if ((profileContactCursor != null) && profileContactCursor.moveToFirst()){
+                Log.v(TAG," Fetching MyProfile Contact details");
+                String name = profileContactCursor.getString(CONTACTS_NAME_COLUMN_INDEX);
+                profileContactCursor.close();
+                profileContactCursor = null;
+                nameList.add(name);
+            }
+            else{
+                nameList.add(BluetoothPbapService.getLocalPhoneName());
+            }
             contactCursor = mResolver.query(myUri, SIM_PROJECTION, null,null,null);
             if (contactCursor != null) {
                 for (contactCursor.moveToFirst(); !contactCursor.isAfterLast(); contactCursor
@@ -253,6 +326,9 @@ public class BluetoothPbapVcardManager {
         } finally {
             if (contactCursor != null) {
                 contactCursor.close();
+            }
+            if (profileContactCursor != null) {
+                profileContactCursor.close();
             }
         }
         if (orderByWhat == BluetoothPbapObexServer.ORDER_BY_INDEXED) {
@@ -275,11 +351,23 @@ public class BluetoothPbapVcardManager {
 
     public final ArrayList<String> getPhonebookNameList(final int orderByWhat) {
         ArrayList<String> nameList = new ArrayList<String>();
-        nameList.add(BluetoothPbapService.getLocalPhoneName());
-
         final Uri myUri = Contacts.CONTENT_URI;
+        final Uri myProfileUri = Profile.CONTENT_URI;
         Cursor contactCursor = null;
+        Cursor profileContactCursor = null;
         try {
+            profileContactCursor = mContext.getContentResolver().query(myProfileUri,
+            CONTACTS_PROJECTION, null, null, null);
+            if ((profileContactCursor != null) && profileContactCursor.moveToFirst()) {
+                Log.v(TAG," Fetching MyProfile Contact details");
+                String name = profileContactCursor.getString(CONTACTS_NAME_COLUMN_INDEX);
+                profileContactCursor.close();
+                profileContactCursor = null;
+                nameList.add(name);
+            }
+            else{
+                nameList.add(BluetoothPbapService.getLocalPhoneName());
+            }
             if (orderByWhat == BluetoothPbapObexServer.ORDER_BY_INDEXED) {
                 if (V) Log.v(TAG, "getPhonebookNameList, order by index");
                 contactCursor = mResolver.query(myUri, CONTACTS_PROJECTION, CLAUSE_ONLY_VISIBLE,
@@ -302,6 +390,9 @@ public class BluetoothPbapVcardManager {
         } finally {
             if (contactCursor != null) {
                 contactCursor.close();
+            }
+            if (profileContactCursor != null) {
+                profileContactCursor.close();
             }
         }
         return nameList;
