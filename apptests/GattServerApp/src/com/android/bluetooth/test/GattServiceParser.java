@@ -156,14 +156,14 @@ public class GattServiceParser {
                 //Check if the start handle and end handle of the included service is present
                 //already in the includedServiceMap data structure
                 if(GattServerAppService.includedServiceMap.containsKey(inclSrvAttribute.uuid)) {
-                        if(inclSrvAttribute.startHandle == -1 || inclSrvAttribute.endHandle == -1) {
-                            Attribute inclAttr = GattServerAppService.includedServiceMap.
-                                        get(inclSrvAttribute.uuid);
-                            if(inclAttr.startHandle > -1 || inclAttr.endHandle > -1) {
-                                    inclSrvAttribute.startHandle = inclAttr.startHandle;
-                                    inclSrvAttribute.endHandle = inclAttr.endHandle;
-                            }
+                    if(inclSrvAttribute.startHandle == -1 || inclSrvAttribute.endHandle == -1) {
+                        Attribute inclAttr = GattServerAppService.includedServiceMap.
+                                    get(inclSrvAttribute.uuid);
+                        if(inclAttr.startHandle > -1 || inclAttr.endHandle > -1) {
+                                inclSrvAttribute.startHandle = inclAttr.startHandle;
+                                inclSrvAttribute.endHandle = inclAttr.endHandle;
                         }
+                    }
                 }
                 GattServerAppService.includedServiceMap.put(inclSrvAttribute.uuid, inclSrvAttribute);
                 GattServerAppService.gattHandleToAttributes.add(inclSrvAttribute);
@@ -365,8 +365,15 @@ public class GattServiceParser {
             new EndTextElementListener() {
                 public void end(String body) {
                     Log.d(TAG, "Descriptor value : " + body);
-                    GattServerAppService.gattHandleToAttributes.get(charDescHandle).value =
-                            GattServerAppService.stringToByteArray(body);
+                    String descName = GattServerAppService.gattHandleToAttributes.get(charDescHandle).name;
+                    if(descName != null && descName.equalsIgnoreCase("Characteristic User Description")) {
+                        GattServerAppService.gattHandleToAttributes.get(charDescHandle).value =
+                                body.getBytes();
+                    }
+                    else {
+                        GattServerAppService.gattHandleToAttributes.get(charDescHandle).value =
+                                GattServerAppService.stringToByteArray(body);
+                    }
                 }
             });
         Element descProperty = descriptor.getChild(PROPERTIES);
