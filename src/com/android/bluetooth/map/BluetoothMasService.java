@@ -345,11 +345,22 @@ public class BluetoothMasService extends Service {
     }
 
     private final void closeService() {
-        mConnectionManager.closeAll();
-
-        mHasStarted = false;
-        if (stopSelfResult(mStartId)) {
-            if (VERBOSE) Log.v(TAG, "successfully stopped map service");
+        if (VERBOSE) Log.v(TAG, "MNS_BT: inside closeService");
+        try {
+            if(mnsClient!=null) {
+                if (VERBOSE) Log.v(TAG, "MNS_BT: about to send MNS_BLUETOOTH_OFF");
+                mnsClient.getHandler().sendEmptyMessage(BluetoothMns.MNS_BLUETOOTH_OFF);
+                mnsClient = null;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "MNS_BT: exception while sending MNS_BLUETOOTH_OFF");
+        } finally {
+            if (VERBOSE) Log.v(TAG, "MNS_BT: successfully sent MNS_BLUETOOTH_OFF");
+            mConnectionManager.closeAll();
+            mHasStarted = false;
+            if (stopSelfResult(mStartId)) {
+                if (VERBOSE) Log.v(TAG, "successfully stopped map service");
+            }
         }
     }
 
