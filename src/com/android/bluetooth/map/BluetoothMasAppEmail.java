@@ -145,22 +145,39 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
         if (V) Log.v(TAG, "getCompleteFolderList");
         long id = EmailUtils.getAccountId(mMasId);
         List<String> list = EmailUtils.getEmailFolderList(mContext, id);
+        ArrayList<String> finalList = new ArrayList<String>();
         String name;
+        int type;
+        int curType;
         for (int i = 0; i < SPECIAL_MAILBOX_TYPES.length; i ++) {
-            name = mSpecialMailboxName.get(TYPE_INBOX);
-            if (name != null && name.length() > 0) {
-                for (String str : list) {
-                    if (name.equalsIgnoreCase(str)) {
-                        list.remove(str);
-                        break;
-                    }
+            curType = SPECIAL_MAILBOX_TYPES[i];
+            if (V) Log.v(TAG, " getCompleteFolderList: Current Type: " + curType);
+            for (String str : list) {
+                type = EmailUtils.getTypeForFolder(mContext, id, str);
+                if (V) Log.v(TAG, " getCompleteFolderList: type: " + type);
+                if (type == curType) {
+                    if (V) Log.v(TAG, " getCompleteFolderList: removing folder : " + str);
+                    list.remove(str);
+                    break;
                 }
             }
             if (!list.contains(SPECIAL_MAILBOX_MAP_NAME[i])) {
+                if (V) Log.v(TAG, " getCompleteFolderList: adding default folder : "
+                    + SPECIAL_MAILBOX_MAP_NAME[i]);
                 list.add(SPECIAL_MAILBOX_MAP_NAME[i]);
             }
         }
-        return list;
+        for (String str : list) {
+            type = EmailUtils.getTypeForFolder(mContext, id, str);
+            if (V) Log.v(TAG, " getCompleteFolderList: Processing type: " + type
+                + " for Folder : " + str);
+            if (type <= ((EmailUtils.TYPE_DELETED) + 1)) {
+                if (V) Log.v(TAG, " getCompleteFolderList: Adding a valid folder:" + str);
+                finalList.add(str);
+            }
+        }
+        if (V) Log.v(TAG, "Returning from CompleteFolderList");
+        return finalList;
     }
 
     public boolean checkPrecondition() {
