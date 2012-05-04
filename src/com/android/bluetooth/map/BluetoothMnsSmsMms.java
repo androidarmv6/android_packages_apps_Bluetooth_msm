@@ -195,14 +195,33 @@ public class BluetoothMnsSmsMms extends MnsClient {
                             final Message msg = new Message(id, MSG_TO_MAP[type], type, threadId,
                                     date);
                             newSmsList.put(id, msg);
-                            final Message oldMsg = oldSmsList.remove(id);
-                            if (!init && (oldMsg == null || oldMsg.mDate != date)) {
-                                mSmsAddedList.put(id, msg);
+                            if (oldSmsList.containsKey(id)) {
+                                Message old_msg = oldSmsList.remove(id);
+                                if (msg.mType != old_msg.mType) {
+                                    if(V) Log.v(TAG, "MNS_SMS: Add to mSmsAddedList");
+                                    mSmsAddedList.put(id, msg);
+                                }
+                            }
+                            else {
+                                final Message oldMsg = oldSmsList.remove(id);
+                                if (!init && (oldMsg == null || oldMsg.mDate != date)) {
+                                    if(V) Log.v(TAG, "MNS_SMS: Add to mSmsAddedList");
+                                    mSmsAddedList.put(id, msg);
+                                }
                             }
                         }
                     } while (crSms.moveToNext());
                     mSmsList = newSmsList;
                     mSmsDeletedList = oldSmsList;
+                }
+                else
+                {
+                    // Last sms to be deleted
+                    if(mSmsList.size() > 0)
+                    {
+                        if(V) Log.v(TAG, "MNS_SMS: mSmsList Length: " + mSmsList.size());
+                        mSmsDeletedList = mSmsList;
+                    }
                 }
                 crSms.close();
             }
@@ -282,15 +301,17 @@ public class BluetoothMnsSmsMms extends MnsClient {
                         ? SMS_CDMA : SMS_GSM;
                 Collection<Message> values = mSmsAddedList.values();
                 for (Message msg : values) {
-                    String folderName = (msg.mThreadId == -1) ? DELETED : msg.mFolderName;
-                    mListener.onNewMessage(mMasId, String.valueOf(SMS_OFFSET_START + msg.mId),
-                            PRE_PATH + folderName, type);
                     if (msg.mType == Sms.MESSAGE_TYPE_SENT) {
                         mListener.onSendingSuccess(mMasId, String.valueOf(SMS_OFFSET_START +
                                 msg.mId), PRE_PATH + SENT, type);
                     } else if (msg.mType == Sms.MESSAGE_TYPE_FAILED) {
                         mListener.onSendingFailure(mMasId, String.valueOf(SMS_OFFSET_START +
                                 msg.mId), PRE_PATH + OUTBOX, type);
+                    } else if ((msg.mType == Sms.MESSAGE_TYPE_INBOX) ||
+                               (msg.mType == Sms.MESSAGE_TYPE_OUTBOX)) {
+                        String folderName = (msg.mThreadId == -1) ? DELETED : msg.mFolderName;
+                        mListener.onNewMessage(mMasId, String.valueOf(SMS_OFFSET_START + msg.mId),
+                                PRE_PATH + folderName, type);
                     }
                 }
             }
