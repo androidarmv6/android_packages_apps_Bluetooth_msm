@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -87,6 +87,8 @@ public class BluetoothMns implements MessageNotificationListener {
     public static final int MNS_SEND_EVENT_DONE = 16;
 
     public static final int MNS_SEND_TIMEOUT = 17;
+
+    public static final int MNS_BLUETOOTH_OFF = 18;
 
     public static final int MNS_SEND_TIMEOUT_DURATION = 30000; // 30 secs
 
@@ -240,6 +242,23 @@ public class BluetoothMns implements MessageNotificationListener {
         }
     }
 
+    private void mnsCleanupInstances() {
+        if (V) Log.v(TAG, "MNS_BT: entered mnsCleanupInstances");
+        if(mStorageStatusReceiver != null) {
+            mContext.unregisterReceiver(mStorageStatusReceiver);
+            mStorageStatusReceiver = null;
+        }
+        for (MnsClient client : mMnsClients) {
+            if (V) Log.v(TAG, "MNS_BT: mnsCleanupInstances: inside for loop");
+            if (client.isRegistered()) {
+                if (V) Log.v(TAG, "MNS_BT: mnsCleanupInstances: Attempt to deregister MnsClient");
+                client.register(null);
+                client = null;
+                if (V) Log.v(TAG, "MNS_BT: mnsCleanupInstances: made client = null");
+            }
+        }
+    }
+
     /*
      * Receives events from mConnectThread & mSession back in the main thread.
      */
@@ -290,6 +309,18 @@ public class BluetoothMns implements MessageNotificationListener {
                     }).start();
                     break;
                 }
+                case MNS_BLUETOOTH_OFF:
+                    if (V) Log.v(TAG, "MNS_BT: receive MNS_BLUETOOTH_OFF msg");
+                    new Thread(new Runnable() {
+                        public void run() {
+                            if (V) Log.v(TAG, "MNS_BT: Started Deregister Thread");
+                            if (canDisconnect()) {
+                                stop();
+                            }
+                            mnsCleanupInstances();
+                        }
+                    }).start();
+                    break;
                 /*
                  * RFCOMM connect fail is for outbound share only! Mark batch
                  * failed, and all shares in batch failed
@@ -700,12 +731,14 @@ public class BluetoothMns implements MessageNotificationListener {
         }
 
         public synchronized void register(MessageNotificationListener listener) {
+            if (V) Log.v(TAG, "MNS_BT: register entered");
             if (listener != null) {
                 mListener = listener;
                 registerContentObserver();
             } else {
-                mListener = null;
+                if (V) Log.v(TAG, "MNS_BT: register(null)");
                 unregisterContentObserver();
+                mListener = null;
             }
         }
 
