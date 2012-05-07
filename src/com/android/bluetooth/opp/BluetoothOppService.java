@@ -564,7 +564,8 @@ public class BluetoothOppService extends Service {
 
     }
     boolean isBppAvailable(BluetoothClass c) {
-        if(!(c.hasService (BluetoothClass.Service.OBJECT_TRANSFER|BluetoothClass.Service.RENDER)))
+        if(!(c.hasService(BluetoothClass.Service.OBJECT_TRANSFER)
+                 && c.hasService(BluetoothClass.Service.RENDER)))
             return false;
         if(c.getMajorDeviceClass() == BluetoothClass.Device.Major.IMAGING ) {
             if(!(c.getDeviceClass () == BluetoothClass.Device.IMAGING_PRINTER))
