@@ -48,6 +48,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.ParcelFileDescriptor;
 import android.os.ParcelUuid;
+import android.os.PowerManager;
 import android.os.RemoteException;
 import android.util.Log;
 import android.widget.Toast;
@@ -105,6 +106,7 @@ public class GattServerAppService extends Service {
 
     private BluetoothAdapter mBluetoothAdapter;
     private Messenger mClient;
+    private Alarm alarm;
 
     InputStream raw = null;
 
@@ -125,19 +127,21 @@ public class GattServerAppService extends Service {
 
     public Context mContext = null;
 
-    private BluetoothGattAppConfiguration serverConfiguration = null;
+    private static BluetoothGattAppConfiguration serverConfiguration = null;
 
-    private BluetoothGatt gattProfile = null;
+    private static BluetoothGatt gattProfile = null;
 
     public static final String BLUETOOTH_BASE_UUID = "0000xxxx00001000800000805f9b34fb";
 
     public boolean is_registered = false;
 
+    public boolean isAlarmStarted = false;
+
     // Handles events sent by GattServerAppActivity.
     private class IncomingHandler extends Handler {
         @Override
         public void handleMessage(Message msg) {
-                Context context = getApplicationContext();
+            Context context = getApplicationContext();
             CharSequence text = null;
             int duration = 0;
             Toast toast = null;
@@ -190,6 +194,8 @@ public class GattServerAppService extends Service {
     public void onCreate() {
         String FILENAME = "genericservice.xml";
         super.onCreate();
+        alarm = new Alarm();
+        mContext = this;
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
             // Bluetooth adapter isn't available.  The client of the service is supposed to
@@ -207,17 +213,13 @@ public class GattServerAppService extends Service {
 
         gattServiceParser = new GattServiceParser();
         raw = getResources().openRawResource(R.raw.genericservice);
+
         if (raw != null) {
             Log.d(TAG, "Inside the Service.. XML is read");
             gattServiceParser.parse(raw);
 
             //update data structures from characteristic_values file
             updateDataStructuresFromFile();
-
-
-            //send periodic Notifications/Indications
-            sendPeriodicNotificationsIndications();
-
 
             Log.d(TAG, "Attribute data list");
             Log.d(TAG, "Messages length : " + gattHandleToAttributes.size());
@@ -1587,7 +1589,6 @@ public class GattServerAppService extends Service {
                                     if(is_permission_available && (value != null)) {
                                         Log.d(TAG, "Authorized/Authenticated to write");
                                         attr.value = value;
-                                        //attr.sessionHandle = sessionHandle;
                                         if(attr.sessionHandle != null &&
                                                 !attr.sessionHandle.contains(sessionHandle)) {
                                             attr.sessionHandle.add(sessionHandle);
@@ -1675,7 +1676,7 @@ public class GattServerAppService extends Service {
                                                             //Write the char value and update the length
                                                             buffer[index-1] = (byte)value.length;
                                                             for(int j=0; j < value.length; j++) {
-                                                              buffer[index++] = value[j];
+                                                                buffer[index++] = value[j];
                                                             }
                                                             //append '\n' after every char value
                                                             buffer[index++] = (byte)'\n';
@@ -1746,21 +1747,21 @@ public class GattServerAppService extends Service {
                                         Log.d(TAG, "Onwrite request: Char value bytes to " +
                                                 "be written to file::"+charValueBytes);
                                         Log.d(TAG, "The data written to file onWriteRequest");
-                                            for(i=0; i< charValueBytes.length; i++) {
-                                                Log.d(TAG,""+charValueBytes[i]);
-                                            }
-                                            try {
-                                                FileOutputStream fos =
-                                                        openFileOutput(FILENAME, Context.MODE_PRIVATE);
-                                                fos.write(charValueBytes);
-                                                fos.close();
-                                            }
-                                            catch (FileNotFoundException e) {
-                                                e.printStackTrace();
-                                            }
-                                            catch (IOException e) {
-                                                e.printStackTrace();
-                                            }
+                                        for(i=0; i< charValueBytes.length; i++) {
+                                            Log.d(TAG,""+charValueBytes[i]);
+                                        }
+                                        try {
+                                            FileOutputStream fos =
+                                                    openFileOutput(FILENAME, Context.MODE_PRIVATE);
+                                            fos.write(charValueBytes);
+                                            fos.close();
+                                        }
+                                        catch (FileNotFoundException e) {
+                                            e.printStackTrace();
+                                        }
+                                        catch (IOException e) {
+                                             e.printStackTrace();
+                                        }
                                     }
                                     else if(value == null) {
                                         status = 0x80; //Application error
@@ -1843,7 +1844,7 @@ public class GattServerAppService extends Service {
                                                         uuid = ParcelUuid.fromString(attrTypeStr);
                                                         status = BluetoothGatt.GATT_SUCCESS;
                                                         if((attr.sessionHandle != null &&
-                                                                !attr.sessionHandle.contains(sessionHandle))) {
+                                                            !attr.sessionHandle.contains(sessionHandle))) {
                                                             attr.sessionHandle.add(sessionHandle);
                                                         }
                                                         else if(attr.sessionHandle == null) {
@@ -1906,14 +1907,13 @@ public class GattServerAppService extends Service {
                                             }
                                             else {
                                                 attr.value = value;
-                                                //attr.sessionHandle = sessionHandle;
                                                 if(attr.sessionHandle != null &&
                                                         !attr.sessionHandle.contains(sessionHandle)) {
                                                     attr.sessionHandle.add(sessionHandle);
                                                 }
                                                 else if(attr.sessionHandle == null) {
-                                                        attr.sessionHandle = new ArrayList<Integer>();
-                                                        attr.sessionHandle.add(sessionHandle);
+                                                    attr.sessionHandle = new ArrayList<Integer>();
+                                                    attr.sessionHandle.add(sessionHandle);
                                                 }
                                                 uuid = ParcelUuid.fromString(attrTypeStr);
                                                 status = BluetoothGatt.GATT_SUCCESS;
@@ -1974,6 +1974,7 @@ public class GattServerAppService extends Service {
             Log.d(TAG,"uuid"+ uuid);
             retVal = gattProfile.writeResponse(config, requestHandle, status, uuid);
             Log.d(TAG, "onGattReliableWriteRequest: " + retVal);
+            boolean isClientConfigSet = false;
             if(is_permission_available && hdlFoundStatus == 1) {
                 //send notification/indication for the particular
                 //client char config handle
@@ -1982,6 +1983,26 @@ public class GattServerAppService extends Service {
                     if((value != null) && (value.length > 0)) {
                         if(value[0] > 0x00) {
                             sendNotificationIndicationHandle(handle, sessionHandle);
+                            isClientConfigSet = isAnyClientConfigSet();
+                            if(isClientConfigSet && !isAlarmStarted) {
+                                alarm.SetAlarm(mContext);
+                                isAlarmStarted = true;
+                            }
+                            else if(!isClientConfigSet){
+                                alarm.CancelAlarm(mContext);
+                                isAlarmStarted = false;
+                            }
+                        }
+                        else {
+                            isClientConfigSet = isAnyClientConfigSet();
+                            if(!isClientConfigSet) {
+                                alarm.CancelAlarm(mContext);
+                                isAlarmStarted = false;
+                            }
+                            else if(isClientConfigSet && !isAlarmStarted) {
+                                alarm.SetAlarm(mContext);
+                                isAlarmStarted = true;
+                            }
                         }
                     }
                 }
@@ -2084,7 +2105,7 @@ public class GattServerAppService extends Service {
                                             List<Byte> byteArrList= new ArrayList<Byte>();
                                             List<Byte> hdlsArrList= new ArrayList<Byte>();
                                             HashMap<Integer, Integer> hdlIndexMap =
-                                                    new HashMap<Integer, Integer>();
+                                                            new HashMap<Integer, Integer>();
                                             int isHdlInFile = 0;
                                             String FILENAME = "characteristic_values";
                                             Context context = getApplicationContext();
@@ -2222,7 +2243,7 @@ public class GattServerAppService extends Service {
                                                 e.printStackTrace();
                                             }
                                             catch (IOException e) {
-                                                 e.printStackTrace();
+                                                e.printStackTrace();
                                             }
                                         }
                                         else if(value == null){
@@ -2298,7 +2319,7 @@ public class GattServerAppService extends Service {
                                                 //Check whether the Char properties is indicatable
                                                 else if(value != null && value[0] == 0x02) {
                                                     if((attrCharProperties > 0) && ((attrCharProperties & 0x20) == 0x20)) {
-                                                            attr.value = value;
+                                                        attr.value = value;
                                                         uuid = ParcelUuid.fromString(attrTypeStr);
                                                         status = BluetoothGatt.GATT_SUCCESS;
                                                     }
@@ -2387,7 +2408,9 @@ public class GattServerAppService extends Service {
         @Override
         public void onGattSetClientConfigDescriptor(BluetoothGattAppConfiguration config,
                 int handle, byte[] value, int sessionHandle) {
+            Log.d(TAG, "Set client config descriptor called");
             byte attrProperties = 0;
+            boolean isClientConfigSet = false;
             if(gattHandleToAttributes != null) {
                 Attribute attr = gattHandleToAttributes.get(handle);
                 Attribute charValueAttr = gattHandleToAttributes.get(attr.referenceHandle);
@@ -2437,6 +2460,26 @@ public class GattServerAppService extends Service {
                 if(value[0] > 0x00 && ((attrProperties > 0) && (((attrProperties & 0x20) == 0x20) ||
                         ((attrProperties & 0x10) == 0x10)))) {
                     sendNotificationIndicationHandle(handle, sessionHandle);
+                    isClientConfigSet = isAnyClientConfigSet();
+                    if(isClientConfigSet && !isAlarmStarted) {
+                        alarm.SetAlarm(mContext);
+                        isAlarmStarted = true;
+                    }
+                    else if(!isClientConfigSet){
+                        alarm.CancelAlarm(mContext);
+                        isAlarmStarted = false;
+                    }
+                }
+                else if(value[0] == 0x00){
+                    isClientConfigSet = isAnyClientConfigSet();
+                    if(!isClientConfigSet) {
+                        alarm.CancelAlarm(mContext);
+                        isAlarmStarted = false;
+                    }
+                    else if(isClientConfigSet && !isAlarmStarted) {
+                        alarm.SetAlarm(mContext);
+                        isAlarmStarted = true;
+                    }
                 }
             }
         }
@@ -2531,6 +2574,7 @@ public class GattServerAppService extends Service {
      *
     */
     void sendNotificationIndication() {
+        Log.d(TAG, "Periodic notifications/indications set");
         Calendar cal = Calendar.getInstance();
         int day = cal.get(Calendar.DAY_OF_MONTH);
         int month = cal.get(Calendar.MONTH) + 1;
@@ -2618,7 +2662,8 @@ public class GattServerAppService extends Service {
                                                     for(int z=0; z<i; z++) {
                                                         Log.d(TAG, ""+charValue[z]);
                                                     }
-                                                    boolean result = gattProfile.sendIndication(
+                                                    boolean result = false;
+                                                    result = gattProfile.sendIndication(
                                                             serverConfiguration, charValueHdl,
                                                             charValue, notify, sessionHdl);
                                                     Log.d(TAG, "SendIndication result::"+result);
@@ -2642,7 +2687,6 @@ public class GattServerAppService extends Service {
      *
     */
     void sendNotificationIndicationHandle(int handle, int sessionHandle) {
-        //Log.d(TAG, "Inside sendNotificationIndicationHandle::");
         Calendar cal = Calendar.getInstance();
         int day = cal.get(Calendar.DAY_OF_MONTH);
         int month = cal.get(Calendar.MONTH) + 1;
@@ -2668,7 +2712,7 @@ public class GattServerAppService extends Service {
                     if(attrTypeStr!=null && attrTypeStr.
                             equalsIgnoreCase("00002902-0000-1000-8000-00805F9B34FB")) {
                         if(attr.attrValue != null && (attr.attrValue.containsKey(sessionHandle))) {
-                            byte descValue = attr.attrValue.get(sessionHandle);
+                                byte descValue = attr.attrValue.get(sessionHandle);
                             if((descValue > 0x00) && (descValue <= 0x02)) {
                                 int charValueHdl = attr.referenceHandle;
                                 Attribute attrCharValue = gattHandleToAttributes.get(charValueHdl);
@@ -2809,20 +2853,85 @@ public class GattServerAppService extends Service {
         return is_writable;
     }
     /**
-     * Sends periodic Notifications/Indications
-     * to the remote client devices
-    */
-    void sendPeriodicNotificationsIndications() {
-        int delay = 1000; // delay for 1 sec.
-        int period = 10000; // repeat every 10 sec.
-        Timer timer = new Timer();
-        timer.scheduleAtFixedRate(new TimerTask()
-        {
-            @Override
-            public void run()
-            {
-                sendNotificationIndication();
+     * Checks whether any of the Client characteristic
+     * configuration descriptors are set for all
+     * the client devices connected to the GATT server
+     * If set, returns true
+     * else returns false
+     */
+    boolean isAnyClientConfigSet() {
+        boolean is_permitted = false;
+        boolean isClientConfigSet = false;
+        List<Integer> hndlList = null;
+        if(gattAttribTypeToHandle != null) {
+            for(Map.Entry<String, List<Integer>> entry : gattAttribTypeToHandle.entrySet()) {
+                if("00002902-0000-1000-8000-00805F9B34FB".
+                                equalsIgnoreCase(entry.getKey().toString())) {
+                    //List of client characteristic configuration descriptor handles
+                    hndlList = entry.getValue();
+                }
             }
-        }, delay, period);
+        }
+
+        if(hndlList!=null) {
+            for(int j=0; j< hndlList.size(); j++) {
+                int handle = hndlList.get(j);
+                if(handle >= 0) {
+                    if(gattHandleToAttributes != null) {
+                        //To get the attribute values for the particular handle
+                        if(handle == gattHandleToAttributes.get(handle).handle) {
+                            Attribute attr = gattHandleToAttributes.get(handle);
+                            ArrayList<Integer> sessionHdlList = attr.sessionHandle;
+                            if(sessionHdlList != null) {
+                                for(int index=0; index < sessionHdlList.size(); index++) {
+                                    int sessionHdl = sessionHdlList.get(index);
+                                    if(attr.attrValue != null && (attr.attrValue.containsKey(sessionHdl))) {
+                                        Log.d(TAG, "Contains the session handle");
+                                        byte descValue = attr.attrValue.get(sessionHdl);
+                                        if((descValue > 0x00) && (descValue <= 0x02)) {
+                                            Log.d(TAG, "descValue > 0x00 and less than = 0x02"+descValue);
+                                            int charValueHdl = attr.referenceHandle;
+                                            Attribute attrCharValue =
+                                                gattHandleToAttributes.get(charValueHdl);
+
+                                            int charHandle = attrCharValue.referenceHandle;
+                                            Attribute attrChar = gattHandleToAttributes.get(charHandle);
+                                            int charProperties = attrChar.properties;
+                                            boolean notify = false;
+                                            if(descValue == 0x01) {
+                                                Log.d(TAG, "Inside attrvalue = 1::");
+                                                notify = true;
+                                                //check for permission from Characteristic properties
+                                                if(charProperties > 0 && ((charProperties & 0x10) == 0x10)) {
+                                                    is_permitted = true;
+                                                }
+                                            }
+                                            else if(descValue == 0x02) {
+                                                Log.d(TAG, "Inside attrvalue = 2::");
+                                                notify = false;
+                                                //check for permission from Characteristic properties
+                                                if(charProperties > 0 && ((charProperties & 0x20) == 0x20)) {
+                                                    is_permitted = true;
+                                                }
+                                            }
+                                            Log.d(TAG, "The client config handle is :"+handle);
+                                            Log.d(TAG, "The client config descriptor value is :"+descValue);
+                                            Log.d(TAG, "The char value handle is :"+charValueHdl);
+                                            Log.d(TAG, "The sessionhandle  is :"+sessionHdl);
+
+                                            if(descValue <= 0x02 && (is_permitted)) {
+                                                isClientConfigSet = true;
+                                                return isClientConfigSet;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return isClientConfigSet;
     }
  }
