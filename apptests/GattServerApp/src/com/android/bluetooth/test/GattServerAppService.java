@@ -560,11 +560,11 @@ public class GattServerAppService extends Service {
         }
 
         /**
-         * Processes the Discover Characteristic Descriptors Request from client and sends the
+         * Processes the Find Info Request from client and sends the
          * response to the client.
         */
         @Override
-        public void onGattDiscoverCharacteristicDescriptorRequest(BluetoothGattAppConfiguration
+        public void onGattFindInfoRequest(BluetoothGattAppConfiguration
                 config, int startHandle, int endHandle, int requestHandle) {
             int k, hdlFoundStatus =0;
             int status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
@@ -641,14 +641,14 @@ public class GattServerAppService extends Service {
                 }
             }
 
-            Log.d(TAG, "Results of onGattDiscoverCharacteristicDescriptorRequest ::");
+            Log.d(TAG, "Results of onGattFindInfoRequest ::");
             Log.d(TAG, "status ::"+status);
             Log.d(TAG, "Descriptor Handle ::"+descHandle);
             Log.d(TAG, "Descriptor UUID::"+descUuid);
 
-            retVal = gattProfile.discoverCharacteristicDescriptorResponse(config, requestHandle,
+            retVal = gattProfile.findInfoResponse(config, requestHandle,
                     status, descHandle, descUuid);
-            Log.d(TAG, "onGattDiscoverCharacteristicDescriptorRequest: " + retVal);
+            Log.d(TAG, "findInfoResponse: " + retVal);
         }
 
         /**
@@ -1494,10 +1494,10 @@ public class GattServerAppService extends Service {
          * to the client.
         */
         @Override
-        public void onGattReliableWriteRequest(BluetoothGattAppConfiguration config, int handle,
+        public void onGattWriteRequest(BluetoothGattAppConfiguration config, int handle,
                 byte value[], String authentication, int sessionHandle,
                 int requestHandle) {
-            Log.d(TAG,"Inside onGattReliableWriteRequest");
+            Log.d(TAG,"Inside onGattWriteRequest");
             Log.d(TAG," config:: "+config+" handle:: "+handle+" value::"+value+" authentication::"+authentication+
                     "sessionHandle::"+sessionHandle);
             Log.d(TAG,"The characteristic value::");
@@ -1969,11 +1969,11 @@ public class GattServerAppService extends Service {
                     }
                 }
             }
-            Log.d(TAG,"Result of reliableWriteRequest");
+            Log.d(TAG,"Result of onGattWriteRequest");
             Log.d(TAG,"status"+status);
             Log.d(TAG,"uuid"+ uuid);
             retVal = gattProfile.writeResponse(config, requestHandle, status, uuid);
-            Log.d(TAG, "onGattReliableWriteRequest: " + retVal);
+            Log.d(TAG, "onGattWriteRequest: " + retVal);
             boolean isClientConfigSet = false;
             if(is_permission_available && hdlFoundStatus == 1) {
                 //send notification/indication for the particular
@@ -2010,13 +2010,13 @@ public class GattServerAppService extends Service {
         }
 
         /**
-         * Processes the Write Request from client and sends the response
+         * Processes the Write Command from client and sends the response
          * to the client.
         */
         @Override
-        public void onGattWriteRequest(BluetoothGattAppConfiguration config, int handle,
+        public void onGattWriteCommand(BluetoothGattAppConfiguration config, int handle,
                 byte value[], String authentication) {
-            Log.d(TAG,"Inside onGattWriteRequest");
+            Log.d(TAG,"Inside onGattWriteCommand");
             int i, k, hdlFoundStatus=0, status = BluetoothGatt.ATT_ATTR_NOT_FOUND;
             boolean retVal = false;
             int attrHandleNext = 0;
@@ -2062,7 +2062,7 @@ public class GattServerAppService extends Service {
                             if((attrProperties > 0) && ((attrProperties & 0x04) == 0x04)) {
                                 //If the Attribute type is Characteristic value
                                 if(charValueAttrType == 1) {
-                                    Log.d(TAG, "Onwrite request: Attr type: characteristic value");
+                                    Log.d(TAG, "Onwrite command: Attr type: characteristic value");
                                     String attrPermission = attr.permission;
                                     byte attrPermBits = attr.permBits;
                                     is_permission_available = false;
@@ -2117,7 +2117,7 @@ public class GattServerAppService extends Service {
                                                         + "/" + FILENAME);
                                                 int bytesRead = fis.read(buffer);
                                                 if(bytesRead > 0) {
-                                                    Log.d(TAG, "Onwrite request: Bytes read > 0");
+                                                    Log.d(TAG, "Onwrite command: Bytes read > 0");
                                                     for(i=0; i< bytesRead;) {
                                                         hdlsArrList.add(buffer[i]);//handle msb
                                                         hdlsArrList.add(buffer[i+1]);//handle lsb
@@ -2138,7 +2138,7 @@ public class GattServerAppService extends Service {
                                                         for(i=0;i<hdlsArrList.size();i++) {
                                                             if((hdlsArrList.get(i) == handleMSB) &&
                                                                     (hdlsArrList.get(i+1) == handleLSB)){
-                                                              Log.d(TAG, "Onwrite request: Char value handle " +
+                                                              Log.d(TAG, "Onwrite command: Char value handle " +
                                                                         "already present in file");
                                                               isHdlInFile = 1;
 
@@ -2227,9 +2227,9 @@ public class GattServerAppService extends Service {
                                             for(i=0; i < byteArrList.size(); i++) {
                                                 charValueBytes[i] = byteArrList.get(i).byteValue();
                                             }
-                                            Log.d(TAG, "Onwrite request: Char value bytes to " +
+                                            Log.d(TAG, "Onwrite command: Char value bytes to " +
                                                     "be written to file::"+charValueBytes);
-                                            Log.d(TAG, "The data written to file onWriteRequest");
+                                            Log.d(TAG, "The data written to file onWriteCommand");
                                             for(i=0; i< charValueBytes.length; i++) {
                                                 Log.d(TAG,""+charValueBytes[i]);
                                             }
