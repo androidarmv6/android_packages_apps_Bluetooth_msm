@@ -39,6 +39,7 @@ import com.android.vcard.exception.VCardException;
 import com.android.vcard.exception.VCardVersionException;
 import android.util.Log;
 import android.util.Xml;
+import java.io.UnsupportedEncodingException;
 
 import com.android.bluetooth.map.BluetoothMasService;
 
@@ -46,8 +47,11 @@ import org.xmlpull.v1.XmlSerializer;
 
 import java.io.IOException;
 import java.io.StringBufferInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.StringWriter;
 import java.util.List;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
 
 import static com.android.vcard.VCardConstants.PROPERTY_EMAIL;
 import static com.android.vcard.VCardConstants.PROPERTY_FN;
@@ -111,12 +115,19 @@ public class MapUtils {
      */
     public static String messageListingXML(List<MsgListingConsts> list) {
         XmlSerializer serializer = Xml.newSerializer();
-        StringWriter writer = new StringWriter();
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        OutputStreamWriter myOutputStreamWriter = null;
+        try {
+            myOutputStreamWriter = new OutputStreamWriter(outputStream, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            Log.e(TAG, "Failed to encode: charset=" + "UTF-8");
+            return null;
+        }
         try {
             String str1;
             String str2 = "<?xml version=\"1.0\"?>";
-            serializer.setOutput(writer);
-            serializer.startDocument(null, null);
+            serializer.setOutput(myOutputStreamWriter);
+            serializer.startDocument("UTF-8", null);
             serializer.text("\n");
             serializer.startTag("", "MAP-msg-listing");
             serializer.attribute("", "version", "1.0");
@@ -203,8 +214,9 @@ public class MapUtils {
             }
             serializer.endTag("", "MAP-msg-listing");
             serializer.endDocument();
-            str1 = writer.toString();
-
+            try {
+                str1 = outputStream.toString("UTF-8");
+                if (V) Log.v(TAG, "Printing XML-Converted String: " + str1);
             int line1 = 0;
             line1 = str1.indexOf("\n");
             str2 += str1.substring(line1 + 1);
@@ -214,7 +226,10 @@ public class MapUtils {
                 str2 = str2.substring(0, (indxHandle - 1)) + str3;
             }
             return str2;
-
+            } catch (UnsupportedEncodingException e) {
+                Log.e(TAG, "Failed to encode: charset=" + "UTF-8");
+                return null;
+            }
         } catch (IllegalArgumentException e) {
 
             e.printStackTrace();
@@ -824,7 +839,6 @@ public class MapUtils {
 
             sb.append("CHARSET:UTF-8").append("\r\n");
 
-            sb.append("LANGUAGE:English").append("\r\n");
             if (bmsg.body_length != 0) {
                 sb.append("LENGTH:").append(bmsg.body_length).append("\r\n");
             } else {
@@ -1862,7 +1876,14 @@ public class MapUtils {
         RecipientVCard recipient = new RecipientVCard();
 
         try {
-            StringBufferInputStream is = new StringBufferInputStream(vCard);
+            ByteArrayInputStream is = null;
+            try {
+                byte vCardBytes[] = vCard.getBytes("UTF-8");
+                is = new ByteArrayInputStream(vCardBytes);
+            } catch (UnsupportedEncodingException ex) {
+                Log.w(TAG, "Unable to parse vCard", ex);
+                throw new BadRequestException("Unable to parse vCard");
+            }
             VCardParser parser = new VCardParser_V21();
             try {
                 if (V) Log.v(TAG, "try " + VERSION_V21);
@@ -1870,7 +1891,7 @@ public class MapUtils {
                 parser.parse(is, recipient);
             } catch (VCardVersionException e) {
                 is.close();
-                is = new StringBufferInputStream(vCard);
+                is = new ByteArrayInputStream(vCard.getBytes("UTF-8"));
                 try {
                     if (V) Log.v(TAG, "try " + VERSION_V30);
                     recipient.mVersion = VERSION_V30;
