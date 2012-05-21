@@ -345,6 +345,10 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                         NotificationManager nm = (NotificationManager)mContext
                                 .getSystemService(Context.NOTIFICATION_SERVICE);
                         nm.cancel(mCurrentShare.mId);
+
+                        //Mark the Batch status as failed
+                        mBatch.mStatus = Constants.BATCH_STATUS_FAILED;
+
                         // Send intent to UI for timeout handling
                         Intent in = new Intent(BluetoothShare.USER_CONFIRMATION_TIMEOUT_ACTION);
                         mContext.sendBroadcast(in);
