@@ -100,6 +100,8 @@ public class BluetoothOppManager {
 
     public boolean mMultipleFlag;
 
+    public boolean isBatchCancelled;
+
     private int mfileNumInBatch;
 
     private int mInsertShareThreadNum = 0;
@@ -203,6 +205,7 @@ public class BluetoothOppManager {
     public void saveSendingFileInfo(String mimeType, String uri) {
         synchronized (BluetoothOppManager.this) {
             mMultipleFlag = false;
+            isBatchCancelled = false;
             mMimeTypeOfSendingFile = mimeType;
             mUriOfSendingFile = uri;
             storeApplicationData();
@@ -382,6 +385,10 @@ public class BluetoothOppManager {
             int count = mUris.size();
             Long ts = System.currentTimeMillis();
             for (int i = 0; i < count; i++) {
+              if(isBatchCancelled){
+                  Log.v(TAG,"  Batch for these shares was cancelled ");
+                  break;
+              }
                 Uri fileUri = mUris.get(i);
                 ContentResolver contentResolver = mContext.getContentResolver();
                 String contentType = contentResolver.getType(fileUri);

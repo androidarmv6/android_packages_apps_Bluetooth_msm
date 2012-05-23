@@ -392,6 +392,13 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
         BluetoothOppShareInfo info = mBatch.getPendingShare();
         while (info != null) {
             if (info.mStatus < 200) {
+                Log.v(TAG," Batch Failed updating Content Provider ");
+                BluetoothOppManager oppmanager = BluetoothOppManager.getInstance(mContext);
+                if(oppmanager != null){
+                    Log.v(TAG," Don't allow other shares in this batch  ");
+                    oppmanager.isBatchCancelled = true;
+                }
+
                 info.mStatus = failReason;
                 Uri contentUri = Uri.parse(BluetoothShare.CONTENT_URI + "/" + info.mId);
                 ContentValues updateValues = new ContentValues();
@@ -689,7 +696,7 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
 
         /* create a L2CAP or RFCOMM BluetoothSocket */
         public SocketConnectThread(BluetoothDevice device, int type, int channel,
-	        boolean retry) {
+            boolean retry) {
             super("Socket Connect Thread");
             this.device = device;
             this.host = null;
