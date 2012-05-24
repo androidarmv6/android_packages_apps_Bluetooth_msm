@@ -564,15 +564,13 @@ public class BluetoothOppService extends Service {
 
     }
     boolean isBppAvailable(BluetoothClass c) {
-        if(!(c.hasService(BluetoothClass.Service.OBJECT_TRANSFER)
-                 && c.hasService(BluetoothClass.Service.RENDER)))
+        if(c.hasService(BluetoothClass.Service.OBJECT_TRANSFER)
+                     && c.hasService(BluetoothClass.Service.RENDER)
+                     && (c.getDeviceClass () == BluetoothClass.Device.IMAGING_PRINTER))
+            return true;
+        else
             return false;
-        if(c.getMajorDeviceClass() == BluetoothClass.Device.Major.IMAGING ) {
-            if(!(c.getDeviceClass () == BluetoothClass.Device.IMAGING_PRINTER))
-                return false;
         }
-        return true;
-    }
     private void insertShare(Cursor cursor, int arrayPos) {
         BluetoothOppShareInfo info = new BluetoothOppShareInfo(
                 cursor.getInt(cursor.getColumnIndexOrThrow(BluetoothShare._ID)),
@@ -656,7 +654,7 @@ public class BluetoothOppService extends Service {
             BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter();
             BluetoothDevice  d = a.getRemoteDevice(info.mDestination);
             BluetoothClass   c = d.getBluetoothClass();
-            if(c != null){
+            if((c != null) && (info.mDirection == BluetoothShare.DIRECTION_OUTBOUND)) {
                 if (V) Log.v(TAG, "BT Device Class: 0x" + Integer.toHexString(c.getDeviceClass()));
 
                 if (isBppAvailable (c)) {
