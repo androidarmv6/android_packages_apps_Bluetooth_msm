@@ -28,12 +28,21 @@
 */
 package com.android.bluetooth.test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 import android.app.Activity;
+import android.bluetooth.BluetoothDevicePicker;
+import android.bluetooth.BluetoothDevice;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.os.ParcelUuid;
 
 /**
 * This class is the broadcast receiver class for the Gatt Server application.
@@ -41,8 +50,9 @@ import android.app.Activity;
 * phone boots up and when Bluetooth is turned on
 */
 public class GattServerAppReceiver extends BroadcastReceiver{
-    String TAG = "GattServerAppReceiver";
+    private final static String TAG = "GattServerAppReceiver";
     private static final int REQUEST_ENABLE_BT = 1;
+    private static Handler handler = null;
     public void onReceive(Context context, Intent intent) {
         final String action = intent.getAction();
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -76,5 +86,20 @@ public class GattServerAppReceiver extends BroadcastReceiver{
                 context.startService(serviceIntent);
             }
         }
+        else if (action.equals(BluetoothDevicePicker.ACTION_DEVICE_SELECTED)) {
+            BluetoothDevice remoteDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+            Log.d(TAG, "Received BT device selected intent, BT device: " + remoteDevice.getAddress());
+            String deviceName = remoteDevice.getName();
+            Message msg = new Message();
+            msg.what = GattServerAppService.DEVICE_SELECTED;
+            Bundle b = new Bundle();
+            b.putParcelable(GattServerAppService.REMOTE_DEVICE, remoteDevice);
+            msg.setData(b);
+            handler.sendMessage(msg);
+        }
+    }
+    public static void registerHandler(Handler handle) {
+        Log.d(TAG, "Registered Handler");
+        handler = handle;
     }
 }

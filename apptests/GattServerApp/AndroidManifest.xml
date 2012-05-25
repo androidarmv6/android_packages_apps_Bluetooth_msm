@@ -39,6 +39,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".DeviceListScreen"
+                  android:label="@string/device_list">
+            <intent-filter>
+            </intent-filter>
+        </activity>
         <service android:name=".GattServerAppService">
             <intent-filter>
                 <action
@@ -51,6 +56,9 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.bluetooth.adapter.action.STATE_CHANGED" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.bluetooth.devicepicker.action.DEVICE_SELECTED" />
             </intent-filter>
         </receiver>
         <receiver  android:name="Alarm"></receiver>

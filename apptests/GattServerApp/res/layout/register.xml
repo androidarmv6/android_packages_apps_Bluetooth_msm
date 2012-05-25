@@ -36,12 +36,28 @@
         android:text="@string/Register_Value"
         android:id="@+id/button_register_app"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal">
     </Button>
     <Button
         android:text="@string/Unregister_Value"
         android:id="@+id/button_unregister_app"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal">
+    </Button>
+    <Button
+        android:text="@string/Connect_Value"
+        android:id="@+id/button_connect_app"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal">
+    </Button>
+    <Button
+        android:text="@string/Disconnect_Value"
+        android:id="@+id/button_disconnect_app"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal">
     </Button>
 </LinearLayout>

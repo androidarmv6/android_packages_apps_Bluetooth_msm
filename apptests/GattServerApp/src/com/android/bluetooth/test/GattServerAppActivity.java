@@ -130,8 +130,26 @@ public class GattServerAppActivity extends Activity {
             }
         });
 
-        registerReceiver(mReceiver, initIntentFilter());
-    }
+         // Initiates application connection.
+         Button connectAppButton = (Button) findViewById(R.id.button_connect_app);
+         connectAppButton.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+                 sendMessage(GattServerAppService.MSG_CONNECT_GATT_SERVER, 0);
+             }
+         });
+
+         // Initiates application disconnection.
+         Button disconnectAppButton = (Button) findViewById(R.id.button_disconnect_app);
+         disconnectAppButton.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+                 sendMessage(GattServerAppService.MSG_DISCONNECT_GATT_SERVER, 0);
+             }
+         });
+
+         registerReceiver(mReceiver, initIntentFilter());
+        }
 
     // Sets up communication with {@link GattServerAppService}.
     private ServiceConnection mConnection = new ServiceConnection() {

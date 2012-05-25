@@ -27,12 +27,9 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # -->
-<resources>
-    <string name="hello">Hello World, GattServerApp!</string>
-    <string name="app_name">GattServerApp</string>
-    <string name="device_list">List of Connected Devices</string>
-    <string name="Register_Value">Register Server</string>
-    <string name="Unregister_Value">Unregister Server</string>
-    <string name="Connect_Value">Connect to Client</string>
-    <string name="Disconnect_Value">Disconnect</string>
-</resources>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:padding="10dp"
+    android:textSize="16sp" >
+</TextView>

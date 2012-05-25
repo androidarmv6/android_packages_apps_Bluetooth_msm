@@ -92,7 +92,7 @@ public class GattServiceParser {
         RootElement root = new RootElement(SERVER);
         root.setEndElementListener(new EndElementListener() {
             public void end() {
-                    GattServerAppService.serverMaxHandle = currentHandle;
+                GattServerAppService.serverMaxHandle = currentHandle;
             }
         });
 
@@ -113,7 +113,7 @@ public class GattServiceParser {
                 //Check if the service is an included service and update handles
                 if(GattServerAppService.includedServiceMap.containsKey(serviceAttribute.uuid)) {
                     Attribute inclAttr = GattServerAppService.includedServiceMap.
-                                get(serviceAttribute.uuid);
+                            get(serviceAttribute.uuid);
                     inclAttr.startHandle = currentHandle;
                 }
 
@@ -158,10 +158,10 @@ public class GattServiceParser {
                 if(GattServerAppService.includedServiceMap.containsKey(inclSrvAttribute.uuid)) {
                     if(inclSrvAttribute.startHandle == -1 || inclSrvAttribute.endHandle == -1) {
                         Attribute inclAttr = GattServerAppService.includedServiceMap.
-                                    get(inclSrvAttribute.uuid);
+                                get(inclSrvAttribute.uuid);
                         if(inclAttr.startHandle > -1 || inclAttr.endHandle > -1) {
-                                inclSrvAttribute.startHandle = inclAttr.startHandle;
-                                inclSrvAttribute.endHandle = inclAttr.endHandle;
+                            inclSrvAttribute.startHandle = inclAttr.startHandle;
+                            inclSrvAttribute.endHandle = inclAttr.endHandle;
                         }
                     }
                 }
@@ -169,7 +169,7 @@ public class GattServiceParser {
                 GattServerAppService.gattHandleToAttributes.add(inclSrvAttribute);
                 //populate the Gatt Attrib type map with included service handles
                 List<Integer> hndlList = GattServerAppService.gattAttribTypeToHandle.
-                                get(inclSrvAttribute.type);
+                        get(inclSrvAttribute.type);
                 if(hndlList != null) {
                     hndlList.add(inclSrvAttribute.handle);
                 }
@@ -178,13 +178,11 @@ public class GattServiceParser {
         });
 
         Element characteristics = service.getChild(CHARACTERISTICS);
-        Log.d(TAG, "Read the element Characteristics");
 
         // Parse the characteristic
         Element characteristic = parseCharacteristics(characteristics);
         characteristic.setEndElementListener(new EndElementListener() {
             public void end() {
-                Log.d(TAG, "Descriptors : ");
                 Attribute attr = GattServerAppService.gattHandleToAttributes.get(charHandle);
                 attr.endHandle = currentHandle;
             }
@@ -215,50 +213,45 @@ public class GattServiceParser {
         serviceSecuritySetting.getChild("ReadOnly").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(serviceHandle).permBits |= 0x04;
+                                get(serviceHandle).permBits |= 0x04;
                     }
                 }
             });
         serviceSecuritySetting.getChild("ReadWithAuthentication").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(serviceHandle).permBits |= 0x02;
+                                get(serviceHandle).permBits |= 0x02;
                     }
                 }
             });
         serviceSecuritySetting.getChild("ReadWithAuthorization").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(serviceHandle).permBits |= 0x01;
+                                get(serviceHandle).permBits |= 0x01;
                     }
                 }
             });
         serviceSecuritySetting.getChild("WriteWithAuthentication").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(serviceHandle).permBits |= 0x10;
+                                get(serviceHandle).permBits |= 0x10;
                     }
                 }
             });
         serviceSecuritySetting.getChild("WriteWithAuthorization").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(serviceHandle).permBits |= 0x08;
+                                get(serviceHandle).permBits |= 0x08;
                     }
                 }
             });
@@ -273,50 +266,45 @@ public class GattServiceParser {
         serviceSecuritySetting.getChild("ReadOnly").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(currentHandle).permBits |= 0x04;
+                                get(currentHandle).permBits |= 0x04;
                     }
                 }
             });
         serviceSecuritySetting.getChild("ReadWithAuthentication").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(currentHandle).permBits |= 0x02;
+                                get(currentHandle).permBits |= 0x02;
                     }
                 }
             });
         serviceSecuritySetting.getChild("ReadWithAuthorization").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(currentHandle).permBits |= 0x01;
+                                get(currentHandle).permBits |= 0x01;
                     }
                 }
             });
         serviceSecuritySetting.getChild("WriteWithAuthentication").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(currentHandle).permBits |= 0x10;
+                                get(currentHandle).permBits |= 0x10;
                     }
                 }
             });
         serviceSecuritySetting.getChild("WriteWithAuthorization").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(currentHandle).permBits |= 0x08;
+                                get(currentHandle).permBits |= 0x08;
                     }
                 }
             });
@@ -351,11 +339,11 @@ public class GattServiceParser {
                     }
                     if(attrTypeFound == 0) {
                         GattServerAppService.gattAttribTypeToHandle.
-                                        put(charDescAttribute.type, new ArrayList<Integer>());
+                                put(charDescAttribute.type, new ArrayList<Integer>());
                     }
                 }
                 List<Integer> hndlList = GattServerAppService.gattAttribTypeToHandle.
-                                get(charDescAttribute.type);
+                        get(charDescAttribute.type);
                 if(hndlList != null) {
                     hndlList.add(charDescAttribute.handle);
                 }
@@ -364,7 +352,6 @@ public class GattServiceParser {
         descriptor.getChild(VALUE).setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "Descriptor value : " + body);
                     String descName = GattServerAppService.gattHandleToAttributes.get(charDescHandle).name;
                     if(descName != null && descName.equalsIgnoreCase("Characteristic User Description")) {
                         GattServerAppService.gattHandleToAttributes.get(charDescHandle).value =
@@ -380,20 +367,18 @@ public class GattServiceParser {
         descProperty.getChild("Read").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "descProperty read : " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charDescHandle).properties |= 0x02;
+                                get(charDescHandle).properties |= 0x02;
                     }
                 }
             });
         descProperty.getChild("Write").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "descProperty Write : " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charDescHandle).properties |= 0x08;
+                                get(charDescHandle).properties |= 0x08;
                     }
                 }
         });
@@ -403,50 +388,45 @@ public class GattServiceParser {
         descSecuritySetting.getChild("ReadOnly").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charDescHandle).permBits |= 0x04;
+                                get(charDescHandle).permBits |= 0x04;
                     }
                 }
             });
         descSecuritySetting.getChild("ReadWithAuthentication").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charDescHandle).permBits |= 0x02;
+                                get(charDescHandle).permBits |= 0x02;
                     }
                 }
             });
         descSecuritySetting.getChild("ReadWithAuthorization").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charDescHandle).permBits |= 0x01;
+                                get(charDescHandle).permBits |= 0x01;
                     }
                 }
             });
         descSecuritySetting.getChild("WriteWithAuthentication").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charDescHandle).permBits |= 0x10;
+                                get(charDescHandle).permBits |= 0x10;
                     }
                 }
             });
         descSecuritySetting.getChild("WriteWithAuthorization").setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "security: " + body);
                     if(body!=null && body.equalsIgnoreCase("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charDescHandle).permBits |= 0x08;
+                                get(charDescHandle).permBits |= 0x08;
                     }
                 }
             });
@@ -455,18 +435,16 @@ public class GattServiceParser {
         descRange.getChild(MIN).setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "Desc range min: " + body);
                     GattServerAppService.gattHandleToAttributes.
-                                get(charDescHandle).min_range = Integer
+                            get(charDescHandle).min_range = Integer
                             .parseInt(body);
                 }
             });
         descRange.getChild(MAX).setEndTextElementListener(
             new EndTextElementListener() {
                 public void end(String body) {
-                    Log.d(TAG, "Desc range max: " + body);
                     GattServerAppService.gattHandleToAttributes.
-                                get(charDescHandle).max_range = Integer
+                            get(charDescHandle).max_range = Integer
                             .parseInt(body);
                 }
             });
@@ -495,7 +473,7 @@ public class GattServiceParser {
                 //populate the Gatt Attrib type map with handles
                 if(GattServerAppService.gattAttribTypeToHandle != null) {
                     for(Map.Entry<String, List<Integer>> entry :
-                                GattServerAppService.gattAttribTypeToHandle.entrySet()) {
+                            GattServerAppService.gattAttribTypeToHandle.entrySet()) {
                         if(charValueAttribute.type.equalsIgnoreCase(entry.getKey().toString())) {
                             attrTypeFound = 1;
                             break;
@@ -503,7 +481,7 @@ public class GattServiceParser {
                     }
                     if(attrTypeFound == 0) {
                         GattServerAppService.gattAttribTypeToHandle.
-                                        put(charValueAttribute.type, new ArrayList<Integer>());
+                                put(charValueAttribute.type, new ArrayList<Integer>());
                     }
                 }
                 List<Integer> hndlList = GattServerAppService.gattAttribTypeToHandle.
@@ -516,7 +494,6 @@ public class GattServiceParser {
 
         value.setEndTextElementListener(new EndTextElementListener() {
             public void end(String body) {
-                Log.d(TAG, "Char value to be written::"+body);
                 GattServerAppService.gattHandleToAttributes.get(charValueHandle).value =
                         GattServerAppService.stringToByteArray(body);
             }
@@ -535,9 +512,8 @@ public class GattServiceParser {
             new EndTextElementListener() {
                 public void end(String body) {
                     if (body.equals("1")) {
-                        Log.d(TAG, "Inside Read properties::");
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charHandle).properties |= 0x02;
+                                get(charHandle).properties |= 0x02;
                     }
                 }
             });
@@ -545,9 +521,8 @@ public class GattServiceParser {
             new EndTextElementListener() {
                 public void end(String body) {
                     if (body.equals("1")) {
-                        Log.d(TAG, "Inside Write properties::");
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charHandle).properties |= 0x08;
+                                get(charHandle).properties |= 0x08;
                     }
                 }
             });
@@ -555,9 +530,8 @@ public class GattServiceParser {
             new EndTextElementListener() {
                 public void end(String body) {
                     if (body.equals("1")) {
-                        Log.d(TAG, "Inside WriteWithoutResponse properties::");
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charHandle).properties |= 0x04;
+                                get(charHandle).properties |= 0x04;
                     }
                 }
             });
@@ -566,7 +540,7 @@ public class GattServiceParser {
                 public void end(String body) {
                     if (body.equals("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charHandle).properties |= 0x40;
+                                get(charHandle).properties |= 0x40;
                     }
                 }
             });
@@ -579,9 +553,8 @@ public class GattServiceParser {
             new EndTextElementListener() {
                 public void end(String body) {
                     if (body.equals("1")) {
-                        Log.d(TAG, "Inside Notify properties::");
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charHandle).properties |= 0x10;
+                                get(charHandle).properties |= 0x10;
                     }
                 }
             });
@@ -589,9 +562,8 @@ public class GattServiceParser {
             new EndTextElementListener() {
                 public void end(String body) {
                     if (body.equals("1")) {
-                        Log.d(TAG, "Inside Indicate properties::");
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charHandle).properties |= 0x20;
+                                get(charHandle).properties |= 0x20;
                     }
                 }
             });
@@ -605,7 +577,7 @@ public class GattServiceParser {
                 public void end(String body) {
                     if (body.equals("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charHandle).properties |= 0x01;
+                                get(charHandle).properties |= 0x01;
                     }
                 }
             });
@@ -621,9 +593,8 @@ public class GattServiceParser {
             new EndTextElementListener() {
                 public void end(String body) {
                     if (body.equals("1")) {
-                        Log.d(TAG, "Inside Read properties::");
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charValueHandle).properties |= 0x02;
+                                get(charValueHandle).properties |= 0x02;
                     }
                 }
             });
@@ -631,9 +602,8 @@ public class GattServiceParser {
             new EndTextElementListener() {
                 public void end(String body) {
                     if (body.equals("1")) {
-                        Log.d(TAG, "Inside Write properties::");
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charValueHandle).properties |= 0x08;
+                                get(charValueHandle).properties |= 0x08;
                     }
                 }
             });
@@ -641,9 +611,8 @@ public class GattServiceParser {
             new EndTextElementListener() {
                 public void end(String body) {
                     if (body.equals("1")) {
-                        Log.d(TAG, "Inside WriteWithoutResponse properties::");
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charValueHandle).properties |= 0x04;
+                                get(charValueHandle).properties |= 0x04;
                     }
                 }
             });
@@ -652,7 +621,7 @@ public class GattServiceParser {
                 public void end(String body) {
                     if (body.equals("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charValueHandle).properties |= 0x40;
+                                get(charValueHandle).properties |= 0x40;
                     }
                 }
             });
@@ -665,9 +634,8 @@ public class GattServiceParser {
             new EndTextElementListener() {
                 public void end(String body) {
                     if (body.equals("1")) {
-                        Log.d(TAG, "Inside Notify properties::");
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charValueHandle).properties |= 0x10;
+                                get(charValueHandle).properties |= 0x10;
                     }
                 }
             });
@@ -675,9 +643,8 @@ public class GattServiceParser {
             new EndTextElementListener() {
                 public void end(String body) {
                     if (body.equals("1")) {
-                        Log.d(TAG, "Inside Indicate properties::");
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charValueHandle).properties |= 0x20;
+                                get(charValueHandle).properties |= 0x20;
                     }
                 }
             });
@@ -691,7 +658,7 @@ public class GattServiceParser {
                 public void end(String body) {
                     if (body.equals("1")) {
                         GattServerAppService.gattHandleToAttributes.
-                                        get(charValueHandle).properties |= 0x01;
+                                get(charValueHandle).properties |= 0x01;
                     }
                 }
             });
