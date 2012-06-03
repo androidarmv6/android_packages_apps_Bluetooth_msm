@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2008-2009, Motorola, Inc.
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * All rights reserved.
  *
@@ -60,9 +61,9 @@ public class BluetoothOppShareInfo {
 
     public int mStatus;
 
-    public int mTotalBytes;
+    public long mTotalBytes;
 
-    public int mCurrentBytes;
+    public long mCurrentBytes;
 
     public long mTimestamp;
 
@@ -70,7 +71,7 @@ public class BluetoothOppShareInfo {
 
     public BluetoothOppShareInfo(int id, String uri, String hint, String filename, String mimetype,
             int direction, int owner, String destination, int visibility, int confirm, int status,
-            int totalBytes, int currentBytes, int timestamp, boolean mediaScanned) {
+            long totalBytes, long currentBytes, long timestamp, boolean mediaScanned) {
         mId = id;
         mUri = uri;
         mHint = hint;

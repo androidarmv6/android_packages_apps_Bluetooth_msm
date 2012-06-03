@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012 Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -133,17 +133,17 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
         private static final int sSleepTime = 500;
         private Uri contentUri;
         private Context mContext1;
-        private int position;
+        private long position;
         private volatile boolean interrupted = false;
 
-        public ContentResolverUpdateThread(Context context, Uri cntUri, int pos) {
+        public ContentResolverUpdateThread(Context context, Uri cntUri, long pos) {
             super("BtOpp ContentResolverUpdateThread");
             mContext1 = context;
             contentUri = cntUri;
             position = pos;
         }
 
-        public void updateProgress (int pos) {
+        public void updateProgress (long pos) {
             position = pos;
         }
 
@@ -537,7 +537,7 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
                 }
 
                 if (!error) {
-                    int position = 0;
+                    long position = 0;
                     int readLength = 0;
                     long readbytesleft = 0;
                     boolean okToProceed = false;
