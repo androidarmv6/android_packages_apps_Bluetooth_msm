@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -651,7 +652,7 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
                 String readStr, String name) throws BadRequestException {
         if (V) Log.v(TAG, " Before fromBmessageemail method:: "+readStr);
 
-        BmessageConsts bMsg = MapUtils.fromBmessageEmail(readStr);
+        BmessageConsts bMsg = MapUtils.fromBmessageEmail(mContext,readStr,mMasId);
         String address = bMsg.getRecipientVcard_email();
         String text = bMsg.getBody_msg();
         String subject = bMsg.getSubject();

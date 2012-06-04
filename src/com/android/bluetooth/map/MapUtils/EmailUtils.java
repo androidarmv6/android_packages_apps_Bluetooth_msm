@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -720,6 +721,9 @@ public class EmailUtils {
     private static final String[] ACCOUNT_ID_PROJECTION = new String[] {
         RECORD_ID, EMAIL_ADDRESS, IS_DEFAULT
     };
+    private static final String[] ACCOUNT_ID_NAME_PROJECTION = new String[] {
+       RECORD_ID, EMAIL_ADDRESS, DISPLAY_NAME
+    };
     // Types of mailboxes. From EmailContent.java
     // inbox
     public static final int TYPE_INBOX = 0;
@@ -826,6 +830,49 @@ public class EmailUtils {
         if (V) Log.v(TAG, "id = " + id);
         return id;
     }
+
+    /**
+     * Returns the first Email account id name that satisfies where condition
+     * @param context the calling Context
+     * @param where the condition respect to {@link #RECORD_ID}, {@link #EMAIL_ADDRESS}, {@link #IS_DEFAULT}
+     * @return Email account id Email
+     */
+    public static String getEmailAccountIdEmail(Context context, String where) {
+        if (V) Log.v(TAG, "getEmailAccountIdName(" + where + ")");
+        String idEmail = null;
+        Cursor cursor = context.getContentResolver().query(EMAIL_ACCOUNT_URI,
+                ACCOUNT_ID_NAME_PROJECTION, where, null, null);
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                idEmail = cursor.getString(1);
+            }
+            cursor.close();
+        }
+        if (V) Log.v(TAG, "idEmail = " + idEmail);
+        return idEmail;
+    }
+
+    /**
+     * Returns the first Email account id name that satisfies where condition
+     * @param context the calling Context
+     * @param where the condition respect to {@link #RECORD_ID}, {@link #EMAIL_ADDRESS}, {@link #IS_DEFAULT}
+     * @return Email account id Display Name
+     */
+    public static String getEmailAccountDisplayName(Context context, String where) {
+        if (V) Log.v(TAG, "getEmailAccountIdName(" + where + ")");
+        String displayName = null;
+        Cursor cursor = context.getContentResolver().query(EMAIL_ACCOUNT_URI,
+                ACCOUNT_ID_NAME_PROJECTION, where, null, null);
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                displayName = cursor.getString(2);
+            }
+            cursor.close();
+        }
+        if (V) Log.v(TAG, "displayName = " + displayName);
+        return displayName;
+    }
+
 
     /**
      * Returns the default Email account id; the first account id if no default account

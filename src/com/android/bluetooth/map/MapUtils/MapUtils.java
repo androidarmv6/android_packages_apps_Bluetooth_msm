@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -28,6 +29,7 @@
 
 package com.android.bluetooth.map.MapUtils;
 
+import android.content.Context;
 import com.android.vcard.VCardProperty;
 import com.android.vcard.VCardInterpreter;
 import com.android.vcard.VCardParser;
@@ -970,7 +972,8 @@ public class MapUtils {
      * @return This method returns a BmessageConsts object
      */
 
-    public static BmessageConsts fromBmessageEmail(String bmsg) throws BadRequestException {
+    public static BmessageConsts fromBmessageEmail(Context context,
+                        String bmsg, int mMasId) throws BadRequestException {
         BmessageConsts bMsgObj = new BmessageConsts();
         String vCard = fetchRecipientVcard(bmsg);
         if (V) Log.v(TAG, "vCard Info: " + vCard);
@@ -986,7 +989,19 @@ public class MapUtils {
         if (vcardOrig.length() > 0) {
             RecipientVCard originator = parseVCard(vcardOrig);
             if (originator.mEmail.length() == 0) {
-                throw new BadRequestException("No Email in originator vCard");
+                long accountId = -1;
+                accountId = EmailUtils.getAccountId(mMasId);
+                if ((accountId != -1) && (context != null)) {
+                    originator.mEmail = EmailUtils.getEmailAccountIdEmail
+                    (context,EmailUtils.RECORD_ID + "=" + accountId);
+                    Log.v(TAG, "Orig Email inserted by MSE as: " + originator.mEmail);
+                    originator.mFormattedName = EmailUtils.getEmailAccountDisplayName
+                    (context,EmailUtils.RECORD_ID + "=" + accountId);
+                    Log.v(TAG, "Orig F-Name inserted by MSE as: " + originator.mFormattedName);
+                }
+                if (originator.mEmail.length() == 0) {
+                    throw new BadRequestException("No Email in originator vCard");
+                }
             }
             bMsgObj.setOriginatorVcard_email(originator.mEmail);
             if (V) Log.v(TAG, "Orig Email: " + originator.mEmail);
