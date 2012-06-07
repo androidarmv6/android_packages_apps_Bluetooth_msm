@@ -1551,7 +1551,13 @@ public class MapUtils {
             int endVersionPos;
             if(rfc822Flag == 0){
                 if(mimeFlag == 0) {
-                    return body.substring(beginVersionPos);
+                    endVersionPos = body.indexOf("END:MSG", beginVersionPos) ;
+                    if (endVersionPos != -1) {
+                        return body.substring(beginVersionPos, (endVersionPos - CRLF.length()));
+                    }
+                    else {
+                        return body.substring(beginVersionPos);
+                    }
                 } else {
                     endVersionPos = (body.indexOf("--"+boundary+"--", beginVersionPos) - CRLF.length());
                 }
