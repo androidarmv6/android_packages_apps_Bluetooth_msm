@@ -133,9 +133,9 @@ public class GattServerAppService extends Service {
 
     public Context mContext = null;
 
-    private static BluetoothGattAppConfiguration serverConfiguration = null;
+    public static BluetoothGattAppConfiguration serverConfiguration = null;
 
-    private static BluetoothGatt gattProfile = null;
+    public static BluetoothGatt gattProfile = null;
 
     public static final String BLUETOOTH_BASE_UUID = "0000xxxx00001000800000805f9b34fb";
 
@@ -2870,7 +2870,9 @@ public class GattServerAppService extends Service {
             }
             if(status == BluetoothDevice.GATT_RESULT_SUCCESS) {
                 if(connectedDevicesList != null && connectedDevicesList.size() > 0) {
-                    connectedDevicesList.add(remoteDevice);
+                    if(!connectedDevicesList.contains(remoteDevice.getAddress())) {
+                        connectedDevicesList.add(remoteDevice);
+                    }
                 }
                 else {
                     connectedDevicesList = new ArrayList<BluetoothDevice>();
