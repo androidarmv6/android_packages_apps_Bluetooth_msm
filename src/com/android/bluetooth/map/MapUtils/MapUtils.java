@@ -44,6 +44,7 @@ import java.io.UnsupportedEncodingException;
 import com.android.bluetooth.map.BluetoothMasService;
 
 import org.xmlpull.v1.XmlSerializer;
+import com.android.internal.util.FastXmlSerializer;
 
 import java.io.IOException;
 import java.io.StringBufferInputStream;
@@ -114,7 +115,7 @@ public class MapUtils {
      * @return This method returns either null or a String
      */
     public static String messageListingXML(List<MsgListingConsts> list) {
-        XmlSerializer serializer = Xml.newSerializer();
+        XmlSerializer serializer = new FastXmlSerializer();
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         OutputStreamWriter myOutputStreamWriter = null;
         try {
@@ -127,92 +128,93 @@ public class MapUtils {
             String str1;
             String str2 = "<?xml version=\"1.0\"?>";
             serializer.setOutput(myOutputStreamWriter);
-            serializer.startDocument("UTF-8", null);
+            serializer.startDocument("UTF-8", true);
+            serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
             serializer.text("\n");
-            serializer.startTag("", "MAP-msg-listing");
-            serializer.attribute("", "version", "1.0");
+            serializer.startTag(null, "MAP-msg-listing");
+            serializer.attribute(null, "version", "1.0");
             for (MsgListingConsts msg : list) {
-                serializer.startTag("", "msg");
+                serializer.startTag(null, "msg");
 
-                serializer.attribute("", "handle", ("" + msg.msg_handle));
+                serializer.attribute(null, "handle", ("" + msg.msg_handle));
                 if (msg.sendSubject == true) {
                     if (msg.subject == null){
-                        serializer.attribute("", "subject", "");
+                        serializer.attribute(null, "subject", "");
                     } else {
-                        serializer.attribute("", "subject", msg.subject);
+                        serializer.attribute(null, "subject", msg.subject);
                     }
 
                 }
                 if (msg.datetime != null) {
-                    serializer.attribute("", "datetime", msg.datetime);
+                    serializer.attribute(null, "datetime", msg.datetime);
                 }
                 if (msg.sender_name != null) {
-                    serializer.attribute("", "sender_name", msg.sender_name);
+                    serializer.attribute(null, "sender_name", msg.sender_name);
                 }
 
                 if (msg.sender_addressing != null) {
-                    serializer.attribute("", "sender_addressing",
+                    serializer.attribute(null, "sender_addressing",
                             msg.sender_addressing);
                 }
 
                 if (msg.replyto_addressing != null) {
-                    serializer.attribute("", "replyto_addressing",
+                    serializer.attribute(null, "replyto_addressing",
                             msg.replyto_addressing);
                 }
 
                 if (msg.recepient_name != null) {
-                    serializer.attribute("", "recipient_name",
+                    serializer.attribute(null, "recipient_name",
                             msg.recepient_name);
                 }
                 if (msg.sendRecipient_addressing == true) {
                     if (msg.recepient_addressing != null) {
-                        serializer.attribute("", "recipient_addressing",
+                        serializer.attribute(null, "recipient_addressing",
                                 msg.recepient_addressing);
                     } else {
-                        serializer.attribute("", "recipient_addressing", "");
+                        serializer.attribute(null, "recipient_addressing", "");
                     }
                 }
                 if (msg.type != null) {
-                    serializer.attribute("", "type", msg.type);
+                    serializer.attribute(null, "type", msg.type);
                 }
                 if (msg.size != 0) {
-                    serializer.attribute("", "size", ("" + msg.size));
+                    serializer.attribute(null, "size", ("" + msg.size));
                 }
 
                 if (msg.contains_text != null) {
-                    serializer.attribute("", "text", msg.contains_text);
+                    serializer.attribute(null, "text", msg.contains_text);
                 }
 
                 if (msg.reception_status != null) {
-                    serializer.attribute("", "reception_status",
+                    serializer.attribute(null, "reception_status",
                             msg.reception_status);
                 }
 
                 if (msg.attachment_size != -1) {
-                    serializer.attribute("", "attachment_size",
+                    serializer.attribute(null, "attachment_size",
                             ("" + Integer.toString(msg.attachment_size)));
                 }
 
                 if (msg.priority != null) {
-                    serializer.attribute("", "priority", msg.priority);
+                    serializer.attribute(null, "priority", msg.priority);
                 }
 
                 if (msg.read != null) {
-                    serializer.attribute("", "read", msg.read);
+                    serializer.attribute(null, "read", msg.read);
                 }
 
                 if (msg.sent != null) {
-                    serializer.attribute("", "sent", msg.sent);
+                    serializer.attribute(null, "sent", msg.sent);
                 }
 
                 if (msg.msg_protected != null) {
-                    serializer.attribute("", "protected", msg.msg_protected);
+                    serializer.attribute(null, "protected", msg.msg_protected);
                 }
 
-                serializer.endTag("", "msg");
+                serializer.endTag(null, "msg");
 
             }
-            serializer.endTag("", "MAP-msg-listing");
+            serializer.endTag(null, "MAP-msg-listing");
             serializer.endDocument();
             try {
                 str1 = outputStream.toString("UTF-8");
