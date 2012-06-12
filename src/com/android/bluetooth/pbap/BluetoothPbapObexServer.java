@@ -33,6 +33,7 @@
 
 package com.android.bluetooth.pbap;
 
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.os.Message;
 import android.os.Handler;
@@ -40,6 +41,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.provider.CallLog.Calls;
 import android.provider.CallLog;
+
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -149,6 +151,8 @@ public class BluetoothPbapObexServer extends ServerRequestHandler {
     private Context mContext;
 
     private BluetoothPbapVcardManager mVcardManager;
+
+    private BluetoothAdapter mAdapter;
 
     private int mOrderBy  = ORDER_BY_INDEXED;
 
@@ -500,6 +504,11 @@ public class BluetoothPbapObexServer extends ServerRequestHandler {
                         if (appParam[i+index] != 0){
                             appParamValue.ignorefilter = false;
                             appParamValue.filter[index] = appParam[i+index];
+                            mAdapter = BluetoothAdapter.getDefaultAdapter();
+                            if(!(mAdapter.isHostPatchRequired(BluetoothPbapService.getRemoteDeviceAddress(),
+                                    BluetoothAdapter.HOST_PATCH_ENABLE_PHOTO_ON_PBAP))) {
+                               appParamValue.filter[7] = (byte)(appParamValue.filter[7] & 0xF7); //Ignoring Photo filter value
+                            }
                         }
                     }
                     i += ApplicationParameter.TRIPLET_LENGTH.FILTER_LENGTH;
