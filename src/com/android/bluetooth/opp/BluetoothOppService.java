@@ -281,7 +281,7 @@ public class BluetoothOppService extends Service {
                         + "\r\nmTransfer : " + mTransfer
                         + "\r\nmServerTransfer : " + mServerTransfer
                         + "\r\nmPendingConnection : " + mPendingConnection );
-                    if (((mBatchs.size() == 0) || ((mBatchs.size() > 0) && mServerTransfer == null))
+                    if (((mBatchs.size() == 0) || ((mBatchs.size() > 0) && (mServerTransfer == null)))
                             && mPendingConnection == null) {
                         Log.i(TAG, "### Start Obex Server");
                         createServerSession(transport);
@@ -310,7 +310,7 @@ public class BluetoothOppService extends Service {
                     if (D) Log.d(TAG, "#2 mBatchs.size(): " + mBatchs.size()
                         + "\r\nmTransfer : " + mTransfer
                         + "\r\nmServerTransfer : " + mServerTransfer);
-                    if ((mBatchs.size() == 0) || ((mBatchs.size() > 0) && mServerTransfer == null)) {
+                    if ((mBatchs.size() == 0) || ((mBatchs.size() > 0) && (mServerTransfer == null))) {
                         Log.i(TAG, "Start Obex Server");
                         createServerSession(mPendingConnection);
                         mIncomingRetries = 0;
@@ -790,7 +790,7 @@ public class BluetoothOppService extends Service {
                             }
                         }
                     } else if (info.mDirection == BluetoothShare.DIRECTION_INBOUND) {
-                        if(mTransfer == null) {
+                        if(mServerTransfer == null) {
                             if (V) Log.v(TAG, "Service start server transfer new Batch "
                                 + newBatch.mId + " for info " + info.mId);
                             mServerTransfer = new BluetoothOppTransfer(this, mPowerManager,
