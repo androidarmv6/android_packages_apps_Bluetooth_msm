@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -191,6 +191,8 @@ public class Constants {
     public static final String BLUETOOTHOPP_OBEX_VARIANT_PREFERENCE = "btopp_obex_variant";
 
     public static String filename_SEQUENCE_SEPARATOR = "-";
+
+    public static boolean ZERO_LENGTH_FILE = false;
 
     public static void updateShareStatus(Context context, int id, int status) {
         Uri contentUri = Uri.parse(BluetoothShare.CONTENT_URI + "/" + id);
