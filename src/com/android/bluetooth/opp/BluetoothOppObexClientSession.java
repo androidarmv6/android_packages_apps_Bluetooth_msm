@@ -430,6 +430,7 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
             ContentValues updateValues;
             ContentResolverUpdateThread uiUpdateThread = null;
             HeaderSet reply;
+            long position = 0;
             reply = new HeaderSet();
             HeaderSet request;
             request = new HeaderSet();
@@ -537,7 +538,6 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
                 }
 
                 if (!error) {
-                    long position = 0;
                     int readLength = 0;
                     long readbytesleft = 0;
                     boolean okToProceed = false;
@@ -760,6 +760,13 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
                 } catch (IOException e) {
                     Log.e(TAG, "IOException", e);
                     Log.e(TAG, "Error when closing stream after send");
+                    /* Socket is been closed due to the response timeout in the framework
+                     * Hence, mark the transfer as failure
+                     */
+                    if (position != fileInfo.mLength) {
+                       status = BluetoothShare.STATUS_FORBIDDEN;
+                       Constants.updateShareStatus(mContext1, mInfo.mId, status);
+                    }
                 }
             }
             return status;

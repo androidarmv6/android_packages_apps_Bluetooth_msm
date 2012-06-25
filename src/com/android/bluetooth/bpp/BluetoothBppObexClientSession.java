@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -715,6 +715,7 @@ public class BluetoothBppObexClientSession{
         private int sendFile(BluetoothOppSendFileInfo fileInfo) {
             boolean error = false;
             int responseCode = -1;
+            int position = 0;
             int status = BluetoothShare.STATUS_SUCCESS;
             Uri contentUri = Uri.parse(BluetoothShare.CONTENT_URI + "/" + mInfo.mId);
             ContentValues updateValues;
@@ -805,7 +806,6 @@ public class BluetoothBppObexClientSession{
                 }
 
                 if (!error) {
-                    int position = 0;
                     int readLength = 0;
                     boolean okToProceed = false;
                     long timestamp = 0;
@@ -966,6 +966,11 @@ public class BluetoothBppObexClientSession{
                     }
                 } catch (IOException e) {
                     Log.e(TAG, "Error when closing stream after send");
+                    /* Socket is been closed due to the response timeout in the framework
+                     * Hence, mark the transfer as failure
+                     */
+                    if (position != mFileSize)
+                      status = BluetoothShare.STATUS_FORBIDDEN;
                 }
             }
             return status;
