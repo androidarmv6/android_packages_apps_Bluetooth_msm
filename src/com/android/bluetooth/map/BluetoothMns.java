@@ -565,8 +565,13 @@ public class BluetoothMns implements MessageNotificationListener {
                 if (V) {
                     Log.v(TAG, " Sending event report file for Mas " + masId);
                 }
-
-                mSession.sendEvent(fileR, (byte) masId);
+                try {
+                    if (mSession != null) {
+                        mSession.sendEvent(fileR, (byte) masId);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             } else {
                 if (V){
                     Log.v(TAG, " ERROR IN CREATING SEND EVENT OBJ FILE");
