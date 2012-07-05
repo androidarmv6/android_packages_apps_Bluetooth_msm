@@ -334,9 +334,11 @@ public class BluetoothFtpService extends Service {
         } else if (action.equals(AUTH_RESPONSE_ACTION)) {
             String sessionkey = intent.getStringExtra(EXTRA_SESSION_KEY);
             notifyAuthKeyInput(sessionkey);
+            removeAuthChallTimer();
             removeFtpNotification(NOTIFICATION_ID_ACCESS);
         } else if (action.equals(AUTH_CANCELLED_ACTION)) {
             notifyAuthCancelled();
+            removeAuthChallTimer();
             removeFtpNotification(NOTIFICATION_ID_ACCESS);
         } else {
             removeTimeoutMsg = false;
@@ -992,6 +994,11 @@ public class BluetoothFtpService extends Service {
         NotificationManager nm = (NotificationManager)context
                 .getSystemService(Context.NOTIFICATION_SERVICE);
         nm.cancel(id);
+    }
+
+    private void removeAuthChallTimer() {
+        if (mSessionStatusHandler != null)
+          mSessionStatusHandler.removeMessages(MSG_INTERNAL_AUTH_TIMEOUT);
     }
 
     public static String getRemoteDeviceName() {
