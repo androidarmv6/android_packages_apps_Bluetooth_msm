@@ -53,37 +53,43 @@ public class GattServerAppReceiver extends BroadcastReceiver{
     private final static String TAG = "GattServerAppReceiver";
     private static final int REQUEST_ENABLE_BT = 1;
     private static Handler handler = null;
+    GattServerAppService gattService = new GattServerAppService();
+
     public void onReceive(Context context, Intent intent) {
         final String action = intent.getAction();
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        if(action != null && action.equalsIgnoreCase("android.intent.action.BOOT_COMPLETED")) {
-            if (mBluetoothAdapter != null) {
-                // Device supports Bluetooth
-                if (!mBluetoothAdapter.isEnabled()) {
-                    Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                    enableBtIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    context.startActivity(enableBtIntent);
-
-                    Intent serviceIntent = new Intent();
-                    serviceIntent.setAction("com.android.bluetooth.test.GattServerAppService");
-                    Log.d(TAG, "Going to start service from BT Server app Broadcast Receiver::");
-                    context.startService(serviceIntent);
-                }
-                else if(mBluetoothAdapter.isEnabled()) {
-                    Intent serviceIntent = new Intent();
-                    serviceIntent.setAction("com.android.bluetooth.test.GattServerAppService");
-                    Log.d(TAG, "Going to start service from BT Server app Broadcast Receiver::");
-                    context.startService(serviceIntent);
-                }
-            }
-        }
-        else if(action != null && action.equalsIgnoreCase(BluetoothAdapter.ACTION_STATE_CHANGED)) {
+        if(action != null && action.equalsIgnoreCase(BluetoothAdapter.ACTION_STATE_CHANGED)) {
             if (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR) ==
                 BluetoothAdapter.STATE_ON) {
                 Intent serviceIntent = new Intent();
                 serviceIntent.setAction("com.android.bluetooth.test.GattServerAppService");
                 Log.d(TAG, "Going to start service from BT Server app Broadcast Receiver::");
                 context.startService(serviceIntent);
+            }
+            else if(intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1) ==
+                    BluetoothAdapter.STATE_OFF) {
+                Log.d(TAG, "Bluetooth is off");
+
+                if(GattServerAppService.gattProfile != null &&
+                        GattServerAppService.serverConfiguration != null) {
+                    if(GattServerAppService.connectedDevicesList != null &&
+                            GattServerAppService.connectedDevicesList.size() > 0) {
+                        if(GattServerAppService.connectedDevicesList != null &&
+                                GattServerAppService.connectedDevicesList.size() > 0) {
+                            for(int i=0; i < GattServerAppService.connectedDevicesList.size(); i++) {
+                                BluetoothDevice remoteDevice = GattServerAppService.connectedDevicesList.get(i);
+                                gattService.disconnectLEDevice(remoteDevice);
+                            }
+                        }
+                    }
+                    GattServerAppService.gattProfile.
+                            unregisterServerConfiguration(GattServerAppService.serverConfiguration);
+                    Log.d(TAG, "Unregistered server app configuration");
+                    Intent serviceIntent = new Intent();
+                    serviceIntent.setAction("com.android.bluetooth.test.GattServerAppService");
+                    Log.d(TAG, "Going to stop service from BT Server app Broadcast Receiver::");
+                    context.stopService(serviceIntent);
+                }
             }
         }
         else if (action.equals(BluetoothDevicePicker.ACTION_DEVICE_SELECTED)) {
