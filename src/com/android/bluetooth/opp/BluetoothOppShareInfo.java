@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2008-2009, Motorola, Inc.
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * All rights reserved.
  *
@@ -50,6 +51,8 @@ public class BluetoothOppShareInfo {
 
     public int mDirection;
 
+    public int mOwner;
+
     public String mDestination;
 
     public int mVisibility;
@@ -58,23 +61,24 @@ public class BluetoothOppShareInfo {
 
     public int mStatus;
 
-    public int mTotalBytes;
+    public long mTotalBytes;
 
-    public int mCurrentBytes;
+    public long mCurrentBytes;
 
     public long mTimestamp;
 
     public boolean mMediaScanned;
 
     public BluetoothOppShareInfo(int id, String uri, String hint, String filename, String mimetype,
-            int direction, String destination, int visibility, int confirm, int status,
-            int totalBytes, int currentBytes, int timestamp, boolean mediaScanned) {
+            int direction, int owner, String destination, int visibility, int confirm, int status,
+            long totalBytes, long currentBytes, long timestamp, boolean mediaScanned) {
         mId = id;
         mUri = uri;
         mHint = hint;
         mFilename = filename;
         mMimetype = mimetype;
         mDirection = direction;
+        mOwner = owner;
         mDestination = destination;
         mVisibility = visibility;
         mConfirm = confirm;

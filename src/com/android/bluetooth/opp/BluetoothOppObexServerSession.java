@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -36,6 +37,9 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.FileInputStream;
+import java.io.BufferedInputStream;
 import java.util.Arrays;
 
 import android.content.ContentValues;
@@ -46,15 +50,27 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
+import android.os.Process;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
 
+import android.os.SystemProperties;
+import android.database.Cursor;
+import android.provider.ContactsContract.Contacts;
+import android.provider.ContactsContract.Profile;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.lang.Thread;
+
+
 import javax.obex.HeaderSet;
+import javax.obex.ObexHelper;
 import javax.obex.ObexTransport;
 import javax.obex.Operation;
 import javax.obex.ResponseCodes;
 import javax.obex.ServerRequestHandler;
 import javax.obex.ServerSession;
+import javax.obex.ServerOperation;
 
 /**
  * This class runs as an OBEX server
@@ -65,6 +81,12 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
     private static final String TAG = "BtOppObexServer";
     private static final boolean D = Constants.DEBUG;
     private static final boolean V = Constants.VERBOSE;
+
+    private static final String OPP_SERVER_DIR_PATH = "/data/data/com.android.bluetooth/oppserver";
+    private static final String OPP_MIME_TYPE = "text/x-vcard";
+    private static final String OPP_DEFAULT_vCARD_NAME = "default.vcf";
+    private static final String OPP_myProfile_NAME = "myprofile.vcf";
+    private static final int OPP_LOCAL_BUF_SIZE  = 0x4000;
 
     private ObexTransport mTransport;
 
@@ -97,6 +119,8 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
 
     boolean mTimeoutMsgSent = false;
 
+    boolean mTransferInProgress = false;
+
     public BluetoothOppObexServerSession(Context context, ObexTransport transport) {
         mContext = context;
         mTransport = transport;
@@ -120,6 +144,16 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
         try {
             if (D) Log.d(TAG, "Create ServerSession with transport " + mTransport.toString());
             mSession = new ServerSession(mTransport, this, null);
+            int mps = ((BluetoothOppTransport)mTransport).getMaxPacketSize();
+            mSession.setMaxPacketSize(mps);
+            if (D) Log.d(TAG, "Setting ServerSession mps " + mps);
+
+            // Turn on/off SRM based on transport capability (whether this is OBEX-over-L2CAP, or not)
+            mSession.mSrmServer.setLocalSrmCapability(((BluetoothOppTransport)mTransport).isSrmCapable());
+
+            if (!mSession.mSrmServer.getLocalSrmCapability()) {
+                mSession.mSrmServer.setLocalSrmParamStatus(ObexHelper.SRMP_DISABLED);
+            }
         } catch (IOException e) {
             Log.e(TAG, "Create server session error" + e);
         }
@@ -157,6 +191,78 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
         mSession = null;
     }
 
+    private class ContentResolverUpdateThread extends Thread {
+
+        private static final int sSleepTime = 500;
+        private Uri contentUri;
+        private Context mContext1;
+        private long position;
+        private volatile boolean interrupted = false;
+
+        public ContentResolverUpdateThread(Context context, Uri cntUri, long pos) {
+            super("BtOpp Server ContentResolverUpdateThread");
+            mContext1 = context;
+            contentUri = cntUri;
+            position = pos;
+        }
+
+        public void updateProgress (long pos) {
+            position = pos;
+        }
+
+        @Override
+        public void run() {
+            ContentValues updateValues;
+
+            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+
+            while (true) {
+                updateValues = new ContentValues();
+                updateValues.put(BluetoothShare.CURRENT_BYTES, position);
+                mContext1.getContentResolver().update(contentUri, updateValues,
+                        null, null);
+
+                /*
+                    Check if the Operation is interrupted before entering sleep
+                */
+
+                if (interrupted == true) {
+                    if (V) Log.v(TAG, "ContentResolverUpdateThread was interrupted before sleep !, exiting");
+                    return;
+                }
+
+                try {
+                    Thread.sleep(sSleepTime);
+                } catch (InterruptedException e1) {
+                    if (V) Log.v(TAG, "Server ContentResolverUpdateThread was interrupted (1), exiting");
+                    return;
+                }
+            }
+        }
+
+        @Override
+        public void interrupt() {
+            interrupted = true;
+            super.interrupt();
+        }
+    }
+
+    /*
+    * Called when a ABORT request is received.
+    */
+    @Override
+    public int onAbort(HeaderSet request, HeaderSet reply) {
+        if (D) Log.d(TAG, "onAbort()");
+        if (mTransferInProgress) {
+           return ResponseCodes.OBEX_HTTP_OK;
+        } else {
+            /* Transfer is completed already or the command is received
+             * when no transfer in progress. Send -ve response.
+             */
+            return ResponseCodes.OBEX_HTTP_NOT_ACCEPTABLE;
+        }
+    }
+
     public void addShare(BluetoothOppShareInfo info) {
         if (D) Log.d(TAG, "addShare for id " + info.mId);
         mInfo = info;
@@ -169,6 +275,7 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
         HeaderSet request;
         String name, mimeType;
         Long length;
+        Byte srm;
 
         int obexResponse = ResponseCodes.OBEX_HTTP_OK;
 
@@ -176,13 +283,14 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
          * For multiple objects, reject further objects after user deny the
          * first one
          */
-        if (mAccepted == BluetoothShare.USER_CONFIRMATION_DENIED) {
+        if (mAccepted == BluetoothShare.USER_CONFIRMATION_DENIED ||
+            mAccepted == BluetoothShare.USER_CONFIRMATION_TIMEOUT) {
             return ResponseCodes.OBEX_HTTP_FORBIDDEN;
         }
 
         String destination;
-        if (mTransport instanceof BluetoothOppRfcommTransport) {
-            destination = ((BluetoothOppRfcommTransport)mTransport).getRemoteAddress();
+        if (mTransport instanceof BluetoothOppTransport) {
+            destination = ((BluetoothOppTransport)mTransport).getRemoteAddress();
         } else {
             destination = "FF:FF:FF:00:00:00";
         }
@@ -197,6 +305,22 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             name = (String)request.getHeader(HeaderSet.NAME);
             length = (Long)request.getHeader(HeaderSet.LENGTH);
             mimeType = (String)request.getHeader(HeaderSet.TYPE);
+
+            if (((ServerOperation)op).mSrmServerSession.getLocalSrmCapability() == ObexHelper.SRM_CAPABLE) {
+                if (V) Log.v(TAG, "Local Device SRM: Capable");
+
+                srm = (Byte)request.getHeader(HeaderSet.SINGLE_RESPONSE_MODE);
+                if (srm == ObexHelper.OBEX_SRM_ENABLED) {
+                    if (V) Log.v(TAG, "SRM status: Enabled");
+                    ((ServerOperation)op).mSrmServerSession.setLocalSrmStatus(ObexHelper.LOCAL_SRM_ENABLED);
+                } else {
+                    if (V) Log.v(TAG, "SRM status: Disabled");
+                    ((ServerOperation)op).mSrmServerSession.setLocalSrmStatus(ObexHelper.LOCAL_SRM_DISABLED);
+                }
+            } else {
+                if (V) Log.v(TAG, "Local Device SRM: Incapable");
+                ((ServerOperation)op).mSrmServerSession.setLocalSrmStatus(ObexHelper.LOCAL_SRM_DISABLED);
+            }
 
             if (length == 0) {
                 if (D) Log.w(TAG, "length is 0, reject the transfer");
@@ -266,10 +390,15 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
         ContentValues values = new ContentValues();
 
         values.put(BluetoothShare.FILENAME_HINT, name);
-        values.put(BluetoothShare.TOTAL_BYTES, length.intValue());
+        values.put(BluetoothShare.TOTAL_BYTES, length);
         values.put(BluetoothShare.MIMETYPE, mimeType);
 
-        values.put(BluetoothShare.DESTINATION, destination);
+        if(mTransport instanceof BluetoothOppTransport){
+            String a = ((BluetoothOppTransport)mTransport).getRemoteAddress();
+            values.put(BluetoothShare.DESTINATION, a);
+        } else {
+            values.put(BluetoothShare.DESTINATION, "FF:FF:FF:00:00:00");
+        }
 
         values.put(BluetoothShare.DIRECTION, BluetoothShare.DIRECTION_INBOUND);
         values.put(BluetoothShare.TIMESTAMP, mTimestamp);
@@ -379,16 +508,31 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             }
 
             if (status == BluetoothShare.STATUS_SUCCESS) {
-                Message msg = Message.obtain(mCallback, BluetoothOppObexSession.MSG_SHARE_COMPLETE);
-                msg.obj = mInfo;
-                msg.sendToTarget();
+                if (mCallback != null) {
+                    Message msg = Message.obtain(mCallback, BluetoothOppObexSession.MSG_SHARE_COMPLETE);
+                    if (msg != null) {
+                        msg.obj = mInfo;
+                        msg.sendToTarget();
+                    } else {
+                        Log.e(TAG, "Could not get message!");
+                    }
+                } else {
+                    Log.e(TAG, "Error! mCallback is null");
+                }
             } else {
                 if (mCallback != null) {
                     Message msg = Message.obtain(mCallback,
                             BluetoothOppObexSession.MSG_SESSION_ERROR);
                     mInfo.mStatus = status;
-                    msg.obj = mInfo;
-                    msg.sendToTarget();
+                    if (msg != null) {
+                        msg.obj = mInfo;
+                        msg.sendToTarget();
+                    } else {
+                        Log.e(TAG, "Could not get message!");
+                        obexResponse = ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+                    }
+                } else {
+                    Log.e(TAG, "Error! mCallback is null");
                 }
             }
         } else if (mAccepted == BluetoothShare.USER_CONFIRMATION_DENIED
@@ -415,11 +559,19 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             Constants.updateShareStatus(mContext, mInfo.mId, status);
             obexResponse = ResponseCodes.OBEX_HTTP_FORBIDDEN;
 
-            Message msg = Message.obtain(mCallback);
-            msg.what = BluetoothOppObexSession.MSG_SHARE_INTERRUPTED;
-            mInfo.mStatus = status;
-            msg.obj = mInfo;
-            msg.sendToTarget();
+            if (mCallback != null) {
+                Message msg = Message.obtain(mCallback);
+                msg.what = BluetoothOppObexSession.MSG_SHARE_INTERRUPTED;
+                mInfo.mStatus = status;
+                if (msg != null) {
+                    msg.obj = mInfo;
+                    msg.sendToTarget();
+                } else {
+                    Log.e(TAG, "Could not get message!");
+                }
+            } else {
+                Log.e(TAG, "Error! mCallback is null");
+            }
         }
         return obexResponse;
     }
@@ -428,8 +580,10 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
         /*
          * implement receive file
          */
+        long beginTime = 0;
         int status = -1;
         BufferedOutputStream bos = null;
+        ContentResolverUpdateThread uiUpdateThread = null;
 
         InputStream is = null;
         boolean error = false;
@@ -449,7 +603,7 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             mContext.getContentResolver().update(contentUri, updateValues, null, null);
         }
 
-        int position = 0;
+        long position = 0;
         if (!error) {
             bos = new BufferedOutputStream(fileInfo.mOutputStream, 0x10000);
         }
@@ -460,6 +614,7 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             int readLength = 0;
             long timestamp = 0;
             try {
+                beginTime = System.currentTimeMillis();
                 while ((!mInterrupted) && (position != fileInfo.mLength)) {
 
                     if (V) timestamp = System.currentTimeMillis();
@@ -480,9 +635,33 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
                                 + (System.currentTimeMillis() - timestamp) + " ms");
                     }
 
-                    ContentValues updateValues = new ContentValues();
-                    updateValues.put(BluetoothShare.CURRENT_BYTES, position);
-                    mContext.getContentResolver().update(contentUri, updateValues, null, null);
+                    if (uiUpdateThread == null) {
+                        uiUpdateThread = new ContentResolverUpdateThread (mContext, contentUri, position);
+                        if (V) {
+                            Log.v(TAG, "Worker for Updation : Created");
+                        }
+                        uiUpdateThread.start();
+                    } else {
+                        uiUpdateThread.updateProgress (position);
+                    }
+                }
+
+                if (uiUpdateThread != null) {
+                    try {
+                        if (V) {
+                            Log.v(TAG, "Worker for Updation : Destroying");
+                        }
+                        uiUpdateThread.interrupt ();
+                        uiUpdateThread.join ();
+                        uiUpdateThread = null;
+
+                        ContentValues updateValues = new ContentValues();
+                        updateValues.put(BluetoothShare.CURRENT_BYTES, position);
+                        mContext.getContentResolver().update(contentUri, updateValues,
+                                        null, null);
+                    } catch (InterruptedException ie) {
+                            if (V) Log.v(TAG, "Interrupted waiting for uiUpdateThread to join");
+                    }
                 }
             } catch (IOException e1) {
                 Log.e(TAG, "Error when receiving file");
@@ -493,6 +672,14 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
                     status = BluetoothShare.STATUS_OBEX_DATA_ERROR;
                 }
                 error = true;
+            } finally {
+                if (uiUpdateThread != null) {
+                    if (V) {
+                        Log.v(TAG, "Worker for Updation : Finally Destroying");
+                    }
+                    uiUpdateThread.interrupt ();
+                    uiUpdateThread = null;
+                }
             }
         }
 
@@ -501,10 +688,13 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             status = BluetoothShare.STATUS_CANCELED;
         } else {
             if (position == fileInfo.mLength) {
-                if (D) Log.d(TAG, "Receiving file completed for " + fileInfo.mFileName);
+                long endTime = System.currentTimeMillis();
+                Log.i(TAG, "Receiving file completed for " + fileInfo.mFileName
+                        + " length " + fileInfo.mLength
+                        + " Bytes in " + (endTime - beginTime) + "ms"  );
                 status = BluetoothShare.STATUS_SUCCESS;
             } else {
-                if (D) Log.d(TAG, "Reading file failed at " + position + " of " + fileInfo.mLength);
+                Log.i(TAG, "Reading file failed at " + position + " of " + fileInfo.mLength);
                 if (status == -1) {
                     status = BluetoothShare.STATUS_UNKNOWN_ERROR;
                 }
@@ -532,6 +722,231 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             Log.v(TAG, "status    :" + fileInfo.mStatus);
         }
         return fileInfo;
+    }
+
+    public File getMyBusinessCard ( ) {
+        Log.v(TAG, " getMyBusinessCard()");
+        Uri myProfileUri = Profile.CONTENT_URI;
+        Uri lookupUri = null;
+        Uri shareUri = null;
+        Log.v(TAG," My Profile Uri  " + myProfileUri);
+        Cursor c = mContext.getContentResolver().query(myProfileUri,
+          new String[] {Contacts._ID, Contacts.LOOKUP_KEY},null, null, null);
+        try{
+            if (c.moveToFirst()) {
+                final long contactId = c.getLong(0);
+                final String lookupKey = c.getString(1);
+                lookupUri = Contacts.getLookupUri(contactId, lookupKey);
+                if(V) Log.v(TAG," My LookupUri  " + lookupUri + " LookUpKey "+ lookupKey);
+                shareUri = Uri.withAppendedPath(Contacts.CONTENT_VCARD_URI, lookupKey);
+                if(V) Log.v(TAG," My ShareUri  " + shareUri);
+            }
+        } finally {
+            c.close();
+        }
+
+        File dir   =  new File(OPP_SERVER_DIR_PATH);
+        File myCard = new File(OPP_SERVER_DIR_PATH, OPP_myProfile_NAME);
+        if((dir.exists())&&(myCard.exists())) {
+            Log.v(TAG," Directory and File is alredy There, Delete it");
+            myCard.delete();
+            dir.delete();
+        }
+        if(shareUri != null){
+            InputStream i = null;
+            int length;
+            byte[] buffer = new byte[1024];
+            try {
+                if(!dir.exists()){
+                    dir.mkdirs();
+                    }else {
+                    Log.d(TAG," ** Not able to Create DIR ***");
+                    }
+                if(!myCard.createNewFile()){
+                    Log.d(TAG," my Profile vcard not created");
+                    return myCard;
+                }
+                try {
+                    i=mContext.getContentResolver().openInputStream(Uri.parse(shareUri.toString()));
+                } catch (FileNotFoundException e) {
+                    Log.d(TAG," Not able to open URI" + e.toString());
+                }
+                FileOutputStream fos = new FileOutputStream(myCard);
+                do {
+                    if(i == null)
+                        break;
+                    length = i.read(buffer);
+                    if(length == -1)
+                        break;
+                    fos.write(buffer,0,length);
+                }while(true);
+             }catch(IOException e) {
+                Log.e(TAG,"Not able to read myVcard"+ e.toString());
+            }
+            return myCard;
+        }else {
+            File mDefaultvCard = new File(OPP_SERVER_DIR_PATH, OPP_DEFAULT_vCARD_NAME);
+            return mDefaultvCard;
+        }
+    }
+
+    @Override
+    public int onGet(Operation op) {
+        if (D) Log.d(TAG, "onGet() +");
+
+        HeaderSet request = null;
+        String type = "";
+        String name = "";
+        OutputStream outputStream = null;
+        FileInputStream  fis = null;
+        BufferedInputStream bis = null;
+        long fileLength = 0;
+        long fileReadPos = 0;
+        int readLength;
+        Byte srm;
+        File myCard = null;
+        if(SystemProperties.getBoolean("ro.qualcomm.bluetooth.sndmyinfo", true)){
+            myCard = getMyBusinessCard ( );
+        } else {
+            return ResponseCodes.OBEX_HTTP_NOT_IMPLEMENTED;
+        }
+        int outputBufferSize = op.getMaxPacketSize();
+        /* Extract the name and type header from operation object */
+        try {
+            request = op.getReceivedHeader();
+            type = (String)request.getHeader(HeaderSet.TYPE);
+
+            name = (String)request.getHeader(HeaderSet.NAME);
+
+        } catch (IOException e) {
+            Log.e(TAG,"onGet request headers "+ e.toString());
+            if (D) Log.d(TAG, "request headers error");
+        }
+        if (Constants.mimeTypeMatches(type, OPP_MIME_TYPE)  == false) {
+            return ResponseCodes.OBEX_HTTP_UNSUPPORTED_TYPE;
+        }
+
+        if (D) Log.d(TAG,"type = " + type);
+        if (D && (name != null)) Log.d(TAG, " name = " + name);
+        if ((myCard.exists() != true) || (myCard.length() == 0)) {
+            Log.e(TAG, "Default Business Card Not Found ! ");
+            return ResponseCodes.OBEX_HTTP_NOT_FOUND;
+        }
+
+        try {
+            fis = new FileInputStream(myCard);
+            outputStream = op.openOutputStream();
+        } catch(IOException e) {
+            Log.e(TAG,"OPP Pull Business Card : open stream Exception"+ e.toString());
+            return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+        } finally {
+            if (fis != null && outputStream == null) {
+                try {
+                    fis.close();
+                } catch(IOException e) {}
+                return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+            }
+        }
+
+        try {
+            if (((ServerOperation)op).mSrmServerSession.getLocalSrmCapability() == ObexHelper.SRM_CAPABLE) {
+                if (V) Log.v(TAG, "Local Device SRM: Capable");
+
+                srm = (Byte)request.getHeader(HeaderSet.SINGLE_RESPONSE_MODE);
+                if (srm == ObexHelper.OBEX_SRM_ENABLED) {
+                    if (V) Log.v(TAG, "SRM status: Enabled");
+                    ((ServerOperation)op).mSrmServerSession.setLocalSrmStatus(ObexHelper.LOCAL_SRM_ENABLED);
+                    Byte srmp = (Byte)request.getHeader(HeaderSet.SINGLE_RESPONSE_MODE_PARAMETER);
+                    Log.v(TAG, "SRMP header (CONTINUE or OK): " + srmp);
+                    if (srmp == ObexHelper.OBEX_SRM_PARAM_WAIT) {
+                        Log.v(TAG, "SRMP status: WAIT");
+                        ((ServerOperation)op).mSrmServerSession.setLocalSrmpWait(true);
+                    } else {
+                        Log.v(TAG, "SRMP status: NONE");
+                        ((ServerOperation)op).mSrmServerSession.setLocalSrmpWait(false);
+                    }
+
+                } else {
+                    if (V) Log.v(TAG, "SRM status: Disabled");
+                    ((ServerOperation)op).mSrmServerSession.setLocalSrmStatus(ObexHelper.LOCAL_SRM_DISABLED);
+                    ((ServerOperation)op).mSrmServerSession.setLocalSrmpWait(false);
+                }
+            } else {
+                if (V) Log.v(TAG, "Local Device SRM: Incapable");
+                ((ServerOperation)op).mSrmServerSession.setLocalSrmStatus(ObexHelper.LOCAL_SRM_DISABLED);
+                ((ServerOperation)op).mSrmServerSession.setLocalSrmpWait(false);
+            }
+        } catch (IOException e) {
+                Log.e(TAG, "get getReceivedHeaders for SRM error " + e);
+                return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+        }
+
+        byte[] buffer = new byte[outputBufferSize];
+
+        /* Read the file and send */
+        fileLength = myCard.length ( );
+        HeaderSet reply = new HeaderSet();
+        reply.setHeader(HeaderSet.NAME, OPP_DEFAULT_vCARD_NAME);
+        reply.setHeader(HeaderSet.TYPE, type);
+        reply.setHeader(HeaderSet.LENGTH, fileLength);
+
+        bis = new BufferedInputStream(fis, OPP_LOCAL_BUF_SIZE);
+        try {
+            op.sendHeaders (reply);
+            while (fileReadPos != fileLength) {
+                readLength = bis.read(buffer, 0, outputBufferSize);
+                fileReadPos += readLength;
+
+                if(((ServerOperation)op).isAborted() != true) {
+                    outputStream.write(buffer, 0, readLength);
+                    /* To handle abort request depends on the current state */
+                    mTransferInProgress = true;
+                    if (((ServerOperation)op).mSrmServerSession.getLocalSrmpWait( ) == true) {
+                        try {
+                            request = op.getReceivedHeader();
+                            Byte srmp = (Byte)request.getHeader(HeaderSet.SINGLE_RESPONSE_MODE_PARAMETER);
+                            Log.v(TAG, "SRMP header (CONTINUE or OK): " + srmp);
+                            if (srmp == ObexHelper.OBEX_SRM_PARAM_WAIT) {
+                                Log.v(TAG, "SRMP status: WAIT");
+                                ((ServerOperation)op).mSrmServerSession.setLocalSrmpWait(true);
+                            } else {
+                                Log.v(TAG, "SRMP status: NONE");
+                                ((ServerOperation)op).mSrmServerSession.setLocalSrmpWait(false);
+                            }
+                        } catch (IOException e) {
+                            Log.e(TAG, "Failed to read SRMP Header " + e);
+                        }
+                    }
+                } else {
+                    /* Abort command is received. Bring down the GET operation */
+                    Log.v(TAG, "Abort is received");
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "OPP Pull Business Card : Write outputstrem failed" + e.toString());
+            return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+        }
+
+        /* Close the streams */
+        if (bis != null) {
+           try {
+              bis.close();
+            } catch (IOException e) {
+                Log.e(TAG,"input stream close" + e.toString());
+                if (D) Log.d(TAG, "Error when closing stream after send");
+                return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+            }
+        }
+
+        if (!closeStream(outputStream, op)) {
+          return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+        }
+
+        /* Reset the state */
+        mTransferInProgress = false;
+        if (D) Log.d(TAG, "onGet() -");
+        return ResponseCodes.OBEX_HTTP_OK;
     }
 
     @Override
@@ -580,5 +995,29 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             msg.obj = mInfo;
             msg.sendToTarget();
         }
+    }
+
+    public static boolean closeStream(final OutputStream out, final Operation op) {
+        boolean returnvalue = true;
+        if (D) Log.d(TAG, "closeoutStream +");
+        try {
+            if (out != null) {
+                out.close();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "outputStream close failed" + e.toString());
+            returnvalue = false;
+        }
+        try {
+            if (op != null) {
+                op.close();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "operation close failed" + e.toString());
+            returnvalue = false;
+        }
+
+        if (D) Log.d(TAG, "closeoutStream -");
+        return returnvalue;
     }
 }

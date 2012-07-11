@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -226,12 +227,12 @@ public class Constants {
     /**
      * Debug level logging
      */
-    public static final boolean DEBUG = false;
+    public static final boolean DEBUG = true;
 
     /**
      * Verbose level logging
      */
-    public static final boolean VERBOSE = false;
+    public static final boolean VERBOSE = true;
 
     /** use TCP socket instead of Rfcomm Socket to develop */
     public static final boolean USE_TCP_DEBUG = false;
@@ -257,9 +258,11 @@ public class Constants {
 
     public static final String BLUETOOTHOPP_NAME_PREFERENCE = "btopp_names";
 
-    public static final String BLUETOOTHOPP_CHANNEL_PREFERENCE = "btopp_channels";
+    public static final String BLUETOOTHOPP_OBEX_VARIANT_PREFERENCE = "btopp_obex_variant";
 
     public static String filename_SEQUENCE_SEPARATOR = "-";
+
+    public static boolean ZERO_LENGTH_FILE = false;
 
     public static void updateShareStatus(Context context, int id, int status) {
         Uri contentUri = Uri.parse(BluetoothShare.CONTENT_URI + "/" + id);

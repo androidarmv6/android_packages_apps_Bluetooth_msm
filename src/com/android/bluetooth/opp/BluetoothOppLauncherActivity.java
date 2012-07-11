@@ -66,8 +66,12 @@ public class BluetoothOppLauncherActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         Intent intent = getIntent();
-        String action = intent.getAction();
-
+        String action = (intent == null) ? null : intent.getAction();
+        if (action == null) {
+            Log.e(TAG, "Unexpected error! action is null");
+            finish();
+            return;
+        }
         if (action.equals(Intent.ACTION_SEND) || action.equals(Intent.ACTION_SEND_MULTIPLE)) {
             /*
              * Other application is trying to share a file via Bluetooth,

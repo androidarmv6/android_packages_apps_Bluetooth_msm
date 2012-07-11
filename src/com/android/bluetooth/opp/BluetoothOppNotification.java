@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2008-2009, Motorola, Inc.
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * All rights reserved.
  *
@@ -34,6 +35,7 @@ package com.android.bluetooth.opp;
 
 import com.android.bluetooth.R;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -82,8 +84,8 @@ class BluetoothOppNotification {
     private static final String WHERE_COMPLETED_INBOUND = WHERE_COMPLETED + " AND " + "("
             + BluetoothShare.DIRECTION + " == " + BluetoothShare.DIRECTION_INBOUND + ")";
 
-    static final String WHERE_CONFIRM_PENDING = BluetoothShare.USER_CONFIRMATION + " == '"
-            + BluetoothShare.USER_CONFIRMATION_PENDING + "'" + " AND " + visible;
+    static final String WHERE_CONFIRM_NOTIFY = BluetoothShare.USER_CONFIRMATION + " == '"
+            + BluetoothShare.USER_CONFIRMATION_NOTIFY + "'" + " AND " + visible;
 
     public NotificationManager mNotificationMgr;
 
@@ -333,8 +335,11 @@ class BluetoothOppNotification {
             intent.setData(Uri.parse(BluetoothShare.CONTENT_URI + "/" + item.id));
 
             b.setContentIntent(PendingIntent.getBroadcast(mContext, 0, intent, 0));
-            mNotificationMgr.notify(item.id, b.getNotification());
-
+            if (mNotificationMgr != null) {
+                mNotificationMgr.notify(item.id, b.getNotification());
+            } else {
+                if (V) Log.v(TAG, "mNotificationMgr is NULL!");
+            }
             mActiveNotificationId = item.id;
         }
     }
@@ -409,7 +414,12 @@ class BluetoothOppNotification {
             intent.setClassName(Constants.THIS_PACKAGE_NAME, BluetoothOppReceiver.class.getName());
             outNoti.deleteIntent = PendingIntent.getBroadcast(mContext, 0, intent, 0);
             outNoti.when = timeStamp;
-            mNotificationMgr.notify(NOTIFICATION_ID_OUTBOUND, outNoti);
+            if (mNotificationMgr != null) {
+                mNotificationMgr.notify(NOTIFICATION_ID_OUTBOUND, outNoti);
+            } else {
+                if (V) Log.v(TAG, "mNotificationMgr is NULL!");
+            }
+
         } else {
             if (mNotificationMgr != null) {
                 mNotificationMgr.cancel(NOTIFICATION_ID_OUTBOUND);
@@ -456,7 +466,12 @@ class BluetoothOppNotification {
             intent.setClassName(Constants.THIS_PACKAGE_NAME, BluetoothOppReceiver.class.getName());
             inNoti.deleteIntent = PendingIntent.getBroadcast(mContext, 0, intent, 0);
             inNoti.when = timeStamp;
-            mNotificationMgr.notify(NOTIFICATION_ID_INBOUND, inNoti);
+            if (mNotificationMgr != null) {
+                mNotificationMgr.notify(NOTIFICATION_ID_INBOUND, inNoti);
+            } else {
+                if (V) Log.v(TAG, "mNotificationMgr is NULL!");
+            }
+
         } else {
             if (mNotificationMgr != null) {
                 mNotificationMgr.cancel(NOTIFICATION_ID_INBOUND);
@@ -467,7 +482,7 @@ class BluetoothOppNotification {
 
     private void updateIncomingFileConfirmNotification() {
         Cursor cursor = mContext.getContentResolver().query(BluetoothShare.CONTENT_URI, null,
-                WHERE_CONFIRM_PENDING, null, BluetoothShare._ID);
+                        WHERE_CONFIRM_NOTIFY, null, BluetoothShare._ID);
 
         if (cursor == null) {
             return;
@@ -481,6 +496,11 @@ class BluetoothOppNotification {
             int id = cursor.getInt(cursor.getColumnIndexOrThrow(BluetoothShare._ID));
             long timeStamp = cursor.getLong(cursor.getColumnIndexOrThrow(BluetoothShare.TIMESTAMP));
             Uri contentUri = Uri.parse(BluetoothShare.CONTENT_URI + "/" + id);
+
+            ContentValues updateValues = new ContentValues();
+            updateValues.put(BluetoothShare.USER_CONFIRMATION,
+                             BluetoothShare.USER_CONFIRMATION_PENDING);
+            mContext.getContentResolver().update(contentUri, updateValues, null, null);
 
             Notification n = new Notification();
             n.icon = R.drawable.bt_incomming_file_notification;
@@ -502,7 +522,12 @@ class BluetoothOppNotification {
             intent.setData(contentUri);
             n.deleteIntent = PendingIntent.getBroadcast(mContext, 0, intent, 0);
 
-            mNotificationMgr.notify(id, n);
+            if (mNotificationMgr != null) {
+                mNotificationMgr.notify(id, n);
+            } else {
+                if (V) Log.v(TAG, "mNotificationMgr is NULL!");
+            }
+
         }
         cursor.close();
     }

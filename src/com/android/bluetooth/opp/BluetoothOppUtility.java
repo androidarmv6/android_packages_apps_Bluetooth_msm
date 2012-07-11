@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2008-2009, Motorola, Inc.
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved
  *
  * All rights reserved.
  *
@@ -70,6 +71,8 @@ public class BluetoothOppUtility {
                 info.mStatus = cursor.getInt(cursor.getColumnIndexOrThrow(BluetoothShare.STATUS));
                 info.mDirection = cursor.getInt(cursor
                         .getColumnIndexOrThrow(BluetoothShare.DIRECTION));
+                info.mOwner = cursor.getInt(cursor
+                        .getColumnIndexOrThrow(BluetoothShare.OWNER));
                 info.mTotalBytes = cursor.getInt(cursor
                         .getColumnIndexOrThrow(BluetoothShare.TOTAL_BYTES));
                 info.mCurrentBytes = cursor.getInt(cursor
@@ -93,6 +96,16 @@ public class BluetoothOppUtility {
 
                 if (info.mFileUri != null) {
                     Uri u = Uri.parse(info.mFileUri);
+                    /* Ensure the file exists before we try to check the mime type */
+                    File f = new File(info.mFileName);
+                    if ((f != null) && (info.mDirection == BluetoothShare.DIRECTION_INBOUND)) {
+                       if (!f.exists()) {
+                         if (V) Log.v (TAG,"File doesnot exist so not reading mime type" +
+                                            info.mStatus);
+                         cursor.close();
+                         return info;
+                       }
+                    }
                     info.mFileType = context.getContentResolver().getType(u);
                 } else {
                     Uri u = Uri.parse(info.mFileName);
@@ -161,8 +174,8 @@ public class BluetoothOppUtility {
      */
     public static void openReceivedFile(Context context, String fileName, String mimetype,
             Long timeStamp, Uri uri) {
-        if (fileName == null || mimetype == null) {
-            Log.e(TAG, "ERROR: Para fileName ==null, or mimetype == null");
+        if (fileName == null) {
+            Log.e(TAG, "ERROR: Para fileName ==null");
             return;
         }
 
@@ -185,6 +198,11 @@ public class BluetoothOppUtility {
         // If there is no scheme, then it must be a file
         if (path.getScheme() == null) {
             path = Uri.fromFile(new File(fileName));
+        }
+
+        if (mimetype == null) {
+            Log.e(TAG, "ERROR: Para mimetype==null");
+            return;
         }
 
         if (isRecognizedFileType(context, path, mimetype)) {
@@ -282,6 +300,42 @@ public class BluetoothOppUtility {
                 || (statusCode == BluetoothShare.STATUS_UNHANDLED_OBEX_CODE)
                 || (statusCode == BluetoothShare.STATUS_OBEX_DATA_ERROR)) {
             ret = context.getString(R.string.status_protocol_error);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_MEDIA_JAM) {
+            ret = context.getString(R.string.status_bpp_media_jam);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_PAUSED) {
+            ret = context.getString(R.string.status_bpp_paused);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_DOOR_OPEN) {
+            ret = context.getString(R.string.status_bpp_door_open);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_MEDIA_LOW) {
+            ret = context.getString(R.string.status_bpp_media_low);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_MEDIA_EMPTY) {
+            ret = context.getString(R.string.status_bpp_media_empty);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_OUTPUT_AREA_ALMOST_FULL) {
+            ret = context.getString(R.string.status_bpp_output_area_almost_full);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_OUTPUT_AREA_FULL) {
+            ret = context.getString(R.string.status_bpp_output_area_full);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_MARKER_SUPPLY_LOW) {
+            ret = context.getString(R.string.status_bpp_marker_supply_low);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_MARKER_SUPPLY_EMPTY) {
+            ret = context.getString(R.string.status_bpp_marker_supply_empty);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_MARKER_FAILURE) {
+            ret = context.getString(R.string.status_bpp_marker_failure);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_STOPPED_BY_PRINTER) {
+            ret = context.getString(R.string.status_bpp_stopped_by_printer);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_ABORTED_BY_PRINTER) {
+            ret = context.getString(R.string.status_bpp_aborted_by_printer);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_CANCELED_BY_PRINTER) {
+            ret = context.getString(R.string.status_bpp_cancelled_by_printer);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_UNKNOWN_ERROR_BY_PRINTER) {
+            ret = context.getString(R.string.status_bpp_unknown_error_by_printer);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_REFUSED_BY_PRINTER) {
+            ret = context.getString(R.string.status_bpp_refused_by_printer);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_CANCELED_BY_USER) {
+            ret = context.getString(R.string.status_bpp_canceled_by_user);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_SUCCESS) {
+            ret = context.getString(R.string.status_bpp_sucess);
+        } else if (statusCode == BluetoothShare.STATUS_BPP_DISCONNECTED) {
+            ret = context.getString(R.string.status_bpp_disconnected);
         } else {
             ret = context.getString(R.string.status_unknown_error);
         }

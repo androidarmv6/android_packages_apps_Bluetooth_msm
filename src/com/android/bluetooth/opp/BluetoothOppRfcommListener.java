@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2010, 2012, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -41,6 +42,7 @@ import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.os.Handler;
 import android.os.Message;
+import android.os.SystemProperties;
 import android.util.Log;
 
 /**
@@ -59,11 +61,14 @@ public class BluetoothOppRfcommListener {
 
     private Handler mCallback;
 
+    /* Debugging hooks to control AMP-related operations */
+    private static final String DEBUG_RFCOMM_SRV_SCN = "debug.bt.opp.server.rfcomm_scn";
+
     private static final int CREATE_RETRY_TIME = 10;
 
     private static final int DEFAULT_OPP_CHANNEL = 12;
 
-    private final int mBtOppRfcommChannel;
+    private int mBtOppRfcommChannel;
 
     private final BluetoothAdapter mAdapter;
 
@@ -78,6 +83,16 @@ public class BluetoothOppRfcommListener {
     public BluetoothOppRfcommListener(BluetoothAdapter adapter, int channel) {
         mBtOppRfcommChannel = channel;
         mAdapter = adapter;
+
+        if (V) {
+            Log.v(TAG, "Applying OBEX debug system properties.");
+
+            int debugScn = SystemProperties.getInt(DEBUG_RFCOMM_SRV_SCN, -1);
+            if (debugScn >= 0) {
+                Log.v(TAG, "DEBUG: Forcing OBEX RFCOMM listener on scn: " + debugScn);
+                mBtOppRfcommChannel = debugScn;
+            }
+        }
     }
 
     public synchronized boolean start(Handler callback) {
@@ -113,7 +128,7 @@ public class BluetoothOppRfcommListener {
                         }
                         if (V) Log.v(TAG, "TCP listen thread finished");
                     } else {
-                        boolean serverOK = true;
+                        boolean serverOK = false;
 
                         /*
                          * it's possible that create will fail in some cases.
@@ -123,6 +138,7 @@ public class BluetoothOppRfcommListener {
                             try {
                                 mBtServerSocket = mAdapter
                                         .listenUsingInsecureRfcommOn(mBtOppRfcommChannel);
+                                serverOK = true;
                             } catch (IOException e1) {
                                 Log.e(TAG, "Error create RfcommServerSocket " + e1);
                                 serverOK = false;
@@ -154,8 +170,8 @@ public class BluetoothOppRfcommListener {
                                 clientSocket = mBtServerSocket.accept();
                                 Log.i(TAG, "Accepted connectoin from "
                                         + clientSocket.getRemoteDevice());
-                                BluetoothOppRfcommTransport transport = new BluetoothOppRfcommTransport(
-                                        clientSocket);
+                                BluetoothOppTransport transport = new BluetoothOppTransport(
+                                        clientSocket, BluetoothOppTransport.TYPE_RFCOMM);
                                 Message msg = Message.obtain();
                                 msg.setTarget(mCallback);
                                 msg.what = MSG_INCOMING_BTOPP_CONNECTION;

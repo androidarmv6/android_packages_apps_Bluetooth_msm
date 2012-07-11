@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -41,12 +42,17 @@ import android.content.SharedPreferences.Editor;
 import android.util.Log;
 
 /**
- * This class cache Bluetooth device name and channel locally. Its a temp
- * solution which should be replaced by bluetooth_devices in SettingsProvider
+ * This class caches Bluetooth device name and OBEX-over-L2CAP vs. OBEX-over-RFCOMM
+ * status locally. Its a temp solution which should be replaced by bluetooth_devices
+ * in SettingsProvider
  */
 public class BluetoothOppPreference {
     private static final String TAG = "BluetoothOppPreference";
     private static final boolean V = Constants.VERBOSE;
+
+    /* OBEX (GOEP) variant supported by remote device */
+    public static final int OBEX_OVER_RFCOMM = 0;
+    public static final int OBEX_OVER_L2CAP = 1;
 
     private static BluetoothOppPreference INSTANCE;
 
@@ -58,12 +64,10 @@ public class BluetoothOppPreference {
     private Context mContext;
 
     private SharedPreferences mNamePreference;
-
-    private SharedPreferences mChannelPreference;
-
-    private HashMap<String, Integer> mChannels = new HashMap<String, Integer>();
+    private SharedPreferences mObexVariantPreference;
 
     private HashMap<String, String> mNames = new HashMap<String, String>();
+    private HashMap<String, Integer> mObexVariants = new HashMap<String, Integer>();
 
     public static BluetoothOppPreference getInstance(Context context) {
         synchronized (INSTANCE_LOCK) {
@@ -86,16 +90,16 @@ public class BluetoothOppPreference {
 
         mNamePreference = mContext.getSharedPreferences(Constants.BLUETOOTHOPP_NAME_PREFERENCE,
                 Context.MODE_PRIVATE);
-        mChannelPreference = mContext.getSharedPreferences(
-                Constants.BLUETOOTHOPP_CHANNEL_PREFERENCE, Context.MODE_PRIVATE);
+        mObexVariantPreference = mContext.getSharedPreferences(
+                Constants.BLUETOOTHOPP_OBEX_VARIANT_PREFERENCE, Context.MODE_PRIVATE);
 
         mNames = (HashMap<String, String>) mNamePreference.getAll();
-        mChannels = (HashMap<String, Integer>) mChannelPreference.getAll();
+        mObexVariants = (HashMap<String, Integer>) mObexVariantPreference.getAll();
 
         return true;
     }
 
-    private String getChannelKey(BluetoothDevice remoteDevice, int uuid) {
+    private String getObexKey(BluetoothDevice remoteDevice, int uuid) {
         return remoteDevice.getAddress() + "_" + Integer.toHexString(uuid);
     }
 
@@ -112,16 +116,16 @@ public class BluetoothOppPreference {
         return null;
     }
 
-    public int getChannel(BluetoothDevice remoteDevice, int uuid) {
-        String key = getChannelKey(remoteDevice, uuid);
-        if (V) Log.v(TAG, "getChannel " + key);
-        Integer channel = null;
-        if (mChannels != null) {
-            channel = mChannels.get(key);
-            if (V) Log.v(TAG, "getChannel for " + remoteDevice + "_" + Integer.toHexString(uuid) +
-                        " as " + channel);
+    public int getObexVariant(BluetoothDevice remoteDevice, int uuid) {
+        String key = getObexKey(remoteDevice, uuid);
+        if (V) Log.v(TAG, "getObexVariant " + key);
+        Integer obexVariant = null;
+        if (mObexVariants != null) {
+            obexVariant = mObexVariants.get(key);
+            if (V) Log.v(TAG, "getObexVariant for " + remoteDevice + "_" + Integer.toHexString(uuid) +
+                        " as " + obexVariant);
         }
-        return (channel != null) ? channel : -1;
+        return (obexVariant != null) ? obexVariant : -1;
     }
 
     public void setName(BluetoothDevice remoteDevice, String name) {
@@ -134,30 +138,30 @@ public class BluetoothOppPreference {
         }
     }
 
-    public void setChannel(BluetoothDevice remoteDevice, int uuid, int channel) {
-        if (V) Log.v(TAG, "Setchannel for " + remoteDevice + "_" + Integer.toHexString(uuid) + " to "
-                    + channel);
-        if (channel != getChannel(remoteDevice, uuid)) {
-            String key = getChannelKey(remoteDevice, uuid);
-            Editor ed = mChannelPreference.edit();
-            ed.putInt(key, channel);
+    public void setObexVariant(BluetoothDevice remoteDevice, int uuid, int obexVariant) {
+        if (V) Log.v(TAG, "setObexVariant for " + remoteDevice + "_" + Integer.toHexString(uuid) + " to "
+                    + obexVariant);
+        if (obexVariant != getObexVariant(remoteDevice, uuid)) {
+            String key = getObexKey(remoteDevice, uuid);
+            Editor ed = mObexVariantPreference.edit();
+            ed.putInt(key, obexVariant);
             ed.apply();
-            mChannels.put(key, channel);
+            mObexVariants.put(key, obexVariant);
         }
     }
 
     public void removeChannel(BluetoothDevice remoteDevice, int uuid) {
-        String key = getChannelKey(remoteDevice, uuid);
-        Editor ed = mChannelPreference.edit();
+        String key = getObexKey(remoteDevice, uuid);
+        Editor ed = mObexVariantPreference.edit();
         ed.remove(key);
         ed.apply();
-        mChannels.remove(key);
+        mObexVariants.remove(key);
     }
 
     public void dump() {
         Log.d(TAG, "Dumping Names:  ");
         Log.d(TAG, mNames.toString());
-        Log.d(TAG, "Dumping Channels:  ");
-        Log.d(TAG, mChannels.toString());
+        Log.d(TAG, "Dumping OBEX Preference:  ");
+        Log.d(TAG, mObexVariants.toString());
     }
 }
