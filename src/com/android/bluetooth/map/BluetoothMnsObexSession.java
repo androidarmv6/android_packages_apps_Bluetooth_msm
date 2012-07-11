@@ -38,12 +38,12 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import javax.obex.ApplicationParameter;
-import javax.obex.ClientOperation;
-import javax.obex.ClientSession;
-import javax.obex.HeaderSet;
-import javax.obex.ObexTransport;
-import javax.obex.ResponseCodes;
+import javax.btobex.ApplicationParameter;
+import javax.btobex.ClientOperation;
+import javax.btobex.ClientSession;
+import javax.btobex.HeaderSet;
+import javax.btobex.ObexTransport;
+import javax.btobex.ResponseCodes;
 
 /**
  * This class runs as an OBEX client

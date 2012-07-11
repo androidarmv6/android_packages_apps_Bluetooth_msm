@@ -36,11 +36,11 @@ import java.lang.reflect.Method;
 import java.net.Socket;
 import java.util.Set;
 
-import javax.obex.ClientOperation;
-import javax.obex.ClientSession;
-import javax.obex.HeaderSet;
-import javax.obex.ObexTransport;
-import javax.obex.ResponseCodes;
+import javax.btobex.ClientOperation;
+import javax.btobex.ClientSession;
+import javax.btobex.HeaderSet;
+import javax.btobex.ObexTransport;
+import javax.btobex.ResponseCodes;
 
 import com.android.bluetooth.opp.BluetoothOppService;
 import com.android.bluetooth.opp.BluetoothShare;

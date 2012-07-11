@@ -63,14 +63,14 @@ import java.io.FileOutputStream;
 import java.lang.Thread;
 
 
-import javax.obex.HeaderSet;
-import javax.obex.ObexHelper;
-import javax.obex.ObexTransport;
-import javax.obex.Operation;
-import javax.obex.ResponseCodes;
-import javax.obex.ServerRequestHandler;
-import javax.obex.ServerSession;
-import javax.obex.ServerOperation;
+import javax.btobex.HeaderSet;
+import javax.btobex.ObexHelper;
+import javax.btobex.ObexTransport;
+import javax.btobex.Operation;
+import javax.btobex.ResponseCodes;
+import javax.btobex.ServerRequestHandler;
+import javax.btobex.ServerSession;
+import javax.btobex.ServerOperation;
 
 /**
  * This class runs as an OBEX server

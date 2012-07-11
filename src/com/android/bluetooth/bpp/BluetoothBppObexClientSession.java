@@ -39,12 +39,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.ByteArrayInputStream;
 
-import javax.obex.ClientOperation;
-import javax.obex.ClientSession;
-import javax.obex.HeaderSet;
-import javax.obex.ObexTransport;
-import javax.obex.ResponseCodes;
-import javax.obex.Authenticator;
+import javax.btobex.ClientOperation;
+import javax.btobex.ClientSession;
+import javax.btobex.HeaderSet;
+import javax.btobex.ObexTransport;
+import javax.btobex.ResponseCodes;
+import javax.btobex.Authenticator;
 
 import android.content.Context;
 import android.content.ContentValues;

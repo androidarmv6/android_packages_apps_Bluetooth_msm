@@ -53,13 +53,13 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.lang.StringBuffer;
 
-import javax.obex.ServerRequestHandler;
-import javax.obex.ResponseCodes;
-import javax.obex.ApplicationParameter;
-import javax.obex.ServerOperation;
-import javax.obex.Operation;
-import javax.obex.HeaderSet;
-import javax.obex.ObexHelper;
+import javax.btobex.ServerRequestHandler;
+import javax.btobex.ResponseCodes;
+import javax.btobex.ApplicationParameter;
+import javax.btobex.ServerOperation;
+import javax.btobex.Operation;
+import javax.btobex.HeaderSet;
+import javax.btobex.ObexHelper;
 
 public class BluetoothFtpObexServer extends ServerRequestHandler {
 

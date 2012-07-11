@@ -58,7 +58,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import javax.obex.ObexTransport;
+import javax.btobex.ObexTransport;
 
 import static com.android.bluetooth.map.BluetoothMasService.MAS_INS_INFO;
 import static com.android.bluetooth.map.BluetoothMasService.MAX_INSTANCES;

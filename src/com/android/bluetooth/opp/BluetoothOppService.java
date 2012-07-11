@@ -34,7 +34,7 @@
 package com.android.bluetooth.opp;
 
 import com.google.android.collect.Lists;
-import javax.obex.ObexTransport;
+import javax.btobex.ObexTransport;
 
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;

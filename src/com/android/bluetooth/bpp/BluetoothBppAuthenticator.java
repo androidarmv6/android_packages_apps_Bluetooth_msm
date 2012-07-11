@@ -33,8 +33,8 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
-import javax.obex.Authenticator;
-import javax.obex.PasswordAuthentication;
+import javax.btobex.Authenticator;
+import javax.btobex.PasswordAuthentication;
 
 /**
  * BluetoothBppAuthenticator is a used by BluetoothBppObexClentSession for obex

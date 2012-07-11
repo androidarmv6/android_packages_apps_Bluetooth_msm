@@ -41,7 +41,7 @@ import java.io.OutputStream;
 
 import android.bluetooth.BluetoothSocket;
 
-import javax.obex.ObexTransport;
+import javax.btobex.ObexTransport;
 
 public class BluetoothOppTransport implements ObexTransport {
     public static final int TYPE_RFCOMM = 0;

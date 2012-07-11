@@ -7,7 +7,7 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
 LOCAL_PACKAGE_NAME := Bluetooth
 
-LOCAL_JAVA_LIBRARIES := javax.obex
+LOCAL_JAVA_LIBRARIES := javax.btobex
 LOCAL_STATIC_JAVA_LIBRARIES := com.android.vcard
 
 LOCAL_CERTIFICATE := platform

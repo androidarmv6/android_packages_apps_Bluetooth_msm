@@ -62,7 +62,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import javax.obex.ResponseCodes;
+import javax.btobex.ResponseCodes;
 
 import static com.android.bluetooth.map.BluetoothMasService.MSG_SERVERSESSION_CLOSE;
 import static com.android.bluetooth.map.MapUtils.EmailUtils.TYPE_DELETED;

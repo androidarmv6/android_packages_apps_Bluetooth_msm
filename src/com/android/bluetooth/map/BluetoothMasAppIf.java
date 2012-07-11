@@ -54,7 +54,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.obex.ResponseCodes;
+import javax.btobex.ResponseCodes;
 
 import static com.android.bluetooth.map.MapUtils.SmsMmsUtils.DELETED;
 import static com.android.bluetooth.map.MapUtils.SmsMmsUtils.DRAFT;

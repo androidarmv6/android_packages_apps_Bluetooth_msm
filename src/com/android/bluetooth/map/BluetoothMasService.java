@@ -55,7 +55,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.obex.ServerSession;
+import javax.btobex.ServerSession;
 
 import static com.android.bluetooth.map.IBluetoothMasApp.MESSAGE_TYPE_EMAIL;
 import static com.android.bluetooth.map.IBluetoothMasApp.MESSAGE_TYPE_MMS;

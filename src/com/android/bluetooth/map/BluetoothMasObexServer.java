@@ -50,12 +50,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 
-import javax.obex.ApplicationParameter;
-import javax.obex.HeaderSet;
-import javax.obex.Operation;
-import javax.obex.ResponseCodes;
-import javax.obex.ServerOperation;
-import javax.obex.ServerRequestHandler;
+import javax.btobex.ApplicationParameter;
+import javax.btobex.HeaderSet;
+import javax.btobex.Operation;
+import javax.btobex.ResponseCodes;
+import javax.btobex.ServerOperation;
+import javax.btobex.ServerRequestHandler;
 
 import com.android.bluetooth.map.MapUtils.MapUtils.BadRequestException;
 

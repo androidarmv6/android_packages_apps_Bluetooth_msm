@@ -48,8 +48,8 @@ import java.io.FileOutputStream;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 
-import javax.obex.ResponseCodes;
-import javax.obex.Operation;
+import javax.btobex.ResponseCodes;
+import javax.btobex.Operation;
 
 public class FileUtils {
 

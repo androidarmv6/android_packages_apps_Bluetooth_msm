@@ -50,14 +50,14 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import java.io.IOException;
 import java.util.ArrayList;
-import javax.obex.ServerSession;
+import javax.btobex.ServerSession;
 import android.media.MediaScannerConnection;
 import android.media.MediaScannerConnection.MediaScannerConnectionClient;
 import android.net.Uri;
 import android.content.ContentResolver;
 import android.os.RemoteException;
 import android.provider.MediaStore;
-import javax.obex.ObexHelper;
+import javax.btobex.ObexHelper;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -61,7 +61,7 @@ import com.android.bluetooth.R;
 
 import java.io.IOException;
 
-import javax.obex.ServerSession;
+import javax.btobex.ServerSession;
 
 public class BluetoothPbapService extends Service {
     private static final String TAG = "BluetoothPbapService";

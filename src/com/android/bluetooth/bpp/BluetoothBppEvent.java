@@ -32,12 +32,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import javax.obex.ClientOperation;
-import javax.obex.ClientSession;
-import javax.obex.ClientSession.eventParser;
-import javax.obex.HeaderSet;
-import javax.obex.ObexTransport;
-import javax.obex.ResponseCodes;
+import javax.btobex.ClientOperation;
+import javax.btobex.ClientSession;
+import javax.btobex.ClientSession.eventParser;
+import javax.btobex.HeaderSet;
+import javax.btobex.ObexTransport;
+import javax.btobex.ResponseCodes;
 
 import com.android.bluetooth.opp.BluetoothShare;
 

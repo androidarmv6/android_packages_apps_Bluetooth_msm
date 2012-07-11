@@ -33,7 +33,7 @@
 
 package com.android.bluetooth.opp;
 
-import javax.obex.ObexTransport;
+import javax.btobex.ObexTransport;
 
 import android.app.NotificationManager;
 import android.bluetooth.BluetoothAdapter;

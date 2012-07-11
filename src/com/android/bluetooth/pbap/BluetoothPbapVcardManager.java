@@ -63,9 +63,9 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.io.FileInputStream;
 
-import javax.obex.ServerOperation;
-import javax.obex.Operation;
-import javax.obex.ResponseCodes;
+import javax.btobex.ServerOperation;
+import javax.btobex.Operation;
+import javax.btobex.ResponseCodes;
 
 public class BluetoothPbapVcardManager {
     private static final String TAG = "BluetoothPbapVcardManager";

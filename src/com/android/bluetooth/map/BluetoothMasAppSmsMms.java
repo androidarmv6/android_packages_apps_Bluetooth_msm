@@ -67,7 +67,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
-import javax.obex.ResponseCodes;
+import javax.btobex.ResponseCodes;
 
 import static com.android.bluetooth.map.MapUtils.SmsMmsUtils.DELETED;
 import static com.android.bluetooth.map.MapUtils.SmsMmsUtils.DRAFT;

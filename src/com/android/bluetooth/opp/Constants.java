@@ -36,7 +36,7 @@ package com.android.bluetooth.opp;
 import java.io.IOException;
 import java.util.regex.Pattern;
 
-import javax.obex.HeaderSet;
+import javax.btobex.HeaderSet;
 
 import android.content.ContentValues;
 import android.content.Context;

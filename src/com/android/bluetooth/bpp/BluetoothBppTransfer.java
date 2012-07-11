@@ -28,7 +28,7 @@
  */
 package com.android.bluetooth.bpp;
 
-import javax.obex.ObexTransport;
+import javax.btobex.ObexTransport;
 
 import com.android.bluetooth.opp.BluetoothOppTransfer;
 import com.android.bluetooth.opp.BluetoothOppUtility;

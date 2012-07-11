@@ -60,13 +60,13 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
-import javax.obex.Authenticator;
-import javax.obex.HeaderSet;
-import javax.obex.ObexTransport;
-import javax.obex.Operation;
-import javax.obex.ResponseCodes;
-import javax.obex.ServerRequestHandler;
-import javax.obex.ServerSession;
+import javax.btobex.Authenticator;
+import javax.btobex.HeaderSet;
+import javax.btobex.ObexTransport;
+import javax.btobex.Operation;
+import javax.btobex.ResponseCodes;
+import javax.btobex.ServerRequestHandler;
+import javax.btobex.ServerSession;
 
 public class TestActivity extends Activity {
 

@@ -33,12 +33,12 @@
 
 package com.android.bluetooth.opp;
 
-import javax.obex.ClientOperation;
-import javax.obex.ClientSession;
-import javax.obex.HeaderSet;
-import javax.obex.ObexHelper;
-import javax.obex.ObexTransport;
-import javax.obex.ResponseCodes;
+import javax.btobex.ClientOperation;
+import javax.btobex.ClientSession;
+import javax.btobex.HeaderSet;
+import javax.btobex.ObexHelper;
+import javax.btobex.ObexTransport;
+import javax.btobex.ResponseCodes;
 
 import android.bluetooth.BluetoothSocket;
 import android.content.ContentValues;

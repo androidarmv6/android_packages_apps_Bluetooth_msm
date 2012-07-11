@@ -39,7 +39,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.obex.ResponseCodes;
+import javax.btobex.ResponseCodes;
 
 public class CommonUtils {
     public static final String TAG = "CommonUtils";
