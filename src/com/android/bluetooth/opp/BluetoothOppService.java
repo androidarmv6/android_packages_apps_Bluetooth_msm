@@ -279,10 +279,10 @@ public class BluetoothOppService extends Service {
                      */
                     if (D) Log.d(TAG, "mBatchs.size(): " + mBatchs.size()
                         + "\r\nmTransfer : " + mTransfer
-                        + "\r\nmServerTransfer : " + mServerTransfer
-                        + "\r\nmPendingConnection : " + mPendingConnection );
-                    if (((mBatchs.size() == 0) || ((mBatchs.size() > 0) && (mServerTransfer == null)))
-                            && mPendingConnection == null) {
+                        + "\r\nmPendingConnection : " + mPendingConnection
+                        + "\r\nmServerSessionIsUp : " + BluetoothOppObexServerSession.mServerSessionIsUp);
+                    if ((mBatchs.size() >= 0) &&
+                         !BluetoothOppObexServerSession.mServerSessionIsUp) {
                         Log.i(TAG, "### Start Obex Server");
                         createServerSession(transport);
                     } else {
@@ -309,8 +309,9 @@ public class BluetoothOppService extends Service {
                 case MSG_INCOMING_CONNECTION_RETRY:
                     if (D) Log.d(TAG, "#2 mBatchs.size(): " + mBatchs.size()
                         + "\r\nmTransfer : " + mTransfer
-                        + "\r\nmServerTransfer : " + mServerTransfer);
-                    if ((mBatchs.size() == 0) || ((mBatchs.size() > 0) && (mServerTransfer == null))) {
+                        + "\r\nmServerSessionIsUp : " + BluetoothOppObexServerSession.mServerSessionIsUp);
+                    if ((mBatchs.size() >= 0) &&
+                         !BluetoothOppObexServerSession.mServerSessionIsUp) {
                         Log.i(TAG, "Start Obex Server");
                         createServerSession(mPendingConnection);
                         mIncomingRetries = 0;

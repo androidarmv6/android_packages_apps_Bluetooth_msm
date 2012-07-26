@@ -117,6 +117,9 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
 
     private WakeLock mPartialWakeLock;
 
+    /* To control multiple incoming connection request */
+    static boolean mServerSessionIsUp = false;
+
     boolean mTimeoutMsgSent = false;
 
     boolean mTransferInProgress = false;
@@ -154,6 +157,8 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
             if (!mSession.mSrmServer.getLocalSrmCapability()) {
                 mSession.mSrmServer.setLocalSrmParamStatus(ObexHelper.SRMP_DISABLED);
             }
+            /* Server session is created */
+            mServerSessionIsUp = true;
         } catch (IOException e) {
             Log.e(TAG, "Create server session error" + e);
         }
@@ -943,6 +948,7 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
     @Override
     public void onDisconnect(HeaderSet req, HeaderSet resp) {
         if (D) Log.d(TAG, "onDisconnect");
+        mServerSessionIsUp = false;
         resp.responseCode = ResponseCodes.OBEX_HTTP_OK;
     }
 
@@ -959,6 +965,8 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
     public void onClose() {
         if (V) Log.v(TAG, "release WakeLock");
         releaseWakeLocks();
+        /* Remote device abruptly terminated. Server session is down */
+        mServerSessionIsUp = false;
 
         /* onClose could happen even before start() where mCallback is set */
         if (mCallback != null) {
