@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -484,7 +484,6 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
     public BluetoothMasMessageListingRsp msgListing(String name, BluetoothMasAppParams appParams) {
         BluetoothMasMessageListingRsp rsp = new BluetoothMasMessageListingRsp();
         boolean fileGenerated = false;
-
         final String FILENAME = "msglist" + getMasId();
 
         List<MsgListingConsts> msgList = new ArrayList<MsgListingConsts>();
@@ -494,13 +493,12 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
         }
 
         BluetoothMsgListRsp specificRsp = msgListingSpecific(msgList, name, rsp, appParams);
-        msgList = specificRsp.msgList;
         rsp = specificRsp.rsp;
 
         if (rsp.rsp != ResponseCodes.OBEX_HTTP_OK) {
             return rsp;
         }
-
+        msgList = specificRsp.msgList;
         // Process the list based on MaxListCount and list offset
         String str = null;
         int numOfItems = msgList.size();

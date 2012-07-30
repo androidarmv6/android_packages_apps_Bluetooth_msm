@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -223,7 +222,7 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
 
         if (V) {
             Log.v(TAG, "appParams.FilterMessageType ::"+ appParams.FilterMessageType);
-            Log.v(TAG, "Condition result::"+ (appParams.FilterMessageType & 0x09));
+            Log.v(TAG, "Condition result:"+ (appParams.FilterMessageType & 0x04));
         }
         // TODO: Take care of subfolders
         String splitStrings[] = fullPath.split("/");
@@ -241,8 +240,7 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
             }
 
             if (appParams.FilterPriority == 0 || appParams.FilterPriority == 0x02) {
-                if((appParams.FilterMessageType & 0x04) == 0 ||
-                        (mRemoteDeviceName != null && mRemoteDeviceName.startsWith(BMW))){
+                if((appParams.FilterMessageType & 0x04) == 0) {
                     String folderName;
                     if (splitStrings.length < 3) {
                         Log.e(TAG, "The folder path is invalid.");
@@ -280,10 +278,15 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
                     bmlr.msgList = msgList;
                     return bmlr;
                 }
+                else {
+                    rsp.rsp = ResponseCodes.OBEX_HTTP_BAD_REQUEST;
+                    bmlr.rsp = rsp;
+                    return bmlr;
+                }
             } else {
                 if (appParams.FilterPriority > 0x02) {
                     rsp.rsp = ResponseCodes.OBEX_HTTP_BAD_REQUEST;
-                    bmlr.msgList = msgList;
+                    bmlr.rsp = rsp;
                     return bmlr;
                 }
             }

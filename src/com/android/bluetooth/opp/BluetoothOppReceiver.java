@@ -277,7 +277,6 @@ public class BluetoothOppReceiver extends BroadcastReceiver {
 
             if (Constants.ZERO_LENGTH_FILE) {
                toastMsg = context.getString(R.string.empty_file_notification_sent, transInfo.mFileName);
-               Constants.ZERO_LENGTH_FILE = false;
             }
 
             if (V) Log.v(TAG, "Toast msg == " + toastMsg);

@@ -507,34 +507,6 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
                 Constants.updateShareStatus(mContext, mInfo.mId, status);
             }
 
-            if (status == BluetoothShare.STATUS_SUCCESS) {
-                if (mCallback != null) {
-                    Message msg = Message.obtain(mCallback, BluetoothOppObexSession.MSG_SHARE_COMPLETE);
-                    if (msg != null) {
-                        msg.obj = mInfo;
-                        msg.sendToTarget();
-                    } else {
-                        Log.e(TAG, "Could not get message!");
-                    }
-                } else {
-                    Log.e(TAG, "Error! mCallback is null");
-                }
-            } else {
-                if (mCallback != null) {
-                    Message msg = Message.obtain(mCallback,
-                            BluetoothOppObexSession.MSG_SESSION_ERROR);
-                    mInfo.mStatus = status;
-                    if (msg != null) {
-                        msg.obj = mInfo;
-                        msg.sendToTarget();
-                    } else {
-                        Log.e(TAG, "Could not get message!");
-                        obexResponse = ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
-                    }
-                } else {
-                    Log.e(TAG, "Error! mCallback is null");
-                }
-            }
         } else if (mAccepted == BluetoothShare.USER_CONFIRMATION_DENIED
                 || mAccepted == BluetoothShare.USER_CONFIRMATION_TIMEOUT) {
             /* user actively deny the inbound transfer */

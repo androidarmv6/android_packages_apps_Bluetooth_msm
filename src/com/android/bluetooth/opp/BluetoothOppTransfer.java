@@ -288,11 +288,18 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
                 case BluetoothOppObexSession.MSG_SESSION_ERROR:
                     /* Handle the error state of an Obex session */
                     if (V) Log.v(TAG, "receive MSG_SESSION_ERROR for batch " + mBatch.mId);
-                    BluetoothOppShareInfo info2 = (BluetoothOppShareInfo)msg.obj;
-                    mSession.stop();
-                    mBatch.mStatus = Constants.BATCH_STATUS_FAILED;
-                    markBatchFailed(info2.mStatus);
-                    tickShareStatus(mCurrentShare);
+                    try {
+                        BluetoothOppShareInfo info2 = (BluetoothOppShareInfo)msg.obj;
+                        if (mSession != null) {
+                            mSession.stop();
+                        }
+                        mBatch.mStatus = Constants.BATCH_STATUS_FAILED;
+                        markBatchFailed(info2.mStatus);
+                        tickShareStatus(mCurrentShare);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Exception while handling MSG_SESSION_ERROR");
+                        e.printStackTrace();
+                    }
                     break;
 
                 case BluetoothOppObexSession.MSG_SHARE_INTERRUPTED:
@@ -393,11 +400,6 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
         while (info != null) {
             if (info.mStatus < 200) {
                 Log.v(TAG," Batch Failed updating Content Provider ");
-                BluetoothOppManager oppmanager = BluetoothOppManager.getInstance(mContext);
-                if(oppmanager != null){
-                    Log.v(TAG," Don't allow other shares in this batch  ");
-                    oppmanager.isBatchCancelled = true;
-                }
 
                 info.mStatus = failReason;
                 Uri contentUri = Uri.parse(BluetoothShare.CONTENT_URI + "/" + info.mId);
@@ -554,7 +556,31 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
             setConfirmed();
         }
     }
-
+   public void markShareComplete(int newstatus) {
+        Log.d(TAG,"markShareComplete: newStatus = " + newstatus);
+        if (newstatus == BluetoothShare.STATUS_SUCCESS) {
+            Message msg = Message.obtain(mSessionHandler);
+            msg.what = BluetoothOppObexSession.MSG_SHARE_COMPLETE;
+            msg.obj = mCurrentShare;
+            msg.sendToTarget();
+        } else if ((newstatus == BluetoothShare.STATUS_FORBIDDEN) &&
+                  Constants.ZERO_LENGTH_FILE) {
+            /* Mark the status as success when a zero length file is rejected
+             * by the remote device. It allows us to continue the transfer if
+             * we have a batch and the file(s) are yet to be sent in the row.
+             */
+            Message msg = Message.obtain(mSessionHandler);
+            msg.what = BluetoothOppObexSession.MSG_SHARE_COMPLETE;
+            msg.obj = mCurrentShare;
+            msg.sendToTarget();
+            Constants.ZERO_LENGTH_FILE = false;
+        } else {
+            Message msg = Message.obtain(mSessionHandler);
+            msg.what = BluetoothOppObexSession.MSG_SESSION_ERROR;
+            msg.obj = mCurrentShare;
+            msg.sendToTarget();
+        }
+   }
     /**
      * Set transfer confirmed status. It should only be called for inbound
      * transfer

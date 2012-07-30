@@ -729,6 +729,7 @@ public class BluetoothOppService extends Service {
                 if ((i != -1)&&(info.mOwner == BluetoothShare.OWNER_OPP)) {
                     if (V) Log.v(TAG, "Service add info " + info.mId + " to existing batch "
                                 + mBatchs.get(i).mId);
+                    if (V) Log.v(TAG," Batch Status   " + info.mStatus);
                     mBatchs.get(i).addShare(info);
                 } else {
                     /* Changing the Timestamp of simultaneously queued BPP Share */
@@ -838,7 +839,7 @@ public class BluetoothOppService extends Service {
         info.mOwner = cursor.getInt(cursor.getColumnIndexOrThrow(BluetoothShare.OWNER));
         info.mDestination = stringFromCursor(info.mDestination, cursor, BluetoothShare.DESTINATION);
         int newVisibility = cursor.getInt(cursor.getColumnIndexOrThrow(BluetoothShare.VISIBILITY));
-
+        if (V) Log.v(TAG,"UpdateShare: arraypos = " + arrayPos + "Id of this share = " + info.mId);
         boolean confirmed = false;
         int newConfirm = cursor.getInt(cursor
                 .getColumnIndexOrThrow(BluetoothShare.USER_CONFIRMATION));
@@ -857,13 +858,28 @@ public class BluetoothOppService extends Service {
         }
         info.mConfirm = newConfirm;
         int newStatus = cursor.getInt(statusColumn);
-
+        int oldStatus = info.mStatus;
         if (!BluetoothShare.isStatusCompleted(info.mStatus)
                 && BluetoothShare.isStatusCompleted(newStatus)) {
             mNotifier.mNotificationMgr.cancel(info.mId);
         }
 
+        if (V) Log.v(TAG," UpdateShare: oldStatus = " + oldStatus + " newStatus = " + newStatus);
+        if (V) Log.v(TAG," owner = " + info.mOwner);
         info.mStatus = newStatus;
+        if ((!BluetoothShare.isStatusCompleted(oldStatus))
+                && (BluetoothShare.isStatusCompleted(newStatus))
+                && (info.mOwner == BluetoothShare.OWNER_OPP)) {
+            if (V) Log.v(TAG," UpdateShare: Share Completed: oldStatus = " + oldStatus + " newStatus = " + newStatus);
+            try {
+                if(info.mDirection == BluetoothShare.DIRECTION_OUTBOUND)
+                    mTransfer.markShareComplete(newStatus);
+                else
+                    mServerTransfer.markShareComplete(newStatus);
+            } catch (Exception e) {
+                Log.e(TAG, "Exception: updateShare: oldStatus: " + oldStatus + " newStatus: " + newStatus);
+            }
+        }
         info.mTotalBytes = cursor.getLong(cursor.getColumnIndexOrThrow(BluetoothShare.TOTAL_BYTES));
         info.mCurrentBytes = cursor.getLong(cursor
                 .getColumnIndexOrThrow(BluetoothShare.CURRENT_BYTES));
@@ -1120,10 +1136,19 @@ public class BluetoothOppService extends Service {
         // remove the invisible/complete/outbound shares
         final String WHERE_INVISIBLE_COMPLETE_OUTBOUND = BluetoothShare.DIRECTION + "="
                 + BluetoothShare.DIRECTION_OUTBOUND + " AND " + BluetoothShare.STATUS + ">="
-                + BluetoothShare.STATUS_QUEUE;/* BluetoothShare.STATUS_SUCCESS + " AND " + INVISIBLE*/
+                + BluetoothShare.STATUS_QUEUE + " AND " + INVISIBLE;
         int delNum = contentResolver.delete(BluetoothShare.CONTENT_URI,
                 WHERE_INVISIBLE_COMPLETE_OUTBOUND, null);
         if (V) Log.v(TAG, "Deleted complete outbound shares, number =  " + delNum);
+
+        // remove the pending outbound shares
+        final String WHERE_PENDING_OUTBOUND = BluetoothShare.DIRECTION + "="
+                + BluetoothShare.DIRECTION_OUTBOUND + " AND " + BluetoothShare.STATUS + "<"
+                + BluetoothShare.STATUS_SUCCESS;
+        delNum = contentResolver.delete(BluetoothShare.CONTENT_URI,
+                WHERE_PENDING_OUTBOUND, null);
+        if (V) Log.v(TAG, "Deleted pending outbound shares, number =  " + delNum);
+
 
         // remove the invisible/finished/inbound/failed shares
         final String WHERE_INVISIBLE_COMPLETE_INBOUND_FAILED = BluetoothShare.DIRECTION + "="

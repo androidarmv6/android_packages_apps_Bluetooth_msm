@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -149,6 +149,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
     protected BluetoothMsgListRsp msgListingSpecific(List<MsgListingConsts> msgList, String name,
             BluetoothMasMessageListingRsp rsp, BluetoothMasAppParams appParams) {
         BluetoothMsgListRsp bmlr = new BluetoothMsgListRsp();
+        boolean validFilter = false;
         String fullPath = (name == null || name.length() == 0) ? mCurrentPath :
                 CommonUtils.getFullPath(name, mContext, getCompleteFolderList(), mCurrentPath);
         if (fullPath == null) {
@@ -157,9 +158,10 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
             bmlr.rsp = rsp;
             return bmlr;
         }
+
         if (V) {
             Log.v(TAG, "appParams.FilterMessageType ::"+ appParams.FilterMessageType);
-            Log.v(TAG, "Condition result::"+ (appParams.FilterMessageType & 0x09));
+            Log.v(TAG, "Condition result::"+ (appParams.FilterMessageType & 0x0B));
         }
         String splitStrings[] = fullPath.split("/");
         if (splitStrings.length == 3) {
@@ -185,14 +187,15 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
              * string. If the Filter priority is greater than 2, return a bad
              * request.
              */
+
             if (appParams.FilterPriority == 0 || appParams.FilterPriority == 0x02) {
                 final int phoneType = TelephonyManager.getDefault().getPhoneType();
                 if ((appParams.FilterMessageType & 0x03) == 0 ||
                         ((appParams.FilterMessageType & 0x01) == 0 &&
                                 phoneType == TelephonyManager.PHONE_TYPE_GSM) ||
                         ((appParams.FilterMessageType & 0x02) == 0 &&
-                                phoneType == TelephonyManager.PHONE_TYPE_CDMA) ||
-                        (mRemoteDeviceName != null && mRemoteDeviceName.startsWith(BMW))) {
+                                phoneType == TelephonyManager.PHONE_TYPE_CDMA)) {
+                    validFilter = true;
                     BluetoothMsgListRsp bmlrSms = msgListSms(msgList, folderName,
                             rsp, appParams);
                     bmlr.msgList = bmlrSms.msgList;
@@ -202,8 +205,10 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
                 // any
                 // MMS messages and provide them
                 if((appParams.FilterMessageType & 0x08) == 0) {
+                    Log.v(TAG, "About to retrieve msgListMms ");
                     // MMS draft folder is called //mms/drafts not //mms/draft like
                     // SMS
+                    validFilter = true;
                     if (DRAFT.equalsIgnoreCase(folderName)) {
                         folderName = DRAFTS;
                     }
@@ -211,10 +216,17 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
                     bmlr.msgList = bmlrMms.msgList;
                     bmlr.rsp = bmlrMms.rsp;
                 }
+                if (validFilter != true) {
+                    if (V) Log.v(TAG, "Invalid filter in msgListingSpecific");
+                    rsp.rsp = ResponseCodes.OBEX_HTTP_BAD_REQUEST;
+                    bmlr.rsp = rsp;
+                    return bmlr;
+                }
             } else {
                 if (appParams.FilterPriority > 0x02) {
                     rsp.rsp = ResponseCodes.OBEX_HTTP_BAD_REQUEST;
                     bmlr.rsp = rsp;
+                    return bmlr;
                 }
             }
         }

@@ -57,6 +57,9 @@
             <intent-filter>
                 <action android:name="android.bluetooth.devicepicker.action.DEVICE_SELECTED" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.bluetooth.devicepicker.action.DEVICE_SELECTED" />
+            </intent-filter>
         </receiver>
         <receiver  android:name="Alarm"></receiver>
     </application>

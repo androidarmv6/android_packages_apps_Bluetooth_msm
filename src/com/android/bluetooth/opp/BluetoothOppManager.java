@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -105,8 +106,6 @@ public class BluetoothOppManager {
     public boolean mSendingFlag;
 
     public boolean mMultipleFlag;
-
-    public boolean isBatchCancelled;
 
     private int mfileNumInBatch;
 
@@ -251,7 +250,6 @@ public class BluetoothOppManager {
     public void saveSendingFileInfo(String mimeType, String uri, boolean isHandover) {
         synchronized (BluetoothOppManager.this) {
             mMultipleFlag = false;
-            isBatchCancelled = false;
             mMimeTypeOfSendingFile = mimeType;
             mUriOfSendingFile = uri;
             mIsHandoverInitiated = isHandover;
@@ -438,10 +436,6 @@ public class BluetoothOppManager {
             int count = mUris.size();
             Long ts = System.currentTimeMillis();
             for (int i = 0; i < count; i++) {
-              if(isBatchCancelled){
-                  Log.v(TAG,"  Batch for these shares was cancelled ");
-                  break;
-              }
                 Uri fileUri = mUris.get(i);
                 ContentResolver contentResolver = mContext.getContentResolver();
                 String contentType = contentResolver.getType(fileUri);

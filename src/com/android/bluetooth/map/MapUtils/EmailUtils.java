@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -299,10 +298,24 @@ public class EmailUtils {
 
         emailMsg.msgInfo.setDateTime(datetimeStr);
 
+        if (V){
+            Log.v(TAG, "bldEmailMsgLstItem");
+            Log.v(TAG, "Subject: " + subject);
+            Log.v(TAG, "timestamp: " + timestamp);
+            Log.v(TAG, "senderName: " + senderName);
+            Log.v(TAG, "senderAddressing: " + senderAddressing);
+            Log.v(TAG, "recipientName: " + recipientName);
+            Log.v(TAG, "recipientAddressing: " + recipientAddressing);
+            Log.v(TAG, "msgId: " + msgId);
+            Log.v(TAG, "readStatus: " + readStatus);
+            Log.v(TAG, "replyToStr: " + replyToStr);
+            Log.v(TAG, "offset: " + offset);
+        }
+
         if ((appParams.ParameterMask & BIT_SUBJECT) != 0) {
 
             if (V){
-                Log.v(TAG, "Fileter Subject Length ::"+appParams.SubjectLength);
+                Log.v(TAG, "bldEmailMsgLstItem :: Subject " + subject);
             }
             if ((subject != null && appParams.SubjectLength > 0)
                     && (subject.length() > appParams.SubjectLength)) {
@@ -351,7 +364,6 @@ public class EmailUtils {
             else{
                 emailMsg.setSender_addressing(senderAddressing.trim());
             }
-
        }
 
         if ((appParams.ParameterMask & BIT_RECIPIENT_NAME) != 0) {
@@ -509,7 +521,6 @@ public class EmailUtils {
                 emailMsg.setReplyTo_addressing(emailMsg.getSender_addressing());
             }
         }
-
         return emailMsg;
     }
 
