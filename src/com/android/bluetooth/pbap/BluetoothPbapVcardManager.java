@@ -305,6 +305,9 @@ public class BluetoothPbapVcardManager {
             if ((profileContactCursor != null) && profileContactCursor.moveToFirst()){
                 Log.v(TAG," Fetching MyProfile Contact details");
                 String name = profileContactCursor.getString(CONTACTS_NAME_COLUMN_INDEX);
+                if (TextUtils.isEmpty(name)) {
+                    name = mContext.getString(android.R.string.unknownName);
+                }
                 profileContactCursor.close();
                 profileContactCursor = null;
                 nameList.add(name);
@@ -361,6 +364,9 @@ public class BluetoothPbapVcardManager {
             if ((profileContactCursor != null) && profileContactCursor.moveToFirst()) {
                 Log.v(TAG," Fetching MyProfile Contact details");
                 String name = profileContactCursor.getString(CONTACTS_NAME_COLUMN_INDEX);
+                if (TextUtils.isEmpty(name)) {
+                    name = mContext.getString(android.R.string.unknownName);
+                }
                 profileContactCursor.close();
                 profileContactCursor = null;
                 nameList.add(name);
