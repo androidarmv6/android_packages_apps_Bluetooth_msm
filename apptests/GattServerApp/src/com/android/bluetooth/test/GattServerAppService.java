@@ -2324,42 +2324,44 @@ public class GattServerAppService extends Service {
                 Attribute charAttr = gattHandleToAttributes.get(charValueAttr.referenceHandle);
                 attrProperties = (byte)charAttr.properties;
                 if(value != null && (value.length > 0)) {
-                        if(attr.attrValue != null && attr.attrValue.containsKey(sessionHandle)) {
-                                byte descValue = attr.attrValue.get(sessionHandle);
-                            //If value is 0, remove the session handle
-                            if(value[0] == 0) {
+                    if(attr.attrValue != null && attr.attrValue.containsKey(sessionHandle)) {
+                        byte descValue = attr.attrValue.get(sessionHandle);
+                        //If value is 0, remove the session handle
+                        if(value[0] == 0) {
+                            attr.attrValue.put(sessionHandle, value[0]);
+                            int index = attr.sessionHandle.indexOf(sessionHandle);
+                            attr.sessionHandle.remove(index);
+                        }
+                    }
+                    //If value is 1 or 2, add the session handle to notify/indicate
+                    else if(attr.attrValue != null && value[0] == 0x01) {
+                        if((attrProperties > 0) && ((attrProperties & 0x10) == 0x10)) {
+                            Log.d(TAG,"notifications should be set");
                                 attr.attrValue.put(sessionHandle, value[0]);
-                                int index = attr.sessionHandle.indexOf(sessionHandle);
-                                attr.sessionHandle.remove(index);
+                            if(attr.sessionHandle != null &&
+                                    !attr.sessionHandle.contains(sessionHandle)) {
+                                attr.sessionHandle.add(sessionHandle);
                             }
-                            //If value is 1 or 2, add the session handle to notify/indicate
-                            else if(value[0] == 0x01) {
-                                if((attrProperties > 0) && ((attrProperties & 0x10) == 0x10)) {
-                                        attr.attrValue.put(sessionHandle, value[0]);
-                                    if(attr.sessionHandle != null &&
-                                            !attr.sessionHandle.contains(sessionHandle)) {
-                                        attr.sessionHandle.add(sessionHandle);
-                                    }
-                                    else if(attr.sessionHandle == null) {
-                                        attr.sessionHandle = new ArrayList<Integer>();
-                                        attr.sessionHandle.add(sessionHandle);
-                                    }
-                                }
-                            }
-                            else if(value[0] == 0x02) {
-                                if((attrProperties > 0) && ((attrProperties & 0x20) == 0x20)) {
-                                        attr.attrValue.put(sessionHandle, value[0]);
-                                    if(attr.sessionHandle != null &&
-                                            !attr.sessionHandle.contains(sessionHandle)) {
-                                        attr.sessionHandle.add(sessionHandle);
-                                    }
-                                    else if(attr.sessionHandle == null) {
-                                        attr.sessionHandle = new ArrayList<Integer>();
-                                        attr.sessionHandle.add(sessionHandle);
-                                    }
-                                }
+                            else if(attr.sessionHandle == null) {
+                                attr.sessionHandle = new ArrayList<Integer>();
+                                attr.sessionHandle.add(sessionHandle);
                             }
                         }
+                    }
+                    else if(attr.attrValue != null && value[0] == 0x02) {
+                        if((attrProperties > 0) && ((attrProperties & 0x20) == 0x20)) {
+                            Log.d(TAG,"indications should be set");
+                                attr.attrValue.put(sessionHandle, value[0]);
+                            if(attr.sessionHandle != null &&
+                                    !attr.sessionHandle.contains(sessionHandle)) {
+                                attr.sessionHandle.add(sessionHandle);
+                            }
+                            else if(attr.sessionHandle == null) {
+                                attr.sessionHandle = new ArrayList<Integer>();
+                                attr.sessionHandle.add(sessionHandle);
+                            }
+                        }
+                    }
                 }
             }
             //send notification/indication for the particular client char config handle
