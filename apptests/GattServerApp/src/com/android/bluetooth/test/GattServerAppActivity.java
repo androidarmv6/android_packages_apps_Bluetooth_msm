@@ -148,6 +148,51 @@ public class GattServerAppActivity extends Activity {
              }
          });
 
+         // Add device to preferred device list
+         Button addToPreferredDeviceList = (Button) findViewById(R.id.button_add_to_preferred_device_list);
+         addToPreferredDeviceList.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+                 sendMessage(GattServerAppService.MSG_ADD_TO_PREFERRED_DEVICE_LIST, 0);
+             }
+         });
+
+         // Remove device from preferred device list
+         Button removeFromPreferredDeviceList = (Button) findViewById(R.id.button_remove_from_preferred_device_list);
+         removeFromPreferredDeviceList.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+                 sendMessage(GattServerAppService.MSG_REMOVE_FROM_PREFERRED_DEVICE_LIST, 0);
+             }
+         });
+
+         // Clear preferred device list
+         Button clearPreferredDeviceList = (Button) findViewById(R.id.button_clear_preferred_device_list);
+         clearPreferredDeviceList.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+                 sendMessage(GattServerAppService.MSG_CLEAR_PREFERRED_DEVICE_LIST, 0);
+             }
+         });
+
+         // Create Connect request to preferred device list
+         Button connectPreferredDeviceList = (Button) findViewById(R.id.button_connect_preferred_device_list);
+         connectPreferredDeviceList.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+                 sendMessage(GattServerAppService.MSG_CREATE_CONN_PREFERRED_DEVICE_LIST, 0);
+             }
+         });
+
+         // Cancel connect request to preferred device list
+         Button cancelConnectPreferredDeviceList = (Button) findViewById(R.id.button_cancel_connect_preferred_device_list);
+         cancelConnectPreferredDeviceList.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+                 sendMessage(GattServerAppService.MSG_CANCEL_CONN_PREFERRED_DEVICE_LIST, 0);
+             }
+         });
+
          registerReceiver(mReceiver, initIntentFilter());
         }
 
