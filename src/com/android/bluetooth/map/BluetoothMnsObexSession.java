@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008-2009, Motorola, Inc.
- * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -32,6 +32,7 @@ package com.android.bluetooth.map;
 import android.content.Context;
 import android.os.Handler;
 import android.util.Log;
+import android.os.PowerManager;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -67,6 +68,8 @@ public class BluetoothMnsObexSession {
 
     private volatile boolean mWaitingForRemote;
 
+    private PowerManager.WakeLock mWakeLock = null;
+
     private static final String TYPE_EVENT = "x-bt/MAP-event-report";
 
     public BluetoothMnsObexSession(Context context, ObexTransport transport) {
@@ -86,6 +89,8 @@ public class BluetoothMnsObexSession {
     }
 
     public void disconnect() {
+        if(D) Log.d(TAG, "BluetoothMnsObexSession: disconnect");
+        acquireMnsLock();
         try {
             if (mCs != null) {
                 mCs.disconnect(null);
@@ -111,12 +116,15 @@ public class BluetoothMnsObexSession {
         } catch (IOException e) {
             Log.e(TAG, "mTransport.close error " + e.getMessage());
         }
+        if(D) Log.d(TAG, "BluetoothMnsObexSession: exiting from disconnect");
+        releaseMnsLock();
     }
 
     private HeaderSet hsConnect = null;
 
     public void connect() {
-        Log.d(TAG, "Create ClientSession with transport " + mTransport.toString());
+        if(D) Log.d(TAG, "BluetoothMnsObexSession: Create ClientSession with transport " + mTransport.toString());
+        acquireMnsLock();
         try {
             mCs = new ClientSession(mTransport);
             mConnected = true;
@@ -147,10 +155,13 @@ public class BluetoothMnsObexSession {
             synchronized (this) {
                 mWaitingForRemote = false;
         }
+        if(D) Log.d(TAG, "BluetoothMnsObexSession: exiting from connect");
+        releaseMnsLock();
     }
 
     public int sendEvent(File file, byte masInstanceId) {
-
+        Log.d(TAG, "BluetoothMnsObexSession: sendEvent");
+        acquireMnsLock();
         boolean error = false;
         int responseCode = -1;
         HeaderSet request;
@@ -263,11 +274,39 @@ public class BluetoothMnsObexSession {
                 Log.e(TAG, "Error when closing stream after send " + e.getMessage());
             }
         }
-
+        if(D) Log.d(TAG, "BluetoothMnsObexSession: exiting from sendEvent");
+        releaseMnsLock();
         return responseCode;
     }
 
     private void handleSendException(String exception) {
         Log.e(TAG, "Error when sending event: " + exception);
+    }
+
+    private void acquireMnsLock() {
+        if (V) Log.v(TAG, "About to acquire Mns:mWakeLock");
+        if (mWakeLock == null) {
+            PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
+            mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MnsPartialWakeLock");
+            mWakeLock.setReferenceCounted(false);
+            mWakeLock.acquire();
+            if (V) Log.v(TAG, "Mns:mWakeLock acquired");
+        }
+        else {
+            Log.e(TAG, "Mns:mWakeLock already acquired");
+        }
+    }
+
+    public void releaseMnsLock() {
+        if (V) Log.v(TAG, "About to release Mns:mWakeLock");
+        if (mWakeLock != null) {
+            if (mWakeLock.isHeld()) {
+                mWakeLock.release();
+                if (V) Log.v(TAG, "Mns:mWakeLock released");
+            } else {
+                if (V) Log.v(TAG, "Mns:mWakeLock already released");
+            }
+            mWakeLock = null;
+        }
     }
 }

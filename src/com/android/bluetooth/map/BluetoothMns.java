@@ -262,6 +262,10 @@ public class BluetoothMns implements MessageNotificationListener {
                 if (V) Log.v(TAG, "MNS_BT: mnsCleanupInstances: made client = null");
             }
         }
+        if (V) Log.v(TAG, "Relase MNS lock during MNS close service");
+        if(mSession != null) {
+            mSession.releaseMnsLock();
+        }
     }
 
     /*
