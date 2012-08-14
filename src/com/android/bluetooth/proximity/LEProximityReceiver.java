@@ -104,25 +104,27 @@ public class LEProximityReceiver extends BroadcastReceiver {
                                                .getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
                 String disconnDevAddr = remoteDevice.getAddress();
-                Log.d(TAG, "Received ACTION_ACL_DISCONNECTED, bt device: "
-                      + disconnDevAddr);
+                byte reason = intent.getByteExtra(BluetoothDevice.EXTRA_REASON, (byte)0);
+                Log.d(TAG, "Received ACTION_ACL_DISCONNECTED bt device: "
+                      + disconnDevAddr + "reason : " + reason);
 
                 sendConnectionStatusMsg(disconnDevAddr,
-                                        LEProximityServices.GATT_SERVICE_DISCONNECTED);
+                                        LEProximityServices.GATT_SERVICE_DISCONNECTED, reason);
             }
 
         } else if (action.equals(BluetoothDevice.ACTION_ACL_CONNECTED)) {
-            Log.d(TAG, "Received ACTION_ACL_CONNECTED intent");
+            Log.d(TAG, "Recv ACTION_ACL_CONNECTED intent");
             sendDisconnectMsg = true;
             BluetoothDevice remoteDevice = intent
                                            .getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
             String connDevAddr = remoteDevice.getAddress();
+            byte reason = intent.getByteExtra(BluetoothDevice.EXTRA_REASON, (byte)0);
             Log.d(TAG, "Received ACTION_ACL_CONNECTED, bt device: "
-                  + connDevAddr);
+                  + connDevAddr + "reason : " + reason);
 
             sendConnectionStatusMsg(connDevAddr,
-                                    LEProximityServices.GATT_SERVICE_CONNECTED);
+                                    LEProximityServices.GATT_SERVICE_CONNECTED, reason);
         } else if (action.equals(BluetoothDevice.ACTION_RSSI_UPDATE)) {
 
             BluetoothDevice remoteDevice = intent
@@ -140,12 +142,13 @@ public class LEProximityReceiver extends BroadcastReceiver {
         }
     }
 
-    private void sendConnectionStatusMsg(String devAddr, int msg) {
+    private void sendConnectionStatusMsg(String devAddr, int msg, byte reason) {
         Message objMsg = new Message();
         objMsg.what = msg;
         Bundle objBundle = new Bundle();
         objBundle.putString(
                            LEProximityServices.ACTION_GATT_SERVICE_EXTRA_DEVICE, devAddr);
+        objBundle.putByte(LEProximityServices.ACTION_CONN_UPDATE_EXTRA_REASON, reason);
         objMsg.setData(objBundle);
         handler.sendMessage(objMsg);
     }

@@ -101,6 +101,8 @@ public class LEProximityServices extends Service {
 
     private static final int RECONNECTION_TASK_TIMEOUT = 31000;
 
+    private static final byte DISCONNECTION_REASON_CONNECTION_TIMEOUT = 8;
+
     private static final int LATENCY = 0;
 
     private static final String TAG = "LEProximityServices";
@@ -150,6 +152,8 @@ public class LEProximityServices extends Service {
     public static final String ACTION_RSSI_UPDATE_EXTRA_OBJ = "ACTION_RSSI_UPDATE_EXTRA_OBJ";
 
     public static final String ACTION_GATT_SERVICE_CHANGED_DEVICE = "ACTION_GATT_SERVICE_CHANGED_DEVICE";
+
+    public static final String ACTION_CONN_UPDATE_EXTRA_REASON = "ACTION_CONN_UPDATE_EXTRA_REASON";
 
     public static final int TEMP_MSR_INTR_MIN = 1;
 
@@ -263,6 +267,8 @@ public class LEProximityServices extends Service {
                 Log.d(TAG, "Received GATT_SERVICE_DISCONNECTED message");
                 String bdAddr = msg.getData().getString(
                                                        ACTION_GATT_SERVICE_EXTRA_DEVICE);
+                byte reason = msg.getData().getByte(ACTION_CONN_UPDATE_EXTRA_REASON);
+                Log.d(TAG, "ACL Disconnect reason : " + reason);
 
                 if (mDevice.BDevice.getAddress().equals(bdAddr)) {
                     Log.d(TAG,
@@ -279,12 +285,16 @@ public class LEProximityServices extends Service {
                     ArrayList<String> values = new ArrayList<String>();
                     values.add(bdAddr);
                     values.add(String.valueOf(mDevice.linkLossAlertLevel));
+                    values.add(String.valueOf(reason));
                     bundleAndSendResult(uuid,
                                         PROXIMITY_SERVICE_OP_DEV_DISCONNECTED, true, values);
 
                     /* Attempt to connect back to the service */
-                    Log.d(TAG, "Attempting to reconnect back");
-                    gattReconnect(convertStrToParcelUUID(LINK_LOSS_SERVICE_UUID));
+                    if(reason == DISCONNECTION_REASON_CONNECTION_TIMEOUT) {
+                        Log.d(TAG, "Connection Lost due to Link loss. "+
+                                   "Attempting to reconnect back");
+                        gattReconnect(convertStrToParcelUUID(LINK_LOSS_SERVICE_UUID));
+                    }
                 }
                 break;
             case GATT_SERVICE_CONNECTED:
