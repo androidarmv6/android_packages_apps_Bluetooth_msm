@@ -103,6 +103,10 @@ public class GattServerAppReceiver extends BroadcastReceiver{
             msg.setData(b);
             handler.sendMessage(msg);
         }
+        else if (action.equals(BluetoothDevice.ACTION_LE_CONN_PARAMS)) {
+            int connInterval = intent.getIntExtra(BluetoothDevice.EXTRA_CONN_INTERVAL, 0);
+            Log.d(TAG, "LE Connection interval is: " + connInterval);
+        }
     }
     public static void registerHandler(Handler handle) {
         Log.d(TAG, "Registered Handler");
