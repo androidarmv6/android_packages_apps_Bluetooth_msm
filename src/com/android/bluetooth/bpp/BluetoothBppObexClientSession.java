@@ -435,7 +435,7 @@ public class BluetoothBppObexClientSession{
             if (status == BluetoothShare.STATUS_SUCCESS) {
                 Message msg = Message.obtain(mCallback);
                 msg.what = BluetoothBppObexClientSession.MSG_SHARE_COMPLETE;
-                mInfo.mStatus = status;
+                msg.arg1 = status;
                 msg.obj = mInfo;
                 msg.sendToTarget();
             } else {
