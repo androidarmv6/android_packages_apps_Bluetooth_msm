@@ -862,6 +862,8 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
         byte[] appParams = null;
         boolean retVal = true;
         BluetoothMasAppParams tmp;
+        InputStream inputStream = null;
+        byte[] readByte = new byte[10];
 
         if (D) Log.d(TAG, "onPut(): support PUT request.");
 
@@ -908,6 +910,49 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
             return msgUpdate(op);
         }
         if (type.equals(TYPE_MESSAGE_NOTIFICATION)) {
+            if (V) Log.v(TAG, "entered TYPE_MESSAGE_NOTIFICATION");
+            // Following section of code ensures if the Body/EOB
+            // payload is not present in the same Obex packet
+            // Containing headers, but is pushed in the continuation
+            // packet, then we take the corresponding action only
+            // after reading the complete obex packet.
+            // And as the Body / EOB payload contains dummy body as
+            // '0' [0x30 (48)], hence we discard the same.
+            if (!(((ServerOperation) op).finalBitSet)) {
+                if (V) Log.v(TAG, "Not the final Obex packet");
+                try {
+                    inputStream = op.openInputStream();
+                    int readLength = -1;
+                    while(true) {
+                        if (V) Log.v(TAG, "Inside while loop: TYPE_MESSAGE_NOTIFICATION");
+                        readLength = inputStream.read(readByte);
+                        if (readLength == -1) {
+                            if (V) Log.v(TAG, "Complete Obex packet read, Proceeding");
+                            break;
+                        } else {
+                            if (V) Log.v(TAG, "readLength: " + readLength);
+                            if (V) Log.v(TAG, "readByte[0]: " + readByte[0]);
+                            // Compare first byte to check if '0' is received as Body/ EOB
+                            // And Length of the Body Payload is 1, If not, print Error
+                            if ((readByte[0] == 0x30) && (readLength == 1)) {
+                                if (V) Log.v(TAG, "Body / EOB contains '0'");
+                            } else {
+                                Log.e(TAG, "Body / EOB does not contain '0'");
+                            }
+                        }
+                    }
+                } catch (IOException ioException) {
+                    Log.e(TAG, "Error while opening InputStream");
+                } finally {
+                    try {
+                        if (inputStream != null) {
+                            inputStream.close();
+                        }
+                    } catch (IOException ioException) {
+                        Log.e(TAG, "Error when closing stream");
+                    }
+                }
+            }
             return notification(op);
         }
         if (V) Log.v(TAG, "put returns HTTP_BAD_REQUEST");
