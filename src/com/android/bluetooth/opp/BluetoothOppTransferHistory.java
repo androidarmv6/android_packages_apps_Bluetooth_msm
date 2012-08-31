@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2008-2009, Motorola, Inc.
+ * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * All rights reserved.
  *
@@ -76,16 +77,24 @@ public class BluetoothOppTransferHistory extends Activity implements
 
     private boolean mShowAllIncoming;
 
+    private AlertDialog mClearAllDialog;
+
+    private static boolean mIsClearAllDialogShown = false;
+
     /** Class to handle Notification Manager updates */
     private BluetoothOppNotification mNotifier;
 
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
+        mClearAllDialog = null;
         setContentView(R.layout.bluetooth_transfers_page);
         mListView = (ListView)findViewById(R.id.list);
         mListView.setEmptyView(findViewById(R.id.empty));
-
+        if (V) Log.v(TAG, "onCreate : mIsClearAllDialogShown" + mIsClearAllDialogShown);
+        if(mIsClearAllDialogShown) {
+            promptClearList();
+        }
         mShowAllIncoming = getIntent().getBooleanExtra(
                 Constants.EXTRA_SHOW_ALL_FILES, false);
 
@@ -136,6 +145,17 @@ public class BluetoothOppTransferHistory extends Activity implements
         }
 
         mNotifier = new BluetoothOppNotification(this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if(mClearAllDialog!=null) {
+            mClearAllDialog.dismiss();
+            mClearAllDialog = null;
+            if (V) Log.v(TAG, "mClearAllDialog.dismiss");
+        }
+        if (V) Log.v(TAG, "onDestroy");
     }
 
     @Override
@@ -212,13 +232,23 @@ public class BluetoothOppTransferHistory extends Activity implements
      * Prompt the user if they would like to clear the transfer history
      */
     private void promptClearList() {
-        new AlertDialog.Builder(this).setTitle(R.string.transfer_clear_dlg_title).setMessage(
-                R.string.transfer_clear_dlg_msg).setPositiveButton(android.R.string.ok,
+        mClearAllDialog = new AlertDialog.Builder(this).setTitle(R.string.transfer_clear_dlg_title)
+                .setMessage(R.string.transfer_clear_dlg_msg)
+                .setCancelable(false)
+                .setPositiveButton(android.R.string.ok,
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
+                        mIsClearAllDialogShown = false;
                         clearAllDownloads();
                     }
-                }).setNegativeButton(android.R.string.cancel, null).show();
+                }).setNegativeButton(android.R.string.cancel,
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        mIsClearAllDialogShown = false;
+                    }
+                }).create();
+        mClearAllDialog.show();
+        mIsClearAllDialogShown = true;
     }
 
     /**
