@@ -36,6 +36,7 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattAppConfiguration;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.IBluetoothPreferredDeviceListCallback;
 
 
 import android.content.BroadcastReceiver;
@@ -96,6 +97,13 @@ public class GattServerAppService extends Service {
     public static final int MSG_UNREG_GATT_SERVER_FAILURE = 501;
 
     protected static final int DEVICE_SELECTED = 0;
+    protected static final int DEVICE_CONNECTED_PLIST = 2;
+    protected static final int ADD_DEVICE_PLIST = 3;
+    protected static final int REMOVE_DEVICE_PLIST = 4;
+    protected static final int CLEAR_DEVICE_PLIST = 5;
+    protected static final int CREATE_CONN_PLIST = 6;
+    protected static final int CANCEL_CREATE_CONN_PLIST = 7;
+
     // Message codes received from the UI client.
     // Register client with this service.
     public static final int MSG_REG_CLIENT = 200;
@@ -109,6 +117,12 @@ public class GattServerAppService extends Service {
     public static final boolean SERVICE_DEBUG = false;
     public static final int MSG_CONNECT_GATT_SERVER = 600;
     public static final int MSG_DISCONNECT_GATT_SERVER = 601;
+    public static final int MSG_GET_LE_CONN_PARMS = 602;
+    public static final int MSG_ADD_TO_PREFERRED_DEVICE_LIST = 603;
+    public static final int MSG_REMOVE_FROM_PREFERRED_DEVICE_LIST = 604;
+    public static final int MSG_CLEAR_PREFERRED_DEVICE_LIST = 605;
+    public static final int MSG_CREATE_CONN_PREFERRED_DEVICE_LIST = 606;
+    public static final int MSG_CANCEL_CONN_PREFERRED_DEVICE_LIST = 607;
 
     private BluetoothAdapter mBluetoothAdapter;
     private Messenger mClient;
@@ -148,6 +162,11 @@ public class GattServerAppService extends Service {
     public static BluetoothDevice remoteDevice = null;
 
     public static ArrayList<BluetoothDevice> connectedDevicesList;
+
+    public static String devicePickerMode = null;
+
+    static final String PREFERRED_DEVICE_LIST_RESULT = "PreferredDeviceListResult";
+
 
     // Handles events sent by GattServerAppActivity.
     private class IncomingHandler extends Handler {
@@ -200,8 +219,116 @@ public class GattServerAppService extends Service {
                     break;
                 case DEVICE_SELECTED:
                     remoteDevice = (BluetoothDevice) msg.getData().getParcelable(REMOTE_DEVICE);
-                    connectLEDevice();
+                    if(devicePickerMode!= null && devicePickerMode.equalsIgnoreCase("ADD_TO_PREFERRED_DEVICE_LIST")) {
+                        remoteDevice.addToPreferredDeviceList (mPListCallBack);
+                    }
+                    else if(devicePickerMode!= null && devicePickerMode.equalsIgnoreCase("REMOVE_FROM_PREFERRED_DEVICE_LIST")) {
+                        remoteDevice.removeFromPreferredDeviceList(mPListCallBack);
+                    }
+                    else {
+                        connectLEDevice();
+                    }
                     break;
+                case MSG_ADD_TO_PREFERRED_DEVICE_LIST:
+                    devicePickerMode = "ADD_TO_PREFERRED_DEVICE_LIST";
+                    selectDevice();
+                    break;
+                case MSG_REMOVE_FROM_PREFERRED_DEVICE_LIST:
+                    devicePickerMode = "REMOVE_FROM_PREFERRED_DEVICE_LIST";
+                    selectDevice();
+                    break;
+                case MSG_CLEAR_PREFERRED_DEVICE_LIST:
+                    mBluetoothAdapter.clearPreferredDeviceList(mPListCallBack);
+                    break;
+                case MSG_CREATE_CONN_PREFERRED_DEVICE_LIST:
+                    mBluetoothAdapter.gattConnectToPreferredDeviceList(mPListCallBack);
+                    break;
+                case MSG_CANCEL_CONN_PREFERRED_DEVICE_LIST:
+                    mBluetoothAdapter.gattCancelConnectToPreferredDeviceList(mPListCallBack);
+                    break;
+                case DEVICE_CONNECTED_PLIST:
+                    remoteDevice = (BluetoothDevice) msg.getData().getParcelable(REMOTE_DEVICE);
+                    text = "Device connection was successful with preferred device list!"+remoteDevice;
+                    duration = Toast.LENGTH_LONG;
+                    toast = Toast.makeText(context, text, duration);
+                    toast.show();
+                    //Add device to list of connected devices
+                    if(connectedDevicesList != null && connectedDevicesList.size() > 0) {
+                        if(!connectedDevicesList.contains(remoteDevice.getAddress())) {
+                            connectedDevicesList.add(remoteDevice);
+                        }
+                    }
+                    else {
+                        connectedDevicesList = new ArrayList<BluetoothDevice>();
+                        connectedDevicesList.add(remoteDevice);
+                    }
+                    break;
+                case ADD_DEVICE_PLIST:
+                    Log.d(TAG, "handler ADD_DEVICE_PLIST");
+                    int result = msg.getData().getInt(PREFERRED_DEVICE_LIST_RESULT);
+                    if(result == 0) {
+                        text = "Add Device to preferred device list was successful!";
+                    }
+                    else {
+                        text = "Add Device to preferred device list was not successful!";
+                    }
+                    duration = Toast.LENGTH_LONG;
+                    toast = Toast.makeText(context, text, duration);
+                    toast.show();
+                    break;
+                case REMOVE_DEVICE_PLIST:
+                    Log.d(TAG, "handler REMOVE_DEVICE_PLIST");
+                    result = msg.getData().getInt(PREFERRED_DEVICE_LIST_RESULT);
+                    if(result == 0) {
+                        text = "Remove device from preferred device list was successful!";
+                    }
+                    else {
+                        text = "Remove device from preferred device list was not successful!";
+                    }
+                    duration = Toast.LENGTH_LONG;
+                    toast = Toast.makeText(context, text, duration);
+                    toast.show();
+                    break;
+                case CLEAR_DEVICE_PLIST:
+                    Log.d(TAG, "handler CLEAR_DEVICE_PLIST");
+                    result = msg.getData().getInt(PREFERRED_DEVICE_LIST_RESULT);
+                    if(result == 0) {
+                        text = "Clear Devices from preferred device list  was successful!";
+                    }
+                    else {
+                        text = "Clear Devices from preferred device list  was not successful!";
+                    }
+                    duration = Toast.LENGTH_LONG;
+                    toast = Toast.makeText(context, text, duration);
+                    toast.show();
+                    break;
+                case CREATE_CONN_PLIST:
+                    Log.d(TAG, "handler CREATE_CONN_PLIST");
+                    result = msg.getData().getInt(PREFERRED_DEVICE_LIST_RESULT);
+                    if(result == 0) {
+                        text = "Create connection preferred device list was successful!";
+                    }
+                    else {
+                        text = "Create connection preferred device list was not successful!";
+                    }
+                    duration = Toast.LENGTH_LONG;
+                    toast = Toast.makeText(context, text, duration);
+                    toast.show();
+                    break;
+                case CANCEL_CREATE_CONN_PLIST:
+                    Log.d(TAG, "handler CANCEL_CREATE_CONN_PLIST");
+                    result = msg.getData().getInt(PREFERRED_DEVICE_LIST_RESULT);
+                    if(result == 0) {
+                        text = "Cancel create connection preferred device list was successful!";
+                    }
+                    else {
+                        text = "Cancel create connection preferred device list was not successful!";
+                    }
+                    duration = Toast.LENGTH_LONG;
+                    toast = Toast.makeText(context, text, duration);
+                    toast.show();
+                    break;
+
                 default:
                     super.handleMessage(msg);
             }
@@ -322,6 +449,7 @@ public class GattServerAppService extends Service {
     // Connect to client.
     private void connect() {
         Log.d(TAG, "Connect called::");
+        devicePickerMode = null;
         //DevicePicker call
         selectDevice();
     }
@@ -353,7 +481,64 @@ public class GattServerAppService extends Service {
             }
         }
     };
+    public static IBluetoothPreferredDeviceListCallback mPListCallBack =
+            new IBluetoothPreferredDeviceListCallback.Stub() {
+            @Override
+            public void onAddDeviceToPreferredList(int result) {
+                // TODO Auto-generated method stub
+                try{
+                    Log.d(TAG, "onAddDeviceToPreferredList::"+result);
+                    GattServerAppReceiver.onAddDeviceToPreferredList(result);
+                }
+                catch(Exception e) {
 
+                }
+            }
+            @Override
+            public void onRemoveDeviceFromPreferredList(int result) {
+                // TODO Auto-generated method stub
+                try{
+                    Log.d(TAG, "onRemoveDeviceFromPreferredList::"+result);
+                    GattServerAppReceiver.onRemoveDeviceFromPreferredList(result);
+                }
+                catch(Exception e) {
+
+                }
+            }
+            @Override
+            public void onClearPreferredDeviceList(int result) {
+                // TODO Auto-generated method stub
+                try{
+                    Log.d(TAG, "onClearPreferredDeviceList::"+result);
+                    GattServerAppReceiver.onClearPreferredDeviceList(result);
+                }
+                catch(Exception e) {
+
+                }
+            }
+            @Override
+            public void onGattConnectToPreferredDeviceList(int result) {
+                // TODO Auto-generated method stub
+                try{
+                    Log.d(TAG, "onGattConnectToPreferredDeviceList::"+result);
+                    GattServerAppReceiver.onGattConnectToPreferredDeviceList(result);
+                }
+                catch(Exception e) {
+
+                }
+            }
+            @Override
+            public void onGattCancelConnectToPreferredDeviceList(int result) {
+                // TODO Auto-generated method stub
+                try{
+                    Log.d(TAG, "onGattCancelConnectToPreferredDeviceList::"+result);
+                    GattServerAppReceiver.onGattCancelConnectToPreferredDeviceList(result);
+                }
+                catch(Exception e) {
+
+                }
+            }
+        };
     /**
      * Callback to handle application registration, unregistration events and other
      * API requests coming from the client device.

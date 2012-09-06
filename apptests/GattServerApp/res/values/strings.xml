@@ -35,4 +35,9 @@
     <string name="Unregister_Value">Unregister Server</string>
     <string name="Connect_Value">Connect to Client</string>
     <string name="Disconnect_Value">Disconnect</string>
+    <string name="Add_To_Preferred_Device_List">Add device to preferred device list</string>
+    <string name="Remove_From_Preferred_Device_List">Remove device from preferred device list</string>
+    <string name="Clear_Preferred_Device_List">Clear preferred device list</string>
+    <string name="Connect_Preferred_Device_List">Connect Request for preferred device list</string>
+    <string name="Cancel_Connect_Preferred_Device_List">Cancel connect request for preferred device list</string>
 </resources>

@@ -107,9 +107,61 @@ public class GattServerAppReceiver extends BroadcastReceiver{
             int connInterval = intent.getIntExtra(BluetoothDevice.EXTRA_CONN_INTERVAL, 0);
             Log.d(TAG, "LE Connection interval is: " + connInterval);
         }
+        else if (action.equals(BluetoothDevice.ACTION_ACL_CONNECTED)) {
+            Log.d(TAG, "Received ACTION_ACL_CONNECTED intent");
+            BluetoothDevice remoteDevice = intent
+                                           .getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+
+            String connDevAddr = remoteDevice.getAddress();
+            Log.d(TAG, "Received ACTION_ACL_CONNECTED, bt device: "
+                 + connDevAddr);
+
+            Message msg = new Message();
+            msg.what = GattServerAppService.DEVICE_CONNECTED_PLIST;
+            Bundle b = new Bundle();
+            b.putParcelable(GattServerAppService.REMOTE_DEVICE, remoteDevice);
+            msg.setData(b);
+            handler.sendMessage(msg);
+        }
     }
     public static void registerHandler(Handler handle) {
         Log.d(TAG, "Registered Handler");
         handler = handle;
     }
+    public static void onAddDeviceToPreferredList(int result){
+        Message msg = new Message();
+        msg.what = GattServerAppService.ADD_DEVICE_PLIST;
+        Bundle b = new Bundle();
+        b.putInt(GattServerAppService.PREFERRED_DEVICE_LIST_RESULT, result);
+        handler.sendMessage(msg);
+    }
+    public static void onRemoveDeviceFromPreferredList(int result){
+        Message msg = new Message();
+        msg.what = GattServerAppService.REMOVE_DEVICE_PLIST;
+        Bundle b = new Bundle();
+        b.putInt(GattServerAppService.PREFERRED_DEVICE_LIST_RESULT, result);
+        handler.sendMessage(msg);
+    }
+    public static void onClearPreferredDeviceList(int result){
+        Message msg = new Message();
+        msg.what = GattServerAppService.CLEAR_DEVICE_PLIST;
+        Bundle b = new Bundle();
+        b.putInt(GattServerAppService.PREFERRED_DEVICE_LIST_RESULT, result);
+        handler.sendMessage(msg);
+    }
+    public static void onGattConnectToPreferredDeviceList(int result){
+        Message msg = new Message();
+        msg.what = GattServerAppService.CREATE_CONN_PLIST;
+        Bundle b = new Bundle();
+        b.putInt(GattServerAppService.PREFERRED_DEVICE_LIST_RESULT, result);
+        handler.sendMessage(msg);
+    }
+    public static void onGattCancelConnectToPreferredDeviceList(int result){
+        Message msg = new Message();
+        msg.what = GattServerAppService.CANCEL_CREATE_CONN_PLIST;
+        Bundle b = new Bundle();
+        b.putInt(GattServerAppService.PREFERRED_DEVICE_LIST_RESULT, result);
+        handler.sendMessage(msg);
+    }
+
 }

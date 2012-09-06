@@ -60,4 +60,39 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal">
     </Button>
+    <Button
+        android:text="@string/Add_To_Preferred_Device_List"
+        android:id="@+id/button_add_to_preferred_device_list"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal">
+    </Button>
+    <Button
+        android:text="@string/Remove_From_Preferred_Device_List"
+        android:id="@+id/button_remove_from_preferred_device_list"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal">
+    </Button>
+    <Button
+        android:text="@string/Clear_Preferred_Device_List"
+        android:id="@+id/button_clear_preferred_device_list"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal">
+    </Button>
+    <Button
+        android:text="@string/Connect_Preferred_Device_List"
+        android:id="@+id/button_connect_preferred_device_list"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal">
+    </Button>
+    <Button
+        android:text="@string/Cancel_Connect_Preferred_Device_List"
+        android:id="@+id/button_cancel_connect_preferred_device_list"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal">
+    </Button>
 </LinearLayout>

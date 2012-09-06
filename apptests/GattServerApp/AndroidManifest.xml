@@ -60,6 +60,9 @@
             <intent-filter>
                 <action android:name="android.bluetooth.device.action.LE_CONN_PARAMS" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
+            </intent-filter>
         </receiver>
         <receiver  android:name="Alarm"></receiver>
     </application>
