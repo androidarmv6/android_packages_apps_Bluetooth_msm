@@ -269,6 +269,13 @@ public class LEProximityServices extends Service {
                           " received  GATT_SERVICE_DISCONNECTED for device : "
                           + bdAddr);
                     ParcelUuid uuid = convertStrToParcelUUID(LINK_LOSS_SERVICE_UUID);
+
+                    if(mDevice.BDevice.getBondState() !=
+                       BluetoothDevice.BOND_BONDED) {
+                        Log.d(TAG, "Unbonded device. Clear the cache");
+                        clearProfileCache();
+                    }
+
                     ArrayList<String> values = new ArrayList<String>();
                     values.add(bdAddr);
                     values.add(String.valueOf(mDevice.linkLossAlertLevel));
@@ -421,6 +428,7 @@ public class LEProximityServices extends Service {
         Log.d(TAG, "Gatt reconnect cancel : " + res);
 
         closeAllProximityServices();
+
         Log.d(TAG, "Unregistering the receiver");
         if (this.receiver != null) {
             try {
@@ -440,6 +448,7 @@ public class LEProximityServices extends Service {
         boolean closeTxPower = closeService(convertStrToParcelUUID(TX_POWER_SERVICE_UUID));
         Log.d(TAG, "Closing the Tx Power service : " + closeTxPower);
         if (closeLinkLoss && closeImmAlert && closeTxPower) {
+            clearProfileCache();
             return true;
         }
         return false;
@@ -453,8 +462,7 @@ public class LEProximityServices extends Service {
                 try {
                     Log.d(TAG, "Calling gattService.close()");
                     gattService.close();
-                    Log.d(TAG, "removing Gatt service for UUID : " + srvUuid);
-                    mDevice.uuidGattSrvMap.remove(srvUuid);
+                    removeServiceFromCache(srvUuid);
                     LEProximityReceiver.setSendDisconnect(false);
                     return true;
                 } catch (Exception e) {
@@ -569,8 +577,7 @@ public class LEProximityServices extends Service {
                 if ((mDevice.BDevice != null)
                     && (mDevice.BDevice.getAddress().equals(btDevice
                                                             .getAddress()))) {
-                    Log.d(TAG,
-                          "services have already been discovered. Create Gatt service");
+                    Log.d(TAG, "Create Gatt service");
                     String objPath = mDevice.uuidObjPathMap.get(uuid + ":"
                                                                 + uuid);
                     if (objPath != null) {
@@ -889,6 +896,25 @@ public class LEProximityServices extends Service {
         }
         Log.d(TAG, "Gatt service does not exist");
         return false;
+    }
+
+
+    private void removeServiceFromCache(ParcelUuid srvUuid) {
+        Log.d(TAG, "removing Gatt service for UUID : " + srvUuid);
+        mDevice.uuidGattSrvMap.remove(srvUuid);
+        String srvUuidStr = srvUuid + ":" + srvUuid;
+        Log.d(TAG, "find objPath from uuidObjPathMap key: " + srvUuidStr);
+        String objPath = mDevice.uuidObjPathMap.get(srvUuidStr);
+        Log.d(TAG, "removing objPath from uuidObjPathMap : " + objPath);
+        mDevice.objPathUuidMap.remove(objPath);
+        mDevice.uuidObjPathMap.remove(srvUuidStr);
+    }
+
+    private void clearProfileCache() {
+        Log.d(TAG, "Clearing profile cache");
+        mDevice.uuidGattSrvMap.clear();
+        mDevice.objPathUuidMap.clear();
+        mDevice.uuidObjPathMap.clear();
     }
 
     private void cleanUpTimer() {
