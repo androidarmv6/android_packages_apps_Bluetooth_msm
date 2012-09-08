@@ -123,9 +123,13 @@ public class BluetoothThermometerServices extends Service {
 
     public static final int GATT_SERVICE_STARTED_OBJ = 1;
 
+    public static final int GATT_SERVICE_DISCONNECTED = 4;
+
     public static final String ACTION_GATT_SERVICE_EXTRA_DEVICE = "ACTION_GATT_SERVICE_EXTRA_DEVICE";
 
     public static final String ACTION_GATT_SERVICE_EXTRA_OBJ = "ACTION_GATT_SERVICE_EXTRA_OBJ";
+
+    public static final String ACTION_CONN_UPDATE_EXTRA_REASON = "ACTION_CONN_UPDATE_EXTRA_REASON";
 
     public static final int TEMP_MSR_INTR_MIN = 1;
 
@@ -219,6 +223,25 @@ public class BluetoothThermometerServices extends Service {
                     getBluetoothGattService(selectedServiceObjPath, selectedUUID);
                 }
                 break;
+            case GATT_SERVICE_DISCONNECTED:
+                Log.d(TAG, "Received GATT_SERVICE_DISCONNECTED message");
+                String bdAddr = msg.getData().getString(
+                                                       ACTION_GATT_SERVICE_EXTRA_DEVICE);
+                byte reason = msg.getData().getByte(ACTION_CONN_UPDATE_EXTRA_REASON);
+                Log.d(TAG, "ACL Disconnect reason : " + reason);
+
+                if (mDevice.BDevice.getAddress().equals(bdAddr)) {
+                    Log.d(TAG,
+                          " received GATT_SERVICE_DISCONNECTED for thermometer device : "
+                          + bdAddr);
+
+                    if(mDevice.BDevice.getBondState() !=
+                       BluetoothDevice.BOND_BONDED) {
+                        Log.d(TAG, "Unbonded device. Clear the cache");
+                        clearProfileCache();
+                    }
+                }
+                break;
             default:
                 break;
             }
@@ -249,6 +272,7 @@ public class BluetoothThermometerServices extends Service {
 
                 inFilter = new IntentFilter();
                 inFilter.addAction("android.bluetooth.device.action.GATT");
+                inFilter.addAction("android.bluetooth.device.action.ACL_DISCONNECTED");
                 this.receiver = new BluetoothThermometerReceiver();
                 Log.d(TAG, "Registering the receiver");
                 this.registerReceiver(this.receiver, inFilter);
@@ -291,10 +315,18 @@ public class BluetoothThermometerServices extends Service {
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy thermometer service");
-        Log.d(TAG, "Closing the thermometer health service : " +
-              closeService(convertStrToParcelUUID(HEALTH_THERMOMETER_SERVICE_UUID)));
-        Log.d(TAG, "Closing the thermometer health service : " +
-              closeService(convertStrToParcelUUID(DEVICE_INFORMATION_SERVICE_UUID)));
+
+        boolean closeHealthSrv =
+            closeService(convertStrToParcelUUID(HEALTH_THERMOMETER_SERVICE_UUID));
+        Log.d(TAG, "Closing the thermometer health service : " + closeHealthSrv);
+        boolean closeDeviceSrv =
+            closeService(convertStrToParcelUUID(DEVICE_INFORMATION_SERVICE_UUID));
+        Log.d(TAG, "Closing the thermometer health service : " + closeDeviceSrv);
+
+        if(closeHealthSrv && closeDeviceSrv) {
+            clearProfileCache();
+        }
+
         Log.d(TAG, "Unregistering the receiver");
         if (this.receiver != null) {
             try {
@@ -313,8 +345,7 @@ public class BluetoothThermometerServices extends Service {
                 try {
                     Log.d(TAG, "Calling gattService.close()");
                     gattService.close();
-                    Log.d(TAG, "removing Gatt service for UUID : " + srvUuid);
-                    mDevice.uuidGattSrvMap.remove(srvUuid);
+                    removeServiceFromCache(srvUuid);
                 } catch (Exception e) {
                     Log.e(TAG, "************Error while closing the Gatt Service");
                     e.printStackTrace();
@@ -492,7 +523,7 @@ public class BluetoothThermometerServices extends Service {
                 thermometerSrvCallBack = callBack;
                 if ((mDevice.BDevice != null) &&
                     (mDevice.BDevice.getAddress().equals(btDevice.getAddress()))) {
-                    Log.d(TAG, "services have already been discovered. Create Gatt service");
+                    Log.d(TAG, "Create Gatt service");
                     String objPath = mDevice.uuidObjPathMap.get(uuid);
                     if (objPath != null) {
                         Log.d(TAG, "GET GATT SERVICE for : " + uuid);
@@ -858,6 +889,23 @@ public class BluetoothThermometerServices extends Service {
             e.printStackTrace();
         }
         return name;
+    }
+
+    private void removeServiceFromCache(ParcelUuid srvUuid) {
+        Log.d(TAG, "removing Gatt service for UUID : " + srvUuid);
+        mDevice.uuidGattSrvMap.remove(srvUuid);
+        Log.d(TAG, "find objPath from uuidObjPathMap key: " + srvUuid);
+        String objPath = mDevice.uuidObjPathMap.get(srvUuid);
+        Log.d(TAG, "removing objPath from uuidObjPathMap : " + objPath);
+        mDevice.objPathUuidMap.remove(objPath);
+        mDevice.uuidObjPathMap.remove(srvUuid);
+    }
+
+    private void clearProfileCache() {
+        Log.d(TAG, "Clearing profile cache");
+        mDevice.uuidGattSrvMap.clear();
+        mDevice.objPathUuidMap.clear();
+        mDevice.uuidObjPathMap.clear();
     }
 
     private String readDateTime(ParcelUuid charUUID) {

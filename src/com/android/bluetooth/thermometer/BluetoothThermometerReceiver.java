@@ -96,7 +96,34 @@ public class BluetoothThermometerReceiver extends BroadcastReceiver {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        } else if (action.equals(BluetoothDevice.ACTION_ACL_DISCONNECTED)) {
+            Log.d(TAG, "Received ACTION_ACL_DISCONNECTED intent");
+            BluetoothDevice remoteDevice = intent
+                .getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+
+            String disconnDevAddr = remoteDevice.getAddress();
+            byte reason = intent.getByteExtra(BluetoothDevice.EXTRA_REASON, (byte)0);
+            Log.d(TAG, "Received ACTION_ACL_DISCONNECTED, bt device: "
+                  + disconnDevAddr + "reason : " + reason);
+            sendConnectionStatusMsg(
+                disconnDevAddr,
+                BluetoothThermometerServices.GATT_SERVICE_DISCONNECTED,
+                reason);
         }
+    }
+
+    private void sendConnectionStatusMsg(String devAddr, int msg, byte reason) {
+        Message objMsg = new Message();
+        objMsg.what = msg;
+        Bundle objBundle = new Bundle();
+        objBundle.putString(
+            BluetoothThermometerServices.ACTION_GATT_SERVICE_EXTRA_DEVICE,
+            devAddr);
+        objBundle.putByte(
+            BluetoothThermometerServices.ACTION_CONN_UPDATE_EXTRA_REASON,
+            reason);
+        objMsg.setData(objBundle);
+        handler.sendMessage(objMsg);
     }
 
     public static void registerHandler(Handler handle)
