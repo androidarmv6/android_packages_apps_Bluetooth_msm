@@ -2197,7 +2197,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
             } else {
                 folderName = splitStrings[tmp - 1];
             }
-            if (folderName != null && folderName.equalsIgnoreCase(DRAFTS)){
+            if (folderName != null && folderName.equalsIgnoreCase(DRAFT)){
                 String handle = addToMmsFolder(folderName, readStr);
                 if (INTERNAL_ERROR == handle) {  // == comparison valid here
                     rsp.msgHandle = null;
