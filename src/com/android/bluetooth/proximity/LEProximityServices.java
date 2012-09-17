@@ -73,13 +73,17 @@ public class LEProximityServices extends Service {
 
     private static final int SIZE_TWO = 2;
 
-    private static final byte PROHIBIT_REMOTE_CHG = 0;
+    private static final byte PROHIBIT_REMOTE_CHG_FALSE = 0;
 
     private static final byte FILTER_POLICY = 0;
 
     private static final int AGRESSIVE_SCAN_INTERVAL = 96;
 
     private static final int SCAN_INTERVAL = 4096;
+
+    private static final int PREFERRED_SCAN_INTERVAL = 4;
+
+    private static final int PREFERRED_SCAN_WINDOW = 4;
 
     private static final int AGRESSIVE_SCAN_WINDOW = 48;
 
@@ -96,6 +100,8 @@ public class LEProximityServices extends Service {
     private static final int MAX_CE_LEN = 1;
 
     private static final int CONNECTION_ATTEMPT_TIMEOUT = 30;
+
+    private static final int PREFERRED_CONNECTION_ATTEMPT_TIMEOUT = 5;
 
     private static final int CONNECTION_ATTEMPT_INFINITE_TIMEOUT = 0;
 
@@ -850,17 +856,21 @@ public class LEProximityServices extends Service {
 
     private void updateConnectionParameters() {
         if(!mDevice.isConnectionParamUpdated) {
-            mDevice.isConnectionParamUpdated = mDevice.BDevice.
-                        updateLEConnectionParams((byte)0, 8, 256, 0, 192);
-            Log.d(TAG, "update LE connection parameters result : " +
+            mDevice.isConnectionParamUpdated = mDevice.BDevice.updateLEConnectionParams(
+                PROHIBIT_REMOTE_CHG_FALSE, CONNECTION_INTERVAL_MIN, CONNECTION_INTERVAL_MAX,
+                LATENCY, SUPERVISION_TIMEOUT);
+            Log.d(TAG, "update LE connection parameters result: " +
                           mDevice.isConnectionParamUpdated);
         }
     }
 
     private void setPreferredConnParameters() {
         if(!mDevice.isConnectionParamSet) {
-            mDevice.isConnectionParamSet = mDevice.BDevice.
-                    setLEConnectionParams((byte)0, (byte)0, 4, 4, 8, 256, 0, 192, 1, 1);
+            mDevice.isConnectionParamSet = mDevice.BDevice.setLEConnectionParams(
+                PROHIBIT_REMOTE_CHG_FALSE, FILTER_POLICY, PREFERRED_SCAN_INTERVAL,
+                PREFERRED_SCAN_WINDOW, CONNECTION_INTERVAL_MIN,
+                CONNECTION_INTERVAL_MAX, LATENCY, SUPERVISION_TIMEOUT,
+                MIN_CE_LEN, MAX_CE_LEN, PREFERRED_CONNECTION_ATTEMPT_TIMEOUT);
             Log.d(TAG, "Set preferred LE connection parameters result : " +
                       mDevice.isConnectionParamSet);
         }
@@ -868,7 +878,7 @@ public class LEProximityServices extends Service {
     private boolean gattReconnect(ParcelUuid srvUuid) {
         boolean result;
         //fast connection
-        result = gattConnect(srvUuid, PROHIBIT_REMOTE_CHG, FILTER_POLICY, AGRESSIVE_SCAN_INTERVAL,
+        result = gattConnect(srvUuid, PROHIBIT_REMOTE_CHG_FALSE, FILTER_POLICY, AGRESSIVE_SCAN_INTERVAL,
                              AGRESSIVE_SCAN_WINDOW, CONNECTION_INTERVAL_MIN,
                              CONNECTION_INTERVAL_MAX, LATENCY, SUPERVISION_TIMEOUT, MIN_CE_LEN,
                              MAX_CE_LEN, CONNECTION_ATTEMPT_TIMEOUT);
@@ -1112,7 +1122,7 @@ public class LEProximityServices extends Service {
             Log.d(TAG, "Inside reconnect task");
             ParcelUuid srvUuid = convertStrToParcelUUID(LINK_LOSS_SERVICE_UUID);
             //try to reconnect after 30 sec with less agressive value and infinite timeout.
-            gattConnect(srvUuid, PROHIBIT_REMOTE_CHG, FILTER_POLICY, SCAN_INTERVAL, SCAN_WINDOW,
+            gattConnect(srvUuid, PROHIBIT_REMOTE_CHG_FALSE, FILTER_POLICY, SCAN_INTERVAL, SCAN_WINDOW,
                         CONNECTION_INTERVAL_MIN, CONNECTION_INTERVAL_MAX, LATENCY,
                         SUPERVISION_TIMEOUT, MIN_CE_LEN, MAX_CE_LEN,
                         CONNECTION_ATTEMPT_INFINITE_TIMEOUT);
