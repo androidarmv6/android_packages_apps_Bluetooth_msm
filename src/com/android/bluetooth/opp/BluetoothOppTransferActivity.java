@@ -175,6 +175,13 @@ public class BluetoothOppTransferActivity extends AlertActivity implements
         super.onDestroy();
     }
 
+    @Override
+    protected void onUserLeaveHint() {
+        /** Handle Home key press and clean up the activity */
+        finish();
+        super.onUserLeaveHint();
+    }
+
     private void displayWhichDialog() {
         int direction = mTransInfo.mDirection;
         boolean isSuccess = BluetoothShare.isStatusSuccess(mTransInfo.mStatus);
