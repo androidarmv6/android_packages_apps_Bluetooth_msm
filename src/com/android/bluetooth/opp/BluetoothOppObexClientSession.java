@@ -76,6 +76,7 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
     private static final String AMP_MOVE_THRESHOLD = "bt.opp.amp_move_threshold";
     /* Approx threshold for 2 sec AMP channel move delay, 600kB/sec AMP, 140 kB/sec BR/EDR */
     private static final int AMP_MOVE_THRESHOLD_DEFAULT = 400000;
+    private static final int OPP_A2DP_SCO_CONCURRENCY_REDUCED_MTU_SIZE = 8192;
 
     /* Debugging hooks to control AMP-related operations */
     private static final String DEBUG_PRE_AMP_MOVE_DELAY = "debug.bt.opp.ms_pre_amp_move";
@@ -308,6 +309,13 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
                 mCs = new ClientSession(mTransport1);
                 mConnected = true;
                 int mps = ((BluetoothOppTransport)mTransport1).getMaxPacketSize();
+                BluetoothOppManager oppmanager = BluetoothOppManager.getInstance(mContext1);
+                if ((mps > OPP_A2DP_SCO_CONCURRENCY_REDUCED_MTU_SIZE) && ((oppmanager != null )
+                    && (oppmanager.isA2DPPlaying || oppmanager.isScoConnected))) {
+                    //Reduce Obex over L2CAP MTU size for simultaneous A2DP and OPP
+                    mps = OPP_A2DP_SCO_CONCURRENCY_REDUCED_MTU_SIZE;
+                    if (V) Log.v(TAG, "Reducing Obex MTU to 8k as A2DP or SCO in progress");
+                }
                 mCs.setMaxPacketSize(mps);
                 if (D) Log.d(TAG, "Setting ClientSession mps " + mps);
             } catch (IOException e1) {
