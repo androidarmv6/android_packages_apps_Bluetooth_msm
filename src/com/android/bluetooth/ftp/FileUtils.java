@@ -59,6 +59,8 @@ public class FileUtils {
 
     private static final boolean V = BluetoothFtpService.VERBOSE;
 
+    public static boolean interruptFileCopy = false;
+
     /**
     * deleteDirectory
     *
@@ -149,6 +151,8 @@ public class FileUtils {
             return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
         FileInputStream reader = null;
         FileOutputStream writer = null;
+        interruptFileCopy = false;
+
         try {
             reader = new FileInputStream(src);
             writer = new FileOutputStream(dest);
@@ -172,12 +176,12 @@ public class FileUtils {
         BufferedInputStream ins = new BufferedInputStream(reader, 0x40000);
         BufferedOutputStream os = new BufferedOutputStream(writer, 0x40000);
         byte[] buff = new byte[0x40000];
-        int position = 0;
+        long position = 0;
         int readLength = 0;
         long timestamp = System.currentTimeMillis();
         try {
             if(V) Log.v(TAG,"position = "+position + "src.filelength = "+src.length());
-            while ((position != src.length())) {
+            while ((position != src.length()) && !interruptFileCopy) {
                 if (BluetoothFtpObexServer.sIsAborted) {
                     BluetoothFtpObexServer.sIsAborted = false;
                     break;
@@ -192,7 +196,6 @@ public class FileUtils {
                        + " readLength " + readLength);
                 }
             }
-            Log.i(TAG,"copyFile completed in "+ (System.currentTimeMillis() - timestamp) + "ms");
         } catch (IOException e) {
             Log.e(TAG,"copyFile "+ e.toString());
             if (D) Log.d(TAG, "File Copy failed");
@@ -208,6 +211,15 @@ public class FileUtils {
                 return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
             }
         }
+
+        if (position != src.length()) {
+            Log.i(TAG, "Copy is aborted ");
+            return ResponseCodes.OBEX_HTTP_INTERNAL_ERROR;
+        } else {
+            Log.i(TAG,"copyFile completed in "+
+                (System.currentTimeMillis() - timestamp) + "ms");
+        }
+
         sendMessage(mCallback,BluetoothFtpService.MSG_FILE_RECEIVED,dest.getAbsolutePath());
         return ResponseCodes.OBEX_HTTP_OK;
     }

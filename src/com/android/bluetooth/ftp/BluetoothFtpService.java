@@ -289,6 +289,8 @@ public class BluetoothFtpService extends Service {
         if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
             removeTimeoutMsg = false;
             if (state == BluetoothAdapter.STATE_TURNING_OFF) {
+                /** Terminate file copy operation if it is in progress */
+                FileUtils.interruptFileCopy = true;
                 // Send any pending timeout now, as this service will be destroyed.
                 if (mSessionStatusHandler.hasMessages(MSG_INTERNAL_USER_TIMEOUT)) {
                     Intent timeoutIntent =
@@ -340,6 +342,13 @@ public class BluetoothFtpService extends Service {
             notifyAuthCancelled();
             removeAuthChallTimer();
             removeFtpNotification(NOTIFICATION_ID_ACCESS);
+        } else if (action.equals(BluetoothDevice.ACTION_ACL_DISCONNECTED)) {
+            BluetoothDevice device =
+                intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+            if (device != null && device.equals(mRemoteDevice)) {
+                /** Terminate file copy operation if it is in progress */
+                FileUtils.interruptFileCopy = true;
+            }
         } else {
             removeTimeoutMsg = false;
         }
