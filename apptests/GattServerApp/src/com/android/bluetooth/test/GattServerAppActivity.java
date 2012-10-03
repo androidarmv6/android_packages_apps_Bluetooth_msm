@@ -139,6 +139,15 @@ public class GattServerAppActivity extends Activity {
              }
          });
 
+         // Cancel connection request.
+         Button cancelConnectReqButton = (Button) findViewById(R.id.button_cancel_connect_req);
+         cancelConnectReqButton.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+                 sendMessage(GattServerAppService.MSG_CANCEL_CONNECT_REQUEST, 0);
+             }
+         });
+
          // Initiates application disconnection.
          Button disconnectAppButton = (Button) findViewById(R.id.button_disconnect_app);
          disconnectAppButton.setOnClickListener(new View.OnClickListener() {
