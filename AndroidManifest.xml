@@ -248,6 +248,7 @@
             android:name=".ftp.BluetoothFtpReceiver">
             <intent-filter>
                 <action android:name="android.bluetooth.adapter.action.STATE_CHANGED"/>
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED"/>
             </intent-filter>
         </receiver>
         <activity android:name=".map.BluetoothMasActivity"
