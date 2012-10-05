@@ -1442,7 +1442,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         }
 
         // Set attachment size
-        if ((appParams.ParameterMask & BIT_SENT) != 0) {
+        if ((appParams.ParameterMask & BIT_ATTACHMENT_SIZE) != 0) {
             ml.setAttachment_size(getMmsMsgAttachSize(mmsMsgID));
         }
 
