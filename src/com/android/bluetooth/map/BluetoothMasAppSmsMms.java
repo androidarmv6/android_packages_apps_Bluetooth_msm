@@ -217,8 +217,8 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
                     bmlr.rsp = bmlrMms.rsp;
                 }
                 if (validFilter != true) {
-                    if (V) Log.v(TAG, "Invalid filter in msgListingSpecific");
-                    rsp.rsp = ResponseCodes.OBEX_HTTP_BAD_REQUEST;
+                    if (V) Log.v(TAG, "Invalid message filter, returning empty-list");
+                    rsp.rsp = ResponseCodes.OBEX_HTTP_OK;
                     bmlr.rsp = rsp;
                     return bmlr;
                 }

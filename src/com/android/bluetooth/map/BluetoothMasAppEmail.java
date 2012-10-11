@@ -279,7 +279,8 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
                     return bmlr;
                 }
                 else {
-                    rsp.rsp = ResponseCodes.OBEX_HTTP_BAD_REQUEST;
+                    if (V) Log.v(TAG, "Invalid Message Filter, returning empty list");
+                    rsp.rsp = ResponseCodes.OBEX_HTTP_OK;
                     bmlr.rsp = rsp;
                     return bmlr;
                 }
