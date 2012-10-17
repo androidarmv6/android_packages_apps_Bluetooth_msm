@@ -284,5 +284,12 @@
                 <action android:name="android.bluetooth.IBluetoothLEProximityServices" />
             </intent-filter>
         </service>
+        <service
+            android:process="@string/process"
+            android:name=".findme.LEFindMeServices" >
+            <intent-filter>
+                <action android:name="android.bluetooth.IBluetoothLEFindMeServices" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>
