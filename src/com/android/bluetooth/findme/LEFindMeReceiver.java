@@ -88,6 +88,22 @@ public class LEFindMeReceiver extends BroadcastReceiver {
                 e.printStackTrace();
             }
         }
+        else if (action.equals(BluetoothDevice.ACTION_ACL_CONNECTED)) {
+            Log.d(TAG, "Received ACTION_ACL_CONNECTED intent");
+            BluetoothDevice remoteDevice = intent
+                                           .getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+
+            String connDevAddr = remoteDevice.getAddress();
+            Log.d(TAG, "Received ACTION_ACL_CONNECTED, bt device: "
+                 + connDevAddr);
+
+            Message msg = new Message();
+            msg.what = LEFindMeServices.GATT_DEVICE_CONNECTED;
+            Bundle b = new Bundle();
+            b.putParcelable(LEFindMeServices.REMOTE_DEVICE, remoteDevice);
+            msg.setData(b);
+            handler.sendMessage(msg);
+        }
     }
 
     public static void registerHandler(Handler handle) {
