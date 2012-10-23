@@ -69,6 +69,8 @@ public class LEFindMeServices extends Service {
 
     public static final int GATT_SERVICE_STARTED_OBJ = 1;
 
+    public static final int GATT_DEVICE_CONNECTED = 2;
+
     public static final String ACTION_GATT_SERVICE_EXTRA_OBJ = "ACTION_GATT_SERVICE_EXTRA_OBJ";
 
     public static final String IMMEDIATE_ALERT_SERVICE_UUID = "0000180200001000800000805f9b34fb";
@@ -86,6 +88,32 @@ public class LEFindMeServices extends Service {
     public static final String FINDME_SERVICE_UUID = "FINDME_SERVICE_UUID";
 
     public static final String FINDME_CHAR_UUID = "FINDME_CHAR_UUID";
+
+    public static final String REMOTE_DEVICE = "RemoteDevice";
+
+    private static final byte PROHIBIT_REMOTE_CHG_FALSE = 0;
+
+    private static final byte FILTER_POLICY = 0;
+
+    private static final int PREFERRED_SCAN_INTERVAL = 4;
+
+    private static final int PREFERRED_SCAN_WINDOW = 4;
+
+    private static final int CONNECTION_INTERVAL_MIN = 50;
+
+    private static final int CONNECTION_INTERVAL_MAX = 70;
+
+    private static final int SUPERVISION_TIMEOUT = 192;
+
+    private static final int MIN_CE_LEN = 1;
+
+    private static final int MAX_CE_LEN = 1;
+
+    private static final int CONNECTION_ATTEMPT_TIMEOUT = 30;
+
+    private static final int LATENCY = 0;
+
+    public static BluetoothDevice remoteDevice = null;
 
     private IntentFilter inFilter = null;
 
@@ -120,6 +148,10 @@ public class LEFindMeServices extends Service {
                     Log.d(TAG, "getBluetoothGattService");
                     getBluetoothGattService(selectedServiceObjPath, selectedUUID);
                 }
+                break;
+            case GATT_DEVICE_CONNECTED:
+                remoteDevice = (BluetoothDevice) msg.getData().getParcelable(REMOTE_DEVICE);
+                callFindMeFunctions(convertStrToParcelUUID(IMMEDIATE_ALERT_SERVICE_UUID), remoteDevice);
                 break;
             default:
                 break;
@@ -303,12 +335,18 @@ public class LEFindMeServices extends Service {
             }
             if (gattProfile != null && btDevice != null) {
                 Log.d(TAG, " Calling connect API with device");
-                status = gattProfile.gattConnectLe(btDevice.getAddress(),(byte)0,(byte)0, 4, 4, 8, 256, 0, 192, 1, 1, 30);
+                status = gattProfile.gattConnectLe(btDevice.getAddress(),(byte)PROHIBIT_REMOTE_CHG_FALSE
+                        ,(byte)FILTER_POLICY, PREFERRED_SCAN_INTERVAL, PREFERRED_SCAN_WINDOW, CONNECTION_INTERVAL_MIN
+                        , CONNECTION_INTERVAL_MAX, LATENCY, SUPERVISION_TIMEOUT, MIN_CE_LEN, MAX_CE_LEN,
+                        CONNECTION_ATTEMPT_TIMEOUT);
                 Log.d(TAG, "status of connect request::"+status);
                 while(status == BluetoothDevice.GATT_RESULT_BUSY) {
                     try {
                         Thread.sleep(3000L);// 3 seconds
-                        status = gattProfile.gattConnectLe(btDevice.getAddress(),(byte)0,(byte)0, 4, 4, 8, 256, 0, 192, 1, 1, 30);
+                        status = gattProfile.gattConnectLe(btDevice.getAddress(),(byte)PROHIBIT_REMOTE_CHG_FALSE
+                                ,(byte)FILTER_POLICY, PREFERRED_SCAN_INTERVAL, PREFERRED_SCAN_WINDOW, CONNECTION_INTERVAL_MIN
+                                , CONNECTION_INTERVAL_MAX, LATENCY, SUPERVISION_TIMEOUT, MIN_CE_LEN, MAX_CE_LEN,
+                                CONNECTION_ATTEMPT_TIMEOUT);
                     }
                     catch (Exception e) {}
                 }
@@ -316,37 +354,6 @@ public class LEFindMeServices extends Service {
             if (!(mDevice.uuidGattSrvMap.containsKey(uuid))) {
                 Log.d(TAG, "Creating new GATT service for UUID : " + uuid);
                 srvCallBack = callBack;
-                if ((mDevice.BDevice != null)
-                    && (mDevice.BDevice.getAddress().equals(btDevice.getAddress()))) {
-                    Log.d(TAG,
-                            "services have already been discovered. Create Gatt service");
-                    String objPath = mDevice.uuidObjPathMap.get(uuid + ":"+ uuid);
-                    if (objPath != null) {
-                        Log.d(TAG, "GET GATT SERVICE for : " + uuid);
-                        getBluetoothGattService(objPath, uuid);
-                    } else {
-                        Log.d(TAG, "action GATT has not been received for uuid : " + uuid);
-                        return getGattServices(uuid, btDevice);
-                    }
-                } else {
-                    Log.d(TAG, "Primary services need to be discovered");
-                    return getGattServices(uuid, btDevice);
-                }
-            } else {
-                Log.d(TAG, "Gatt service and UUID mapping already exists for UUID : " + uuid);
-                if(mDevice.uuidGattSrvMap.containsKey(uuid)) {
-                    BluetoothGattService gattService = mDevice.uuidGattSrvMap.get(uuid);
-                    if(gattService != null) {
-                        boolean isDiscovered = gattService.isDiscoveryDone();
-                        Log.d(TAG, "isDiscovered returned : " + isDiscovered);
-                        if (isDiscovered) {
-                            discoverCharacteristics(uuid);
-                        }
-                    }
-                    else {
-                        Log.d(TAG,"gatt service is null in the hash map");
-                    }
-                }
             }
             return true;
         }
@@ -446,11 +453,6 @@ public class LEFindMeServices extends Service {
                 mDevice.uuidGattSrvMap.put(uuid, gattService);
                 Log.d(TAG, "Adding gatt service to map for : " + uuid
                         + "size :" + mDevice.uuidGattSrvMap.size());
-                boolean isDiscovered = gattService.isDiscoveryDone();
-                Log.d(TAG, "isDiscovered returned : " + isDiscovered);
-                if (isDiscovered) {
-                    discoverCharacteristics(uuid);
-                }
             } else {
                 Log.e(TAG, "Gatt service is null for UUID : " + uuid.toString());
             }
@@ -559,5 +561,44 @@ public class LEFindMeServices extends Service {
                                  Long.valueOf(uuidLsB));
             return uuid;
         }
+    }
+
+    private boolean callFindMeFunctions(ParcelUuid uuid, BluetoothDevice btDevice) {
+        Log.d(TAG, "callFindMeFunctions");
+        if (!(mDevice.uuidGattSrvMap.containsKey(uuid))) {
+            Log.d(TAG, "Creating new GATT service for UUID : " + uuid);
+            if ((mDevice.BDevice != null)
+                && (mDevice.BDevice.getAddress().equals(btDevice.getAddress()))) {
+                Log.d(TAG,
+                        "services have already been discovered. Create Gatt service");
+                String objPath = mDevice.uuidObjPathMap.get(uuid + ":"+ uuid);
+                if (objPath != null) {
+                    Log.d(TAG, "GET GATT SERVICE for : " + uuid);
+                    getBluetoothGattService(objPath, uuid);
+                } else {
+                    Log.d(TAG, "action GATT has not been received for uuid : " + uuid);
+                    return getGattServices(uuid, btDevice);
+                }
+            } else {
+                Log.d(TAG, "Primary services need to be discovered");
+                return getGattServices(uuid, btDevice);
+            }
+        } else {
+            Log.d(TAG, "Gatt service and UUID mapping already exists for UUID : " + uuid);
+            if(mDevice.uuidGattSrvMap.containsKey(uuid)) {
+                BluetoothGattService gattService = mDevice.uuidGattSrvMap.get(uuid);
+                if(gattService != null) {
+                    boolean isDiscovered = gattService.isDiscoveryDone();
+                    Log.d(TAG, "isDiscovered returned : " + isDiscovered);
+                    if (isDiscovered) {
+                        discoverCharacteristics(uuid);
+                    }
+                }
+                else {
+                    Log.d(TAG,"gatt service is null in the hash map");
+                }
+            }
+        }
+        return true;
     }
 }
