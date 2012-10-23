@@ -820,12 +820,6 @@ public class BluetoothThermometerServices extends Service {
                 mDevice.uuidGattSrvMap.put(uuid, gattService);
                 Log.d(TAG, "Adding gatt service to map for : " + uuid + "size :" +
                       mDevice.uuidGattSrvMap.size());
-                                boolean isDiscovered =  gattService.isDiscoveryDone();
-                Log.d(TAG, "isDiscovered returned : " + isDiscovered);
-                if(isDiscovered) {
-                    registerForWatcher(uuid);
-                    discoverCharacteristics(uuid);
-                }
             } else {
                 Log.e(TAG, "Gatt service is null for UUID : " + uuid.toString());
             }
