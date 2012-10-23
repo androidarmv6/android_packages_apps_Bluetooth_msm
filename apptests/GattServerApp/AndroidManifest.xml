@@ -44,6 +44,11 @@
             <intent-filter>
             </intent-filter>
         </activity>
+        <activity android:name=".ConnReqDeviceListScreen"
+                  android:label="@string/conn_req_device_list">
+            <intent-filter>
+            </intent-filter>
+        </activity>
         <service android:name=".GattServerAppService">
             <intent-filter>
                 <action

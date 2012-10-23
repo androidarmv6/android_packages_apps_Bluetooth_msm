@@ -123,6 +123,7 @@ public class GattServerAppService extends Service {
     public static final int MSG_CLEAR_PREFERRED_DEVICE_LIST = 605;
     public static final int MSG_CREATE_CONN_PREFERRED_DEVICE_LIST = 606;
     public static final int MSG_CANCEL_CONN_PREFERRED_DEVICE_LIST = 607;
+    public static final int MSG_CANCEL_CONNECT_REQUEST = 608;
 
     private BluetoothAdapter mBluetoothAdapter;
     private Messenger mClient;
@@ -163,6 +164,8 @@ public class GattServerAppService extends Service {
 
     public static ArrayList<BluetoothDevice> connectedDevicesList;
 
+    public static ArrayList<BluetoothDevice> connReqDevicesList;
+
     public static String devicePickerMode = null;
 
     static final String PREFERRED_DEVICE_LIST_RESULT = "PreferredDeviceListResult";
@@ -192,6 +195,9 @@ public class GattServerAppService extends Service {
                 // Disconnect
                 case MSG_DISCONNECT_GATT_SERVER:
                     disconnect();
+                    break;
+                case MSG_CANCEL_CONNECT_REQUEST:
+                    cancelConnectionRequest();
                     break;
                 case MSG_REG_GATT_SERVER_SUCCESS:
                     text = "GATT Server registration was successful!";
@@ -226,6 +232,15 @@ public class GattServerAppService extends Service {
                         remoteDevice.removeFromPreferredDeviceList(mPListCallBack);
                     }
                     else {
+                        if(connReqDevicesList != null && connReqDevicesList.size() > 0) {
+                            if(!connReqDevicesList.contains(remoteDevice.getAddress())) {
+                                connReqDevicesList.add(remoteDevice);
+                            }
+                        }
+                        else {
+                            connReqDevicesList = new ArrayList<BluetoothDevice>();
+                            connReqDevicesList.add(remoteDevice);
+                        }
                         connectLEDevice();
                     }
                     break;
@@ -459,6 +474,13 @@ public class GattServerAppService extends Service {
         Log.d(TAG, "Disconnect called::");
         //DevicePicker call
         selectConnectedDevice();
+    }
+
+    // Cancel Connect call
+    private void cancelConnectionRequest() {
+        Log.d(TAG, "Cancel Connection Request called::");
+        //DevicePicker call
+        selectConnReqDevice();
     }
 
     // Callbacks to handle connection set up and disconnection clean up.
@@ -3039,6 +3061,12 @@ public class GattServerAppService extends Service {
         in1.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         this.startActivity(in1);
     }
+    public void selectConnReqDevice() {
+        Context context = getApplicationContext();
+        Intent in1 = new Intent(context, ConnReqDeviceListScreen.class);
+        in1.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        this.startActivity(in1);
+    }
     private void connectLEDevice() {
         int status = -1;
         if (gattProfile != null && remoteDevice != null) {
@@ -3086,6 +3114,27 @@ public class GattServerAppService extends Service {
                 }
             }
             Log.d(TAG, "status of disconnect request::"+status);
+        }
+        else {
+            Log.d(TAG, " clientDevice is null");
+        }
+    }
+    public void cancelConnRequest(BluetoothDevice clientDevice) {
+        Log.d(TAG, "cancelConnRequest called");
+        boolean status = false;
+        if (clientDevice != null) {
+            status = gattProfile.gattConnectLeCancel(serverConfiguration, clientDevice.getAddress());
+            if(status) {
+                if(connReqDevicesList != null && connReqDevicesList.size() > 0) {
+                    for(int i=0; i < connReqDevicesList.size(); i++) {
+                        BluetoothDevice deviceObj = connReqDevicesList.get(i);
+                        if(deviceObj.getAddress().equalsIgnoreCase(clientDevice.getAddress())) {
+                            connReqDevicesList.remove(i);
+                        }
+                    }
+                }
+            }
+            Log.d(TAG, "status of cancel connection request::"+status);
         }
         else {
             Log.d(TAG, " clientDevice is null");

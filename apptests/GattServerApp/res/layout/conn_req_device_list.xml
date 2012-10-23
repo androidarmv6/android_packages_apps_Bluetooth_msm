@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-# Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+# Copyright (c) 2012, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -11,7 +11,7 @@
 #      copyright notice, this list of conditions and the following
 #      disclaimer in the documentation and/or other materials provided
 #      with the distribution.
-#    * Neither the name of Code Aurora Forum, Inc. nor the names of its
+#    * Neither the name of Linux Foundation nor the names of its
 #      contributors may be used to endorse or promote products derived
 #      from this software without specific prior written permission.
 #
@@ -27,19 +27,9 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # -->
-<resources>
-    <string name="hello">Hello World, GattServerApp!</string>
-    <string name="app_name">GattServerApp</string>
-    <string name="device_list">List of Connected Devices</string>
-    <string name="conn_req_device_list">List of Connection requested Devices</string>
-    <string name="Register_Value">Register Server</string>
-    <string name="Unregister_Value">Unregister Server</string>
-    <string name="Connect_Value">Connect to Client</string>
-    <string name="Cancel_Connect_Req">Cancel Connect Request</string>
-    <string name="Disconnect_Value">Disconnect</string>
-    <string name="Add_To_Preferred_Device_List">Add device to preferred device list</string>
-    <string name="Remove_From_Preferred_Device_List">Remove device from preferred device list</string>
-    <string name="Clear_Preferred_Device_List">Clear preferred device list</string>
-    <string name="Connect_Preferred_Device_List">Connect Request for preferred device list</string>
-    <string name="Cancel_Connect_Preferred_Device_List">Cancel connect request for preferred device list</string>
-</resources>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:padding="10dp"
+    android:textSize="16sp" >
+</TextView>
