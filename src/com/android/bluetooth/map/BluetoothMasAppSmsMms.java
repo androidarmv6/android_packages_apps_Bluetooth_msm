@@ -333,7 +333,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         }
         if (SMS_GSM.equalsIgnoreCase(type) || SMS_CDMA.equalsIgnoreCase(type)) {
             return pushMessageSms(rsp, readStr, name, bluetoothMasAppParams);
-        } else if (MMS.equals(type)) {
+        } else if (MMS.equals(type) && ((int)bluetoothMasAppParams.Charset != 0)) {
             // If the message to be pushed is an MMS message, extract any text,
             // discard
             // any attachments and convert the message to an SMS
@@ -2378,11 +2378,40 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         }
     }
 
+    private static int toByte(char c) throws BadRequestException{
+        if (c >= '0' && c <= '9') return (c - '0');
+        if (c >= 'A' && c <= 'F') return (c - 'A' + 10);
+        if (c >= 'a' && c <= 'f') return (c - 'a' + 10);
+        throw new BadRequestException ("Invalid hex char '" + c + "'");
+    }
+
+    private static byte[] hexStringToByteArray(String hexString) throws BadRequestException{
+        int length = hexString.length();
+        if((length % 2) != 0)
+            throw new BadRequestException ("HexString must be even number of characters");
+
+        byte[] buffer = new byte[length / 2];
+
+        for (int i = 0 ; i < length ; i += 2) {
+           buffer[i / 2] =  (byte)((toByte(hexString.charAt(i)) << 4) | toByte(hexString.charAt(i+1)));
+        }
+        return buffer;
+    }
+
+    private String parseSMSDeliverPdu(String pdu)throws BadRequestException{
+        SmsMessage sms = SmsMessage.createFromPdu(hexStringToByteArray(pdu));
+        return sms.getMessageBody();
+    }
+
     private BluetoothMasPushMsgRsp pushMessageSms(BluetoothMasPushMsgRsp rsp, String readStr,
             String name, BluetoothMasAppParams bluetoothMasAppParams) throws BadRequestException {
         BmessageConsts bMsg = MapUtils.fromBmessageSMS(readStr);
         String address = bMsg.getRecipientVcard_phone_number();
-        String smsText = bMsg.getBody_msg();
+        String smsText;
+        if((int)bluetoothMasAppParams.Charset == 0)
+            smsText = parseSMSDeliverPdu(bMsg.getBody_msg());
+        else
+            smsText = bMsg.getBody_msg();
         String fullPath = (name == null || name.length() == 0) ? mCurrentPath : mCurrentPath + "/" + name;
         if(!"telecom/msg/outbox".equalsIgnoreCase(fullPath)) {
             String splitStrings[] = mCurrentPath.split("/");

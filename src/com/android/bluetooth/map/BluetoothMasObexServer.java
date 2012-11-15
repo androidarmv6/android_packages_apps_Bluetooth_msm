@@ -896,9 +896,6 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
 
         tmp = masAppParams.get();
 
-        if (tmp.Charset == 0x00) {
-            return ResponseCodes.OBEX_HTTP_NOT_IMPLEMENTED;
-        }
         if (V) Log.v(TAG, "type = " + type);
 
         if (type.equals(TYPE_MESSAGE)) {
