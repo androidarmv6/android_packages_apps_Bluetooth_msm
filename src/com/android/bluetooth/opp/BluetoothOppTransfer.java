@@ -715,18 +715,6 @@ public class BluetoothOppTransfer implements BluetoothOppBatch.BluetoothOppBatch
         if (INSTANCE != null) {
             obexVariant = INSTANCE.getObexVariant(mBatch.mDestination, OPUSH_UUID16);
         }
-        if (obexVariant == BluetoothOppPreference.OBEX_OVER_RFCOMM) {
-            int channel;
-            channel = mBatch.mDestination.getServiceChannel(BluetoothUuid.ObexObjectPush);
-            if (channel != -1) {
-                if (D) Log.d(TAG, "Get OPUSH channel " + channel + " from SDP for "
-                        + mBatch.mDestination);
-
-                mSessionHandler.obtainMessage(SDP_RESULT, channel, -1, mBatch.mDestination)
-                        .sendToTarget();
-                return;
-            }
-        }
 
         if (!mBatch.mDestination.fetchUuidsWithSdp()) {
             Log.e(TAG, "Start SDP query failed");
