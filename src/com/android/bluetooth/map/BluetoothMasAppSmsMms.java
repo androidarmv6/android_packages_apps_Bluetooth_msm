@@ -880,7 +880,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
      */
     private String bldMmsWhereClause(BluetoothMasAppParams appParams, int foldertype) {
         String whereClause = "";
-        if ( foldertype != 0) {
+        if ( foldertype != -1) {
             // Inbox, Outbox, Sent, Draft folders
             whereClause = "msg_box=" + foldertype + " AND thread_id <> " + DELETED_THREAD_ID;
         } else {
