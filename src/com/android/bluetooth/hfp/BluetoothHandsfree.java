@@ -469,8 +469,28 @@ public class BluetoothHandsfree {
         private BluetoothSocket mIncomingSco;
         private boolean stopped = false;
 
+        private IncomingScoMessageHandler mIncomingScoMessageHandler;
+
+        private static final int SCO_CONNECT = 13;
+
+        //Handler to handle the message for SCO Connect.
+        private final class IncomingScoMessageHandler extends Handler {
+            @Override
+            public void handleMessage(Message msg) {
+                switch (msg.what) {
+                     case SCO_CONNECT:
+                          if (mIncomingSco != null) {
+                              Log.i(TAG, "Received Delay Sco connect");
+                              connectSco();
+                          }
+                          break;
+                }
+            }
+        };
+
         public IncomingScoAcceptThread() {
             BluetoothServerSocket serverSocket = null;
+            mIncomingScoMessageHandler = new IncomingScoMessageHandler();
             try {
                 serverSocket = BluetoothAdapter.listenUsingScoOn();
             } catch (IOException e) {
@@ -487,6 +507,14 @@ public class BluetoothHandsfree {
                     mIncomingSco = mIncomingServerSocket.accept();
                 } catch (IOException e) {
                     Log.e(TAG, "BluetoothServerSocket could not accept connection");
+                }
+                //Checks whether any disconnectScoThread is active if it is active
+                //it sends delayed Message to handler.
+                if (mConnectedSco != null) {
+                    Message msg = Message.obtain(mIncomingScoMessageHandler,
+                                                 SCO_CONNECT);
+                    mIncomingScoMessageHandler.sendMessageDelayed(msg, 100);
+                    continue;
                 }
 
                 if (mIncomingSco != null) {
