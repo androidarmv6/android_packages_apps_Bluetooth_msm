@@ -896,7 +896,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
                 }
                 whereClause += " read=0 ";
             }
-            if ((appParams.FilterReadStatus & 0x10) != 0) {
+            if ((appParams.FilterReadStatus & 0x02) != 0) {
                 if (whereClause.length() != 0) {
                     whereClause += " AND ";
                 }

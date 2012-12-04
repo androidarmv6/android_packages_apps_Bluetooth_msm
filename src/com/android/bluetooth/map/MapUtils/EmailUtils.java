@@ -198,9 +198,9 @@ public class EmailUtils {
             }
             if (V){
                 Log.v(TAG, "Filter Read Status Value:"+appParams.FilterReadStatus);
-                Log.v(TAG, "Filter Read Status Condition Value:"+(appParams.FilterReadStatus & 0x10));
+                Log.v(TAG, "Filter Read Status Condition Value:"+(appParams.FilterReadStatus & 0x02));
             }
-            if ((appParams.FilterReadStatus & 0x10) != 0) {
+            if ((appParams.FilterReadStatus & 0x02) != 0) {
                 if (whereClauseEmail.length() != 0) {
                     whereClauseEmail += " AND ";
                 }
