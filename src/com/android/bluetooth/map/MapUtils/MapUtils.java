@@ -673,28 +673,64 @@ public class MapUtils {
 
             sb.append("BEGIN:BENV").append("\r\n");
 
-            // Recipient
-            sb.append("BEGIN:VCARD").append("\r\n");
+            if ((bmsg.recipient_vcard_phone_number != null) &&
+                            (bmsg.recipient_vcard_phone_number.contains(";"))) {
+                if (V) Log.v (TAG, "recipient_vcard_name:" + bmsg.recipient_vcard_name);
+                if (V) Log.v (TAG, "recipient_vcard_phone_number:" + bmsg.recipient_vcard_phone_number);
+                String numberTokens[] = bmsg.recipient_vcard_phone_number.split(";");
+                String nameTokens[] = bmsg.recipient_vcard_name.split(";");
+                if (V) Log.v (TAG, "Length:name:" + nameTokens.length + "number:" + numberTokens.length);
+                for (int i=0; i < numberTokens.length; i++) {
+                    // Recipient
+                    sb.append("BEGIN:VCARD").append("\r\n");
 
-            if (bmsg.vcard_version != null) {
-                sb.append("VERSION:").append(bmsg.vcard_version).append("\r\n");
+                    if (bmsg.vcard_version != null) {
+                        sb.append("VERSION:").append(bmsg.vcard_version).append("\r\n");
+                    } else {
+
+                    }
+
+                    if (nameTokens[i] != null) {
+                        sb.append("N:").append(nameTokens[i])
+                            .append("\r\n");
+                    } else {
+
+                    }
+
+                    if (numberTokens[i] != null) {
+                        sb.append("TEL:").append(numberTokens[i])
+                            .append("\r\n");
+                    } else {
+
+                    }
+
+                    sb.append("END:VCARD").append("\r\n");
+                    // End Recipient
+                }
             } else {
+                // Recipient
+                sb.append("BEGIN:VCARD").append("\r\n");
 
-            }
-            if (bmsg.recipient_vcard_name != null) {
-                sb.append("N:").append(bmsg.recipient_vcard_name)
+                if (bmsg.vcard_version != null) {
+                    sb.append("VERSION:").append(bmsg.vcard_version).append("\r\n");
+                } else {
+
+                }
+                if (bmsg.recipient_vcard_name != null) {
+                    sb.append("N:").append(bmsg.recipient_vcard_name)
                         .append("\r\n");
-            } else {
+                } else {
 
-            }
-            if (bmsg.recipient_vcard_phone_number != null) {
-                sb.append("TEL:").append(bmsg.recipient_vcard_phone_number)
+                }
+                if (bmsg.recipient_vcard_phone_number != null) {
+                    sb.append("TEL:").append(bmsg.recipient_vcard_phone_number)
                         .append("\r\n");
-            } else {
+                } else {
 
+                }
+                sb.append("END:VCARD").append("\r\n");
+                // End Recipient
             }
-            sb.append("END:VCARD").append("\r\n");
-            // End Recipient
 
             sb.append("BEGIN:BBODY").append("\r\n");
 
