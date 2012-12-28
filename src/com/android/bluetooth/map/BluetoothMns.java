@@ -129,7 +129,7 @@ public class BluetoothMns implements MessageNotificationListener {
     private boolean mSendingEvent = false;
 
 
-    public BluetoothMns(Context context) {
+    public BluetoothMns(Context context, boolean isEmailEnabled) {
         /* check Bluetooth enable status */
         /*
          * normally it's impossible to reach here if BT is disabled. Just check
@@ -138,8 +138,12 @@ public class BluetoothMns implements MessageNotificationListener {
 
         mAdapter = BluetoothAdapter.getDefaultAdapter();
         mContext = context;
-
-        for (int i = 0; i < MAX_INSTANCES; i ++) {
+        int numOfSupportedInstances = MAX_INSTANCES;
+        Log.v(TAG, "BluetoothMns: isEmailEnabled: " + isEmailEnabled);
+        if(!isEmailEnabled) {
+            numOfSupportedInstances = 1; /*Email is not supported*/
+        }
+        for (int i = 0; i < numOfSupportedInstances; i ++) {
             try {
                 // TODO: must be updated when Class<? extends MnsClient>'s constructor is changed
                 Constructor<? extends MnsClient> constructor;
