@@ -37,7 +37,10 @@
     <uses-permission android:name="com.android.permission.HANDOVER_STATUS" />
     <uses-permission android:name="android.permission.READ_PROFILE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.CALL_PRIVILEGED" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.MODIFY_PHONE_STATE" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.READ_SMS"></uses-permission>
     <uses-permission android:name="android.permission.WRITE_SMS"></uses-permission>
     <uses-permission android:name="android.permission.BROADCAST_SMS"></uses-permission>
@@ -291,5 +294,20 @@
                 <action android:name="android.bluetooth.IBluetoothLEFindMeServices" />
             </intent-filter>
         </service>
+        <!-- bluetooth headset service -->
+        <service
+            android:process="@string/process"
+            android:name=".hfp.BluetoothHeadsetService">
+            <intent-filter>
+                <action android:name="android.bluetooth.IBluetoothHeadset" />
+            </intent-filter>
+        </service>
+       <receiver
+           android:process="@string/process"
+           android:name=".hfp.BluetoothHeadsetReceiver">
+           <intent-filter>
+               <action android:name="android.bluetooth.adapter.action.STATE_CHANGED"/>
+           </intent-filter>
+       </receiver>
     </application>
 </manifest>
