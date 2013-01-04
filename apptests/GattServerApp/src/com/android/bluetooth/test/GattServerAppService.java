@@ -103,6 +103,8 @@ public class GattServerAppService extends Service {
     protected static final int CLEAR_DEVICE_PLIST = 5;
     protected static final int CREATE_CONN_PLIST = 6;
     protected static final int CANCEL_CREATE_CONN_PLIST = 7;
+    protected static final int AUTO_CONN_PLIST = 8;
+    protected static final int AUTO_CONN_CANCEL_PLIST = 9;
 
     // Message codes received from the UI client.
     // Register client with this service.
@@ -124,6 +126,8 @@ public class GattServerAppService extends Service {
     public static final int MSG_CREATE_CONN_PREFERRED_DEVICE_LIST = 606;
     public static final int MSG_CANCEL_CONN_PREFERRED_DEVICE_LIST = 607;
     public static final int MSG_CANCEL_CONNECT_REQUEST = 608;
+    public static final int MSG_AUTO_CONN = 609;
+    public static final int MSG_AUTO_CONN_CANCEL = 610;
 
     private BluetoothAdapter mBluetoothAdapter;
     private Messenger mClient;
@@ -230,6 +234,12 @@ public class GattServerAppService extends Service {
                     }
                     else if(devicePickerMode!= null && devicePickerMode.equalsIgnoreCase("REMOVE_FROM_PREFERRED_DEVICE_LIST")) {
                         remoteDevice.removeFromPreferredDeviceList(mPListCallBack);
+                    }
+                    else if(devicePickerMode!= null && devicePickerMode.equalsIgnoreCase("AUTO_CONNECT")) {
+                        mBluetoothAdapter.gattAutoConnect(mPListCallBack, remoteDevice);
+                    }
+                    else if(devicePickerMode!= null && devicePickerMode.equalsIgnoreCase("AUTO_CONNECT_CANCEL")) {
+                        mBluetoothAdapter.gattAutoConnectCancel(mPListCallBack, remoteDevice);
                     }
                     else {
                         if(connReqDevicesList != null && connReqDevicesList.size() > 0) {
@@ -338,6 +348,42 @@ public class GattServerAppService extends Service {
                     }
                     else {
                         text = "Cancel create connection preferred device list was not successful!";
+                    }
+                    duration = Toast.LENGTH_LONG;
+                    toast = Toast.makeText(context, text, duration);
+                    toast.show();
+                    break;
+                case MSG_AUTO_CONN:
+                    Log.d(TAG, "handler MSG_AUTO_CONN");
+                    devicePickerMode = "AUTO_CONNECT";
+                    selectDevice();
+                    break;
+                case MSG_AUTO_CONN_CANCEL:
+                    Log.d(TAG, "handler MSG_AUTO_CONN_CANCEL");
+                    devicePickerMode = "AUTO_CONNECT_CANCEL";
+                    selectDevice();
+                    break;
+                case AUTO_CONN_PLIST:
+                    Log.d(TAG, "handler AUTO_CONN_PLIST");
+                    result = msg.getData().getInt(PREFERRED_DEVICE_LIST_RESULT);
+                    if(result == 0) {
+                        text = "Auto Connect was successful!";
+                    }
+                    else {
+                        text = "Auto Connect was not successful!";
+                    }
+                    duration = Toast.LENGTH_LONG;
+                    toast = Toast.makeText(context, text, duration);
+                    toast.show();
+                    break;
+                case AUTO_CONN_CANCEL_PLIST:
+                    Log.d(TAG, "handler AUTO_CONN_CANCEL_PLIST");
+                    result = msg.getData().getInt(PREFERRED_DEVICE_LIST_RESULT);
+                    if(result == 0) {
+                        text = "Auto Connect Cancel was successful!";
+                    }
+                    else {
+                        text = "Auto Connect Cancel was not successful!";
                     }
                     duration = Toast.LENGTH_LONG;
                     toast = Toast.makeText(context, text, duration);
@@ -555,6 +601,26 @@ public class GattServerAppService extends Service {
                 try{
                     Log.d(TAG, "onGattCancelConnectToPreferredDeviceList::"+result);
                     GattServerAppReceiver.onGattCancelConnectToPreferredDeviceList(result);
+                }
+                catch(Exception e) {
+
+                }
+            }
+            public void onGattAutoConnect(int result) {
+                // TODO Auto-generated method stub
+                try{
+                    Log.d(TAG, "onGattAutoConnect::"+result);
+                    GattServerAppReceiver.onGattAutoConnect(result);
+                }
+                catch(Exception e) {
+
+                }
+            }
+            public void onGattAutoConnectCancel(int result) {
+                // TODO Auto-generated method stub
+                try{
+                    Log.d(TAG, "onGattAutoConnectCancel::"+result);
+                    GattServerAppReceiver.onGattAutoConnectCancel(result);
                 }
                 catch(Exception e) {
 

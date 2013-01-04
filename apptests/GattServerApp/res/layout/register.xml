@@ -102,4 +102,18 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal">
     </Button>
+    <Button
+        android:text="@string/Auto_Connect"
+        android:id="@+id/button_auto_connect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal">
+    </Button>
+    <Button
+        android:text="@string/Auto_Connect_Cancel"
+        android:id="@+id/button_auto_connect_cancel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal">
+    </Button>
 </LinearLayout>

@@ -202,6 +202,24 @@ public class GattServerAppActivity extends Activity {
              }
          });
 
+         // Auto Connect
+         Button autoConnect = (Button) findViewById(R.id.button_auto_connect);
+         autoConnect.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+                 sendMessage(GattServerAppService.MSG_AUTO_CONN, 0);
+             }
+         });
+
+         // Auto Connect Cancel
+         Button autoConnectCancel = (Button) findViewById(R.id.button_auto_connect_cancel);
+         autoConnectCancel.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+                 sendMessage(GattServerAppService.MSG_AUTO_CONN_CANCEL, 0);
+             }
+         });
+
          registerReceiver(mReceiver, initIntentFilter());
         }
 

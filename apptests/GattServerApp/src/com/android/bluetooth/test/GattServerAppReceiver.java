@@ -163,5 +163,19 @@ public class GattServerAppReceiver extends BroadcastReceiver{
         b.putInt(GattServerAppService.PREFERRED_DEVICE_LIST_RESULT, result);
         handler.sendMessage(msg);
     }
+    public static void onGattAutoConnect(int result){
+        Message msg = new Message();
+        msg.what = GattServerAppService.AUTO_CONN_PLIST;
+        Bundle b = new Bundle();
+        b.putInt(GattServerAppService.PREFERRED_DEVICE_LIST_RESULT, result);
+        handler.sendMessage(msg);
+    }
+    public static void onGattAutoConnectCancel(int result){
+        Message msg = new Message();
+        msg.what = GattServerAppService.AUTO_CONN_CANCEL_PLIST;
+        Bundle b = new Bundle();
+        b.putInt(GattServerAppService.PREFERRED_DEVICE_LIST_RESULT, result);
+        handler.sendMessage(msg);
+    }
 
 }
