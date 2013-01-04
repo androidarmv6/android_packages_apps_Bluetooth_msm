@@ -120,7 +120,7 @@ public class BluetoothThermometerClient extends Activity {
 				BluetoothThermometerClient.buttonDevice.setEnabled(true);
 				BluetoothThermometerClient.buttonDevice.setClickable(true);
 				break;
-	     default:
+	      default:
 		break;
 			 }
 		 }
@@ -194,7 +194,7 @@ public class BluetoothThermometerClient extends Activity {
 		in1.putExtra(BluetoothDevicePicker.EXTRA_FILTER_TYPE,
 				BluetoothDevicePicker.FILTER_TYPE_ALL);
 		in1.putExtra(BluetoothDevicePicker.EXTRA_LAUNCH_PACKAGE,
-				"com.android.bluetooth.thermometer");
+				"com.android.thermometer");
 		in1.putExtra(BluetoothDevicePicker.EXTRA_LAUNCH_CLASS,
 				BluetoothThermometerClientReceiver.class.getName());
 		in1.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
