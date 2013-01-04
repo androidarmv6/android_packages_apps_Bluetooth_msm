@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -197,10 +197,8 @@ public class LEProximityClient extends Activity {
         in1.putExtra(BluetoothDevicePicker.EXTRA_NEED_AUTH, false);
         in1.putExtra(BluetoothDevicePicker.EXTRA_FILTER_TYPE,
                      BluetoothDevicePicker.FILTER_TYPE_ALL);
-        /*in1.putExtra(BluetoothDevicePicker.EXTRA_LAUNCH_PACKAGE,
-                "com.android.bluetooth.proximity");*/
         in1.putExtra(BluetoothDevicePicker.EXTRA_LAUNCH_PACKAGE,
-                     "com.android.proximity");
+                     "com.qca.bluetooth.le.proximity.apptest");
         in1.putExtra(BluetoothDevicePicker.EXTRA_LAUNCH_CLASS,
                      LEProximityClientReceiver.class.getName());
         in1.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
