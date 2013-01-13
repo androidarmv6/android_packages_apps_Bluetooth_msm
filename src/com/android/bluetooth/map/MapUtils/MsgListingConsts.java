@@ -54,7 +54,7 @@ public class MsgListingConsts {
     public boolean sendRecipient_addressing = false;
     public String recepient_addressing = null;
     public String type = null;
-    public int size = 0;
+    public int size = -1;
     public String reception_status = null;
     public int attachment_size = -1;
     public String contains_text = null;
