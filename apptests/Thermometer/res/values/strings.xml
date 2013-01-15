@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+# Copyright (c) 2012, The Linux Foundation. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#    * Redistributions in binary form must reproduce the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer in the documentation and/or other materials provided
+#      with the distribution.
+#    * Neither the name of Linux Foundation nor the names of its
+#      contributors may be used to endorse or promote products derived
+#      from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
+# BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# -->
+<resources>
+    <string name="hello">Hello World, BluetoothThermometerClient!</string>
+    <string name="app_name">LEThermometerTest</string>
+
+    <string name="buttonConnect">Connect</string>
+    <string name="buttonHealth">Health service</string>
+    <string name="buttonDevice">Device Information Service</string>
+
+    <string name="characteristics_prompt">Select a Characteristic</string>
+    <string name="empty_string"> </string>
+    <string name="Read_Value">Read Value</string>
+    <string name="Set_Notify_indicate">Set Indicate/Notify</string>
+    <string name="Clear_Notify_indicate">Clear Indicate/Notify</string>
+    <string name="Write_Value">Write Vlaue</string>
+    <string name="enter_path_loss">Enter Path Loss Threshold</string>
+    <string name="enter">Enter</string>
+    <string name="status">Status</string>
+    <string-array name="characteristics_array">
+        <item>Date Time</item>
+        <item>Measurement Interval</item>
+        <item>Temperature Type</item>
+        <item>Temperature Measurement</item>
+        <item>Intermediate Temperature</item>
+    </string-array>
+    <string-array name="device_characteristics_array">
+        <item>Manufacturer Name</item>
+        <item>Model Number</item>
+        <item>Serial Number</item>
+        <item>Hardware Revision</item>
+        <item>Software Revision</item>
+        <item>Firmware Revision</item>
+        <item>System Id</item>
+        <item>Certification Data</item>
+    </string-array>
+    <string name="closeService">Close Service</string>
+</resources>
