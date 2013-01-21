@@ -65,7 +65,6 @@ public class BluetoothHeadsetService extends Service {
     private static final String BLUETOOTH_PERM = android.Manifest.permission.BLUETOOTH;
 
     private static boolean sHasStarted = false;
-
     private BluetoothDevice mDeviceSdpQuery;
     private BluetoothAdapter mAdapter;
     private IBluetooth mBluetoothService;
@@ -337,6 +336,7 @@ public class BluetoothHeadsetService extends Service {
     private static final int CONNECT_HEADSET_DELAYED = 1;
     private static final int MESSAGE_SLC_TIMEOUT = 2;
     private static final int SEND_CONNECTION_STATE_CHANGE = 3;
+
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {

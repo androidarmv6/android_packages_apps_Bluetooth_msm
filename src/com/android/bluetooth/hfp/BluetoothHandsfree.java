@@ -94,14 +94,8 @@ public class BluetoothHandsfree {
     private boolean mPendingAudioState;
     private int mAudioState;
     private boolean mStopRing = false;
+    private int mCallringState = HeadsetHalConstants.CALL_STATE_IDLE;
     private boolean mDialingOut = false; //For outgoign calls
-    //These values indicate what to send
-    private int prevCall = 0;
-    private int prevCallHeld = 0;
-    private int prevCallsetup = 0;
-    private int prevCallState = HeadsetHalConstants.CALL_STATE_IDLE;
-    private int prevNumActive = 0;
-    private int prevNumHeld = 0;
     private HeadsetBase mHeadset;
     private BluetoothHeadset mBluetoothHeadset;
     private int mHeadsetType;   // TYPE_UNKNOWN when not connected
@@ -129,8 +123,15 @@ public class BluetoothHandsfree {
     private static final int GSM_MAX_CONNECTIONS = 6;  // Max connections allowed by GSM
     private static final int CDMA_MAX_CONNECTIONS = 2;  // Max connections allowed by CDMA
 
-    private static final int MAX_IIENABLED = 7;
+    private static final int SERVICE_CIEV = 1;
+    private static final int CALL_CIEV = 2;
+    private static final int CALLSETUP_CIEV = 3;
+    private static final int CALLHELD_CIEV = 4;
+    private static final int SIGNAL_CIEV = 5;
+    private static final int ROAM_CIEV = 6;
+    private static final int BATTERY_CIEV = 7;
 
+    private static final int MAX_IIENABLED = 7;
     private long mBgndEarliestConnectionTime = 0;
     private boolean mClip = false;  // Calling Line Information Presentation
     private boolean mIndicatorsEnabled = false;
@@ -353,8 +354,6 @@ public class BluetoothHandsfree {
         mServiceConnectionEstablished = false;
         mCmee = false;
         mRemoteBrsf = 0;
-        prevNumActive = 0;
-        prevNumHeld = 0;
     }
 
     private ServiceConnection mConnection = new ServiceConnection() {
@@ -513,6 +512,7 @@ public class BluetoothHandsfree {
                 } else {
                     Log.i(TAG, "Rejecting incoming SCO connection");
                     try {
+                        mConnectedSco = null; //Makes sure that scoket is not closed twice.
                         mIncomingSco.close();
                     }catch (IOException e) {
                         Log.e(TAG, "Error when closing incoming Sco socket");
@@ -591,6 +591,7 @@ public class BluetoothHandsfree {
                 } else {
                     if (VDBG) Log.d(TAG,"Rejecting new connected outgoing SCO socket");
                     try {
+                        mConnectedSco = null; //Makes sure that scoket is not closed twice.
                         mOutgoingSco.close();
                     }catch (IOException e) {
                         Log.e(TAG, "Error when closing Sco socket");
@@ -688,6 +689,16 @@ public class BluetoothHandsfree {
                 } else {
                     mAudioManager.setBluetoothScoOn(false);
                 }
+                if (!mPendingScoForA2dp) {
+                    if (mA2dpSuspended) {
+                        if (DBG) log("resuming A2DP stream after SCO disconnect");
+                        mA2dp.resumeSink(mA2dpDevice);
+                        mA2dpSuspended = false;
+                    }
+                } else { // already suspendSink is in progress, so wait for issuing resume
+                    mPendingA2dpResume = true;
+                }
+                mPendingScoForA2dp = false;
                 synchronized(BluetoothHandsfree.this) {
                     mConnectedSco = null;
                     setAudioState(BluetoothHeadset.STATE_AUDIO_DISCONNECTED,
@@ -804,13 +815,15 @@ public class BluetoothHandsfree {
         if (mPhonebook != null) {
             mPhonebook.resetAtState();
         }
+        if (mPhoneState != null) {
+            mPhoneState.setNumActiveCall(HeadsetHalConstants.CALL_CIEV_INACTIVE);
+            mPhoneState.setNumHeldCall(HeadsetHalConstants.CALL_CIEV_NOHELD);
+            mPhoneState.setCallState(HeadsetHalConstants.CALLSETUP_CIEV_IDLE);
+        }
         mIndicatorsEnabled = false;
         mServiceConnectionEstablished = false;
         mCmee = false;
         mRemoteBrsf = 0;
-        prevNumActive = 0;
-        prevNumHeld = 0;
-        prevCallState = HeadsetHalConstants.CALL_STATE_IDLE;
     }
 
     private boolean isHeadsetConnected() {
@@ -874,8 +887,6 @@ public class BluetoothHandsfree {
         mServiceConnectionEstablished = false;
         mCmee = false;
         mRemoteBrsf = 0;
-        prevNumActive = 0;
-        prevNumHeld = 0;
         mPhonebook.resetAtState();
     }
 
@@ -1097,9 +1108,6 @@ public class BluetoothHandsfree {
 
     //The actual state machine handling call state changes
     private void processCallStateChanged(HeadsetCallState callState) {
-        mPhoneState.setNumActiveCall(callState.mNumActive);
-        mPhoneState.setNumHeldCall(callState.mNumHeld);
-        mPhoneState.setCallState(callState.mCallState);
         mPhoneState.setPhoneNumberAndType(callState.mNumber, callState.mType);
         if (mWaitingForCallStart && callState.mCallState ==
                                  HeadsetHalConstants.CALL_STATE_DIALING) {
@@ -1136,19 +1144,19 @@ public class BluetoothHandsfree {
 
     private void sendCallCiev(int value){
         if(sendUpdate()){
-            sendURC("+CIEV: 2," + value);
+            sendURC("+CIEV: " + CALL_CIEV + "," + value);
         }
     }
 
     private void sendCallsetupCiev(int value){
         if(sendUpdate()){
-            sendURC("+CIEV: 3," + value);
+            sendURC("+CIEV: " + CALLSETUP_CIEV + "," + value);
         }
     }
 
     private void sendCallHeldCiev(int value){
         if(sendUpdate()){
-            sendURC("+CIEV: 4," + value);
+            sendURC("+CIEV: " + CALLHELD_CIEV + "," + value);
         }
     }
 
@@ -1157,8 +1165,20 @@ public class BluetoothHandsfree {
 
         log("update call, send proper value");
         boolean callConnected = false;
-        //TODO
-        // call state changed
+        int prevCallState = mPhoneState.getCallState();
+        int prevNumActive = mPhoneState.getNumActiveCall();
+        int prevNumHeld = mPhoneState.getNumHeldCall();
+        mCallringState = callState;
+        if(mIsChld1Command == true){
+            if((callState == HeadsetHalConstants.CALL_STATE_INCOMING) &&
+                (numActive == 0) && (prevNumActive == 1)){
+                log("CHLD 1 executed, no need to send update");
+                return;
+            } else if (callState == HeadsetHalConstants.CALL_STATE_IDLE){
+                mIsChld1Command = false;
+            }
+        }
+        /*Call State changed*/
         if (callState != prevCallState) {
             log("Call State changed recieved");
             if (callState == HeadsetHalConstants.CALL_STATE_INCOMING){
@@ -1171,26 +1191,26 @@ public class BluetoothHandsfree {
                         if ((mRemoteBrsf & BRSF_HF_CW_THREE_WAY_CALLING) != 0x0) {
                             log("CCWA");
                             result.addResponse("+CCWA: \"" + number + "\"," + type);
-                            sendCallsetupCiev(1);
+                            result.addResponse("+CIEV: 3," +
+                                HeadsetHalConstants.CALLSETUP_CIEV_INCOMING);
                         }
                     }
                 } else {
                     log("Fresh incoming call");
                     if ((mLocalBrsf & BRSF_AG_IN_BAND_RING) != 0x0) {
-                        //mCallStartTime = System.currentTimeMillis();TODO
                         audioOn();
                     }
-                    mStopRing = false; //Make sure we ring
-                    sendCallsetupCiev(1);
-                    result.addResult(ring()); //It will send RING and CLIP
+                    mStopRing = false;
+                    sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_INCOMING);
+                    result.addResult(ring());
                 }
-                sendURC(result.toString()); //Send the values
+                sendURC(result.toString());
             } else if (callState == HeadsetHalConstants.CALL_STATE_DIALING){
                 log("Dialing a outgoing call");
-                sendCallsetupCiev(2);
+                sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_OUTGOING);
             } else if (callState == HeadsetHalConstants.CALL_STATE_ALERTING){
                 log("Remote phone is being alerted Need to start the SCO if not yet started");
-                sendCallsetupCiev(3);
+                sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_OUTGOING_ALERT);
                 audioOn();
             } else if(callState == HeadsetHalConstants.CALL_STATE_IDLE) {
                 log("CALL_STATE_IDLE (active, held and idle)");
@@ -1200,33 +1220,28 @@ public class BluetoothHandsfree {
                         if((numActive == 1) && (prevNumActive == 0)){
                             log("Incoming call connected, connect audio, if not");
                             callConnected = true;
-                            //SsendURC("+CIEV: 3,0");
                             audioOn();
                         } else if ((numHeld == 1) && (prevNumHeld == 0)){
-                            log("The incoming call is made to hold");
+                            log("The call is made to hold");
                             if(numHeld == 1)
-                                sendCallsetupCiev(0);
-                        } else{
-                            log("Incoming call is rejected");
-                            sendCallsetupCiev(0);
+                                sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_IDLE);
+                        } else {
+                            log("Incoming call is rejected or CHLD=1 executed");
+                            sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_IDLE);
                         }
                         break;
                     case  HeadsetHalConstants.CALL_STATE_DIALING:
                         log("A dialing call..It should not come in regular call scenario ");
-                        sendCallsetupCiev(0);
+                        sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_IDLE);
                         break;
                     case  HeadsetHalConstants.CALL_STATE_ALERTING:
                         log("Prev state was call alert, it may be accepted or rejected");
                         if((numActive == 1) && (prevNumActive == 0)){
                             log("Remote accepted the call");
-                            //TODO..Check if audio is established or not
                             callConnected = true;
-                            //sendURC("+CIEV: 3,0");
                         } else{
                             log("Call rejected by remote or disconnected");
-                            sendCallsetupCiev(0);
-                            //Send +CIEV:3,0
-                            //Close SCO if open
+                            sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_IDLE);
                         }
                         break;
                 }
@@ -1238,40 +1253,40 @@ public class BluetoothHandsfree {
                 sendCallCiev(numActive);
             }
             if (callConnected == true) {
-                sendCallsetupCiev(0);
-                /*THis will be true when an ougoing call is active and prev call is
+                sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_IDLE);
+                /*This will be true when an ougoing call is active and prev call is
                  still on hold. Transition happens when call is accepted.
                  Transition from Alert to active will make sure that held call
-                 state is changed from 4,2 to 4,1 */
+                 state is changed from 4,2 to 4,1*/
                 if ((numHeld + prevNumHeld) == 2)
-                    sendCallHeldCiev(1);
+                    sendCallHeldCiev(HeadsetHalConstants.CALL_CIEV_ACTIVE_AND_HELD);
             }
         }
         if (numHeld != prevNumHeld){
             log("Held state changed");
             if (numHeld == 0) {
-                sendCallHeldCiev(0);//callheld = 0;
+                sendCallHeldCiev(HeadsetHalConstants.CALL_CIEV_NOHELD);
                 if ((numActive + prevNumActive) == 0)
-                    sendCallCiev(0); //An held call was disonnected
+                    sendCallCiev(HeadsetHalConstants.CALL_CIEV_INACTIVE);
             }
             else {
                 if (numActive == 0)
-                    sendCallHeldCiev(2);
+                    sendCallHeldCiev(HeadsetHalConstants.CALL_CIEV_HELD_NOACTIVE);
                 else
-                    sendCallHeldCiev(1);
+                    sendCallHeldCiev(HeadsetHalConstants.CALL_CIEV_ACTIVE_AND_HELD);
             }
         }
         //CAll swap happened when no state change observed.
         if ((callState == prevCallState) && ((numActive == 1) && (numHeld == 1)) &&
             (numActive == prevNumActive) && (numHeld == prevNumHeld)){
             //Send +CIEV:4,1
-            sendCallHeldCiev(1);
+            sendCallHeldCiev(HeadsetHalConstants.CALL_CIEV_ACTIVE_AND_HELD);
             log("Call swapped");
         }
         //Save the current values
-        prevNumActive = numActive;
-        prevCallState = callState;
-        prevNumHeld = numHeld;
+        mPhoneState.setNumActiveCall(numActive);
+        mPhoneState.setCallState(callState);
+        mPhoneState.setNumHeldCall(numHeld);
     }
 
     public void phoneStateChanged(HeadsetCallState newState){
@@ -1385,8 +1400,8 @@ public class BluetoothHandsfree {
     }
 
     private boolean sendRingUpdate() {
-        if (isHeadsetConnected() && !mStopRing &&
-            mPhoneState.getCallState() == HeadsetHalConstants.CALL_STATE_INCOMING) {
+        if (isHeadsetConnected() && !mStopRing && mCallringState ==
+            HeadsetHalConstants.CALL_STATE_INCOMING) {
             if (mHeadsetType == TYPE_HANDSFREE) {
                 return mServiceConnectionEstablished ? true : false;
             }
@@ -1437,6 +1452,11 @@ public class BluetoothHandsfree {
         if (mHeadsetType == TYPE_HANDSFREE && !mServiceConnectionEstablished) {
             if (DBG) log("audioOn(): service connection not yet established!");
             return false;
+        }
+
+        if (mConnectScoThread != null) {
+            if (DBG) log("audioOn(): audio SCO started");
+            return true;
         }
 
         if (mConnectedSco != null) {
@@ -1523,17 +1543,6 @@ public class BluetoothHandsfree {
                 ", mA2dpState: " + mA2dpState +
                 ", mA2dpSuspended: " + mA2dpSuspended);
 
-        if (!mPendingScoForA2dp) {
-            if (mA2dpSuspended) {
-                if (DBG) log("resuming A2DP stream after disconnecting SCO");
-                mA2dp.resumeSink(mA2dpDevice);
-                mA2dpSuspended = false;
-            }
-        } else { // already suspendSink is in progress, so wait for issuing resume
-            mPendingA2dpResume = true;
-        }
-
-        mPendingScoForA2dp = false;
         mPendingScoForWbs = false;
 
         if (mSignalScoCloseThread != null) {
@@ -1579,6 +1588,10 @@ public class BluetoothHandsfree {
             // number to redial
             if (VDBG) log("Bluetooth redial requested (+BLDN), but no previous " +
                   "outgoing calls found. Ignoring");
+            return new AtCommandResult(AtCommandResult.ERROR);
+        }
+        if(mPhoneState.getCallState() != HeadsetHalConstants.CALL_STATE_IDLE){
+            log("Some call is already under process, dont process redial");
             return new AtCommandResult(AtCommandResult.ERROR);
         }
         log("The number to dial is:" +number);
@@ -1786,24 +1799,15 @@ public class BluetoothHandsfree {
                 sendURC("OK");
                 if (isVirtualCallInProgress()) {
                     terminateScoUsingVirtualVoiceCall();
-                } else /*{
-                    if (mCM.hasActiveFgCall()) {
-                        PhoneUtils.hangupActiveCall(mCM.getActiveFgCall());
-                    } else if (mCM.hasActiveRingingCall()) {
-                        PhoneUtils.hangupRingingCall(mCM.getFirstActiveRingingCall());
-                    } else if (mCM.hasActiveBgCall()) {
-                        PhoneUtils.hangupHoldingCall(mCM.getFirstActiveBgCall());
-                    }
-                }*/
-                {
-                if (mPhoneProxy != null) {
-                    try {
-                        mPhoneProxy.hangupCall();
-                    } catch (RemoteException e) {
-                       Log.e(TAG, Log.getStackTraceString(new Throwable()));
-                    }
+                } else {
+                    if (mPhoneProxy != null) {
+                        try {
+                            mPhoneProxy.hangupCall();
+                        } catch (RemoteException e) {
+                            Log.e(TAG, Log.getStackTraceString(new Throwable()));
+                        }
                     } else {
-                       Log.e(TAG, "Handsfree phone proxy null for hanging up call");
+                        Log.e(TAG, "Handsfree phone proxy null for hanging up call");
                     }
                 }
                 return new AtCommandResult(AtCommandResult.UNSOLICITED);
@@ -2092,6 +2096,10 @@ public class BluetoothHandsfree {
                     else if (args[0].equals(2)) chld = 2;
                     else if (args[0].equals(3)) chld = 3;
                     else return new AtCommandResult(AtCommandResult.ERROR);
+                    log("The CHLD to executte is : " + chld);
+                    if(chld == 1){
+                        mIsChld1Command = true;
+                    }
                     if (mPhoneProxy != null) {
                         try {
                             if (mPhoneProxy.processChld(chld)) {
@@ -2708,10 +2716,6 @@ public class BluetoothHandsfree {
         } else {
             Log.e(TAG, "Handsfree phone proxy null for query phone state");
         }
-        //To avoid sending duplicate indicators
-        prevNumActive = mPhoneState.getNumActiveCall();
-        prevNumHeld= mPhoneState.getNumHeldCall();
-        prevCallState = mPhoneState.getCallState();
     }
 
     private boolean inDebug() {
