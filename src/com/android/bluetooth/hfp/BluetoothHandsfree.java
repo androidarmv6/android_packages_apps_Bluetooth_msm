@@ -815,11 +815,7 @@ public class BluetoothHandsfree {
         if (mPhonebook != null) {
             mPhonebook.resetAtState();
         }
-        if (mPhoneState != null) {
-            mPhoneState.setNumActiveCall(HeadsetHalConstants.CALL_CIEV_INACTIVE);
-            mPhoneState.setNumHeldCall(HeadsetHalConstants.CALL_CIEV_NOHELD);
-            mPhoneState.setCallState(HeadsetHalConstants.CALLSETUP_CIEV_IDLE);
-        }
+
         mIndicatorsEnabled = false;
         mServiceConnectionEstablished = false;
         mCmee = false;
