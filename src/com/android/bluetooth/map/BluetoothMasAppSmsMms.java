@@ -2019,14 +2019,14 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
                             filterString) == true) {
                         if (V){
                                 Log.v(TAG,
-                                    "+++ ALLOWED +++++++++ "
+                                    " ALLOWED : "
                                     + cursor.getString(addressInd)
                                     + " - " + cursor.getPosition());
                         }
                     } else {
                         if (V){
                                 Log.v(TAG,
-                                    "+++ DENIED +++++++++ "
+                                    " DENIED : "
                                     + cursor.getString(addressInd)
                                     + " - " + cursor.getPosition());
                         }
@@ -2075,6 +2075,32 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
     private BluetoothMsgListRsp msgListMms(List<MsgListingConsts> msgList, String name,
             BluetoothMasMessageListingRsp rsp, BluetoothMasAppParams appParams) {
         BluetoothMsgListRsp bmlr = new BluetoothMsgListRsp();
+        String filterString = null;
+
+        String oname = getOwnerName();
+        if (oname == null) {
+            oname = "";
+        }
+
+        String onumber = getOwnerNumber();
+        if (onumber == null) {
+            onumber = "";
+        }
+
+        Log.v(TAG, "oname = " + oname + "onumber = " + onumber);
+
+        String regExpOrig = null;
+        String regExpRecipient = null;
+
+        if (appParams.FilterOriginator != null) {
+            regExpOrig = appParams.FilterOriginator.replace("*", ".*[0-9A-Za-z].*");
+        }
+
+        if (appParams.FilterRecipient != null) {
+            regExpRecipient = appParams.FilterRecipient.replace("*", ".*[0-9A-Za-z].*");
+        }
+
+        Log.v(TAG, " regExpOrig = " + regExpOrig + " regExpRecipient = " + regExpRecipient);
 
         if (getNumMmsMsgs(name) != 0) {
             List<Integer> list = getMmsMsgMIDs(bldMmsWhereClause(
@@ -2087,6 +2113,64 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
                 if (V){
                         Log.v(TAG, "\n MMS message subject ==> "
                             + getMmsMsgSubject(msgId));
+                }
+                if (isOutgoingMMSMessage(msgId) == false) {
+                    if ((appParams.FilterRecipient != null)
+                        && (appParams.FilterRecipient.length() != 0)
+                        && !(oname.matches(".*"+regExpRecipient+".*"))
+                        && !(onumber.matches(".*"+regExpRecipient+".*"))) {
+                            continue;
+                        }
+                    if ((appParams.FilterOriginator != null)
+                        && (appParams.FilterOriginator.length() != 0)) {
+                        filterString = appParams.FilterOriginator.trim();
+                        if (V){
+                            Log.v(TAG, " appParams.FilterOriginator"
+                                + appParams.FilterOriginator);
+                        }
+                    }
+                }
+
+                if (isOutgoingMMSMessage(msgId) == true) {
+                    if ((appParams.FilterOriginator != null)
+                        && (appParams.FilterOriginator.length() != 0)
+                        && !(oname.matches(".*"+regExpOrig+".*"))
+                        && !(onumber.matches(".*"+regExpOrig+".*"))) {
+                        continue;
+                    }
+
+                    if ((appParams.FilterRecipient != null)
+                        && (appParams.FilterRecipient.length() != 0)) {
+                        filterString = appParams.FilterRecipient.trim();
+                        if (V){
+                            Log.v(TAG, " appParams.FilterRecipient"
+                                + appParams.FilterRecipient);
+                        }
+                    }
+                }
+
+                if (filterString != null) {
+                    if (V){
+                        Log.v(TAG, " filterString = " + filterString);
+                    }
+                    String ContactName = null;
+                    String ContactNum = null;
+
+                    ContactName = getContactName(getMmsMsgAddress(msgId));
+                    ContactNum = getMmsMsgAddress(msgId);
+
+                    if (ContactName.matches(filterString) || ContactNum.matches(filterString)) {
+                        if (V){
+                            Log.v(TAG, " ALLOWED : "
+                                + ContactName + " - " + ContactNum );
+                        }
+                    } else {
+                        if (V){
+                            Log.v(TAG, " DENIED : "
+                                + ContactName + " - " + ContactNum );
+                        }
+                        continue;
+                    }
                 }
 
                 String datetime = getMmsMsgDate(msgId);
