@@ -86,6 +86,11 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
     private static final String SMS_GSM = "SMS_GSM";
     private static final String SMS_CDMA = "SMS_CDMA";
     private static final String MMS = "MMS";
+    // OMA-TS-MMS-ENC defined many types in X-Mms-Message-Type.
+    // Only m-send-req (128) m-retrieve-conf (132), m-notification-ind (130)
+    // are interested by user
+    private static final String INTERESTED_MESSAGE_TYPE_CLAUSE =
+                "(m_type = 128 OR m_type = 132 OR m_type = 130)";
 
     public BluetoothMasAppSmsMms(Context context, Handler handler, BluetoothMns mnsClient,
             int masId, String remoteDeviceName) {
@@ -817,7 +822,8 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         if ( name.equalsIgnoreCase(DELETED)){
             Uri uri = Uri.parse("content://mms/");
             ContentResolver cr = mContext.getContentResolver();
-            Cursor cursor = cr.query(uri, null, "thread_id = " + DELETED_THREAD_ID, null, null);
+            Cursor cursor = cr.query(uri, null, "thread_id = " + DELETED_THREAD_ID
+                    + " AND " + INTERESTED_MESSAGE_TYPE_CLAUSE, null, null);
             if(cursor != null){
                 msgCount = cursor.getCount();
                 cursor.close();
@@ -825,7 +831,8 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         } else {
             Uri uri = Uri.parse("content://mms/" + name);
             ContentResolver cr = mContext.getContentResolver();
-            Cursor cursor = cr.query(uri, null, "thread_id <> " + DELETED_THREAD_ID, null, null);
+            Cursor cursor = cr.query(uri, null, "thread_id <> " + DELETED_THREAD_ID
+                    + " AND " + INTERESTED_MESSAGE_TYPE_CLAUSE, null, null);
             if(cursor != null){
                 msgCount = cursor.getCount();
                 cursor.close();
@@ -882,10 +889,12 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         String whereClause = "";
         if ( foldertype != -1) {
             // Inbox, Outbox, Sent, Draft folders
-            whereClause = "msg_box=" + foldertype + " AND thread_id <> " + DELETED_THREAD_ID;
+            whereClause = "msg_box=" + foldertype + " AND thread_id <> " + DELETED_THREAD_ID
+                    + " AND " + INTERESTED_MESSAGE_TYPE_CLAUSE;
         } else {
             // Deleted folder
-            whereClause =  "thread_id = " + DELETED_THREAD_ID;
+            whereClause =  "thread_id = " + DELETED_THREAD_ID + " AND "
+                    + INTERESTED_MESSAGE_TYPE_CLAUSE;
         }
 
         /* Filter readstatus: 0 no filtering, 0x01 get unread, 0x10 get read */
