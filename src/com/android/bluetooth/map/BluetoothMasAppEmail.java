@@ -696,7 +696,7 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
         if (V) Log.v(TAG, " Account id before Mail service:: " + accountId);
 
         Intent emailIn = new Intent();
-        emailIn.setAction("com.android.email.intent.action.MAIL_SERVICE_WAKEUP");
+        emailIn.setAction("com.android.email.intent.action.MAIL_SERVICE_SEND_PENDING");
         emailIn.putExtra("com.android.email.intent.extra.ACCOUNT", accountId);
         mContext.startService(emailIn);
         return rsp;
