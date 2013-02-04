@@ -47,6 +47,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.Locale;
 
 public class EmailUtils {
     public static final String TAG = "EmailUtils";
@@ -638,7 +639,7 @@ public class EmailUtils {
                 sb.append("Content-Transfer-Encoding: 8bit").append("\r\n");
                 // BMW 14692 carkit accepts Date format in "EEE, dd MMM yyyy HH:mm:ss Z"
                 sb.append("Date:");
-                sb.append(new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z").format(date));
+                sb.append(new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z, Locale.US").format(date));
                 sb.append("\r\n");
                 sb.append("Subject:").append(subjectText).append("\r\n").append("\r\n");
                 sb.append(emailBody).append("\r\n");
