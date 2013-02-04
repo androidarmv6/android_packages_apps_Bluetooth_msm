@@ -969,7 +969,7 @@ public class MapUtils {
         bMsgObj.setBody_length(fetchBodyLength(bmsg));
 
         // Extract Message
-        bMsgObj.setBody_msg(fetchBodyMsg(bmsg));
+        bMsgObj.setBody_msg(fetchBodyMsgMMS(bmsg));
 
         // Extract Message encoding
         bMsgObj.setBody_encoding(fetchBodyEncoding(bmsg));
@@ -1474,6 +1474,18 @@ public class MapUtils {
                     + (("BEGIN:MSG").length() + CRLF.length());
             int endVersionPos = (body.indexOf("END:MSG", beginVersionPos) - CRLF
                     .length());
+            return body.substring(beginVersionPos, endVersionPos);
+        } else {
+            return "";
+        }
+    }
+
+    private static String fetchBodyMsgMMS(String body) {
+        int pos = body.indexOf("BEGIN:MSG");
+        if (pos > 0) {
+            /* MMS body should contain both Begin and End message tags */
+            int beginVersionPos = pos;
+            int endVersionPos = body.indexOf("END:MSG", beginVersionPos) + ("END:MSG").length();
             return body.substring(beginVersionPos, endVersionPos);
         } else {
             return "";
