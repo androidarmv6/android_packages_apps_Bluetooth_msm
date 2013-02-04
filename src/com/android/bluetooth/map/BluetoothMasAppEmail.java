@@ -300,6 +300,15 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
     @Override
     protected BluetoothMasMessageRsp getMessageSpecific(long msgHandle,
             BluetoothMasMessageRsp rsp, BluetoothMasAppParams bluetoothMasAppParams) {
+        /*
+         * Spec 5.6.4 says MSE shall reject request with value native
+         * for MMS and Email
+         */
+        if ((int)bluetoothMasAppParams.Charset == 0) {
+            rsp.rsp = ResponseCodes.OBEX_HTTP_BAD_REQUEST;
+            return rsp;
+        }
+
         long emailMsgID = msgHandle - OFFSET_START;
         String str = EmailUtils.bldEmailBmsg(emailMsgID, rsp, mContext, mRemoteDeviceName);
         if (V) Log.v(TAG, "\n" + str + "\n");
