@@ -81,6 +81,9 @@ class HeadsetPhoneState {
     public void cleanup() {
         listenForPhoneState(false);
         mTelephonyManager = null;
+        mNumActive = 0;
+        mNumHeld = 0;
+        mCallState = 0;
         mHandsfree = null;
     }
 
@@ -309,13 +312,13 @@ class HeadsetPhoneState {
     }
 
     public int callstate_to_callsetup(int call_state) {
-        int call_setup = 0;
+        int call_setup = HeadsetHalConstants.CALLSETUP_CIEV_IDLE;
         if (call_state == HeadsetHalConstants.CALL_STATE_INCOMING)
-        call_setup = 1;
+            call_setup = HeadsetHalConstants.CALLSETUP_CIEV_INCOMING;
         if (call_state == HeadsetHalConstants.CALL_STATE_DIALING)
-        call_setup = 2;
+            call_setup = HeadsetHalConstants.CALLSETUP_CIEV_OUTGOING;
         if (call_state == HeadsetHalConstants.CALL_STATE_ALERTING)
-        call_setup = 3;
+            call_setup = HeadsetHalConstants.CALLSETUP_CIEV_OUTGOING_ALERT;
 
         return call_setup;
     }
