@@ -853,6 +853,7 @@ public class BluetoothHandsfree {
             startDebug();
         }
 
+        mVoiceRecognitionStarted = false;
         mRemoteCodec = 0;
         for (int i = 1; i <= MAX_IIENABLED; i ++) {
             // Individual Indicators are set to true by default
