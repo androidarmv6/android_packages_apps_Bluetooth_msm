@@ -1256,14 +1256,12 @@ public class BluetoothHandsfree {
                         }
                         break;
                     case  HeadsetHalConstants.CALL_STATE_DIALING:
-                        log("A dialing call..It should not come in regular call scenario ");
-                        sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_IDLE);
-                        break;
                     case  HeadsetHalConstants.CALL_STATE_ALERTING:
-                        log("Prev state was call alert, it may be accepted or rejected");
+                        log("Prev state: callalert or calldial");
                         if((numActive == 1) && (prevNumActive == 0)){
                             log("Remote accepted the call");
                             callConnected = true;
+                            audioOn();
                         } else{
                             log("Call rejected by remote or disconnected");
                             sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_IDLE);
