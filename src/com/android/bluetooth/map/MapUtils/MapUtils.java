@@ -177,7 +177,7 @@ public class MapUtils {
                 if (msg.type != null) {
                     serializer.attribute(null, "type", msg.type);
                 }
-                if (msg.size != 0) {
+                if (msg.size != -1) {
                     serializer.attribute(null, "size", ("" + msg.size));
                 }
 
