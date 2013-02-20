@@ -327,7 +327,7 @@ public class BluetoothOppObexServerSession extends ServerRequestHandler implemen
                 ((ServerOperation)op).mSrmServerSession.setLocalSrmStatus(ObexHelper.LOCAL_SRM_DISABLED);
             }
 
-            if (length == 0) {
+            if (length == null ||  length == 0) {
                 if (D) Log.w(TAG, "length is 0, reject the transfer");
                 pre_reject = true;
                 obexResponse = ResponseCodes.OBEX_HTTP_LENGTH_REQUIRED;
