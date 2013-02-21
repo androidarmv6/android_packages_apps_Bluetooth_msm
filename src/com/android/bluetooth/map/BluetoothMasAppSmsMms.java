@@ -1158,21 +1158,34 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
 
     /**
      * Obtain MMS message address
+     * When Multiple addresses are present return the addresses separated by semicolon
      */
     private String getMmsMsgAddress(long msgID) {
-        String text = null;
+        String text = "";
         String whereClause = " address != \"insert-address-token\"";
         Uri uri = Uri.parse("content://mms/" + msgID + "/addr");
         ContentResolver cr = mContext.getContentResolver();
         Cursor cursor = cr.query(uri, null, whereClause, null, null);
         if (cursor != null) {
-            if (cursor.getCount() > 0) {
+            if (V) Log.v(TAG, "cursor.getCount(): " + cursor.getCount());
+            if (cursor.getCount() == 1) {
                 cursor.moveToFirst();
                 int addressInd = cursor.getColumnIndex("address");
                 text = cursor.getString(addressInd);
             }
+            else if (cursor.getCount() > 1) {
+                cursor.moveToFirst();
+                int addressInd = 0;
+                do {
+                    addressInd = cursor.getColumnIndex("address");
+                    text = text.concat(cursor.getString(addressInd) + ";");
+                    if (V) Log.v(TAG, "address: " + cursor.getString(cursor.getColumnIndex("address")));
+                } while (cursor.moveToNext());
+
+            }
             cursor.close();
         }
+        if (V) Log.v(TAG, "final MMS address: " + text);
         return text;
     }
 
@@ -1242,6 +1255,8 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         Cursor cr = null;
         Uri uri = Uri.parse("content://mms/");
         String whereClause = " _id = " + msgID;
+        String address = null;
+        String addressTokens[] = null;
         cr = mContext.getContentResolver().query(uri, null, whereClause, null,
                 null);
         if (cr == null) {
@@ -1266,22 +1281,53 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
             bmsg.setFolder(TELECOM + "/" + MSG + "/" + containingFolder);
 
             bmsg.setVcard_version("2.1");
-            VcardContent vcard = getVcardContent(getMmsMsgAddress(msgID));
-            String type = cr.getString(cr.getColumnIndex("msg_box"));
-            // Inbox is type 1.
-            if (type.equalsIgnoreCase("1")) {
-                bmsg.setOriginatorVcard_name(vcard.name);
-                bmsg.setOriginatorVcard_phone_number(vcard.tel);
-                bmsg.setRecipientVcard_name(getOwnerName());
-                bmsg.setRecipientVcard_phone_number(getOwnerNumber());
-            } else {
-                bmsg.setRecipientVcard_name(vcard.name);
-                bmsg.setRecipientVcard_phone_number(vcard.tel);
-                bmsg.setOriginatorVcard_name(getOwnerName());
-                bmsg.setOriginatorVcard_phone_number(getOwnerNumber());
-
+            address = getMmsMsgAddress(msgID);
+            if ((address != null) && address.contains(";")) {
+                addressTokens = address.split(";");
+                String name = "";
+                String tel = "";
+                VcardContent vcardInternal;
+                for (int i=0; i < addressTokens.length; i++) {
+                    vcardInternal = getVcardContent(addressTokens[i]);
+                    if ((vcardInternal.name == null) || (vcardInternal.name.length() == 0)) {
+                        name = name.concat(" " + ";");
+                        if(V) Log.v (TAG, "name not present: ");
+                    } else {
+                        if(V) Log.v (TAG, "name present");
+                        name = name.concat(vcardInternal.name + ";");
+                    }
+                    tel = tel.concat(vcardInternal.tel + ";");
+                }
+                String type = cr.getString(cr.getColumnIndex("msg_box"));
+                // Inbox is type 1.
+                if (type.equalsIgnoreCase("1")) {
+                    bmsg.setOriginatorVcard_name(name);
+                    bmsg.setOriginatorVcard_phone_number(tel);
+                    bmsg.setRecipientVcard_name(getOwnerName());
+                    bmsg.setRecipientVcard_phone_number(getOwnerNumber());
+                } else {
+                    bmsg.setRecipientVcard_name(name);
+                    bmsg.setRecipientVcard_phone_number(tel);
+                    bmsg.setOriginatorVcard_name(getOwnerName());
+                    bmsg.setOriginatorVcard_phone_number(getOwnerNumber());
+                }
             }
-
+            else {
+                VcardContent vcard = getVcardContent(address);
+                String type = cr.getString(cr.getColumnIndex("msg_box"));
+                // Inbox is type 1.
+                if (type.equalsIgnoreCase("1")) {
+                    bmsg.setOriginatorVcard_name(vcard.name);
+                    bmsg.setOriginatorVcard_phone_number(vcard.tel);
+                    bmsg.setRecipientVcard_name(getOwnerName());
+                    bmsg.setRecipientVcard_phone_number(getOwnerNumber());
+                } else {
+                    bmsg.setRecipientVcard_name(vcard.name);
+                    bmsg.setRecipientVcard_phone_number(vcard.tel);
+                    bmsg.setOriginatorVcard_name(getOwnerName());
+                    bmsg.setOriginatorVcard_phone_number(getOwnerNumber());
+                }
+            }
             StringBuilder sb = new StringBuilder();
             Date date = new Date(Integer.valueOf(getMmsMsgDate(msgID)));
             sb.append("Date: ").append(date.toString()).append("\r\n");
@@ -1338,6 +1384,19 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
             String folderName, String datetimeStr) {
 
         MsgListingConsts ml = new MsgListingConsts();
+        String address = getMmsMsgAddress(mmsMsgID);
+        boolean isMultipleAddress = false;
+        String addressTokens[] = null;
+        if ((address != null) && address.contains(";")) {
+            isMultipleAddress = true;
+            addressTokens = address.split(";");
+            for (int i=0; i < addressTokens.length; i++) {
+                if (V) Log.v ( TAG, "addressTokens[" + i + "] = " + addressTokens[i]);
+            }
+            if (V) Log.v (TAG, "addressTokens.length: " + addressTokens.length);
+        }
+        if (V) Log.v (TAG, "isMultipleAddress: " + isMultipleAddress);
+
 
         // Set the message handle
         ml.setMsg_handle(mmsMsgID + MMS_OFFSET_START);
@@ -1375,14 +1434,18 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         }
 
         if ((appParams.ParameterMask & BIT_RECIPIENT_NAME) != 0) {
-            // TODO: "recipient_name" is the name of the
-            // recipient of the message, when it is known
-            // by the MSE device.
-            String recipientName = null;
+            String recipientName = "";
             if (isOutgoingMMSMessage(mmsMsgID) == false) {
                 recipientName = getOwnerName();
             } else {
-                recipientName = getContactName(getMmsMsgAddress(mmsMsgID));
+                if(!isMultipleAddress) {
+                    recipientName = getContactName(getMmsMsgAddress(mmsMsgID));
+                } else {
+                    for (int i=0; i < addressTokens.length; i++) {
+                        recipientName = recipientName.concat(getContactName(addressTokens[i]) + ";");
+                        if (V) Log.v ( TAG, "recipientName: " + recipientName);
+                    }
+                }
             }
             ml.setRecepient_name(recipientName);
         }
@@ -1401,11 +1464,18 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         }
 
         if ((appParams.ParameterMask & BIT_SENDER_NAME) != 0) {
-            String senderName = null;
+            String senderName = "";
             if (isOutgoingMMSMessage(mmsMsgID) == true) {
                 senderName = getOwnerName();
             } else {
-                senderName = getContactName(getMmsMsgAddress(mmsMsgID));
+                if(!isMultipleAddress) {
+                    senderName = getContactName(getMmsMsgAddress(mmsMsgID));
+                } else {
+                    for (int i=0; i < addressTokens.length; i++) {
+                        senderName = senderName.concat(getContactName(addressTokens[i]) + ";");
+                        if (V) Log.v ( TAG, "senderName: " + senderName);
+                    }
+                }
             }
             ml.setSender_name(senderName);
         }
