@@ -68,7 +68,7 @@ public class BluetoothThermometerClient extends Activity {
 	public static final String USER_DEFINED = "UserDefined";
 
 	public static final String[] StringServicesUUID = {
-			"0000180200001000800000805f9b34fb", // Thermometer service 0000180900001000800000805f9b34fb
+			"0000180900001000800000805f9b34fb", // Thermometer service 0000180900001000800000805f9b34fb
 			"0000180A00001000800000805f9b34fb", // Device Service
 			USER_DEFINED };
 	protected static final int DEVICE_SELECTED = 0;
