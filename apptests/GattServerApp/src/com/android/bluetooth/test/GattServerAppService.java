@@ -174,6 +174,10 @@ public class GattServerAppService extends Service {
 
     static final String PREFERRED_DEVICE_LIST_RESULT = "PreferredDeviceListResult";
 
+    private GattServerAppReceiver receiver = null;
+
+    private IntentFilter inFilter = null;
+
 
     // Handles events sent by GattServerAppActivity.
     private class IncomingHandler extends Handler {
@@ -273,7 +277,7 @@ public class GattServerAppService extends Service {
                     break;
                 case DEVICE_CONNECTED_PLIST:
                     remoteDevice = (BluetoothDevice) msg.getData().getParcelable(REMOTE_DEVICE);
-                    text = "Device connection was successful with preferred device list!"+remoteDevice;
+                    text = "Device connection was successful with the device "+remoteDevice;
                     duration = Toast.LENGTH_LONG;
                     toast = Toast.makeText(context, text, duration);
                     toast.show();
@@ -478,6 +482,15 @@ public class GattServerAppService extends Service {
         registerApp();
         //Register receiver handler
         GattServerAppReceiver.registerHandler(new IncomingHandler());
+        //Register receiver
+        inFilter = new IntentFilter();
+        inFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+        inFilter.addAction(BluetoothDevicePicker.ACTION_DEVICE_SELECTED);
+        inFilter.addAction(BluetoothDevice.ACTION_LE_CONN_PARAMS);
+        inFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
+        this.receiver = new GattServerAppReceiver();
+        Log.d(TAG, "Registering the receiver");
+        this.registerReceiver(this.receiver, inFilter);
     }
 
     @Override
@@ -490,6 +503,22 @@ public class GattServerAppService extends Service {
     public IBinder onBind(Intent intent) {
         return mMessenger.getBinder();
     };
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "onDestroy Gatt Server app Service");
+        unregisterApp();
+        GattServerAppReceiver.unregisterHandler();
+        if (this.receiver != null) {
+            try {
+                this.unregisterReceiver(this.receiver);
+            } catch (Exception e) {
+                Log.e(TAG, "Error while unregistering the receiver");
+            }
+        }
+        if((alarm != null) && (mContext != null)) {
+            alarm.CancelAlarm(mContext);
+        }
+    }
 
     // Register Gatt server application through Bluetooth Gatt API.
     private void registerApp() {
