@@ -34,6 +34,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothDevicePicker;
 import android.content.Context;
 import android.content.Intent;
@@ -197,7 +199,12 @@ public class mainScreen extends Activity {
 		timeoutEdit.setText("500");
 
 		inFilter = new IntentFilter();
-		inFilter.addAction("android.bluetooth.device.action.GATT");
+		inFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+		inFilter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+		inFilter.addAction(BluetoothDevicePicker.ACTION_DEVICE_SELECTED);
+		inFilter.addAction(BluetoothDevice.ACTION_GATT);
+		inFilter.addAction(BluetoothDevice.ACTION_GATT_SERVICE_CHANGED);
+		inFilter.addAction("BluetoothGattCharacteristicValueChanged");
 		this.receiver = new LEThermometerReceiver();
 		Log.d(TAG, "Registering the receiver");
 		this.registerReceiver(this.receiver, inFilter);
