@@ -154,7 +154,7 @@ public class BluetoothPbapService extends Service {
 
     private BluetoothSocket mConnSocket = null;
 
-    private BluetoothDevice mRemoteDevice = null;
+    private static BluetoothDevice mRemoteDevice = null;
 
     private static String sLocalPhoneNum = null;
 
@@ -702,6 +702,10 @@ public class BluetoothPbapService extends Service {
 
     public static String getRemoteDeviceName() {
         return sRemoteDeviceName;
+    }
+
+    public static BluetoothDevice getRemoteDeviceAddress() {
+        return mRemoteDevice;
     }
 
     /**
