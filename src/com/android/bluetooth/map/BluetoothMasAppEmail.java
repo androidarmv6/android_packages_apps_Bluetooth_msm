@@ -350,7 +350,10 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
         BluetoothMasPushMsgRsp rsp = new BluetoothMasPushMsgRsp();
         rsp.response = ResponseCodes.OBEX_HTTP_UNAVAILABLE;
         rsp.msgHandle = null;
-
+        if((int)bluetoothMasAppParams.Charset == 0) {
+            rsp.response = ResponseCodes.OBEX_HTTP_BAD_REQUEST;
+            return rsp;
+        }
         if(!checkPath(false, name, false) ||
                 mCurrentPath == null ||
                 mCurrentPath.equals("telecom") ||
