@@ -72,7 +72,9 @@ public class BluetoothThermometerClientReceiver extends BroadcastReceiver {
             Bundle b = new Bundle();
             b.putParcelable(BluetoothThermometerClient.REMOTE_DEVICE, remoteDevice);
             msg.setData(b);
-            handler.sendMessage(msg);
+            if(handler != null) {
+                handler.sendMessage(msg);
+            }
         }
 
 	}
@@ -81,5 +83,10 @@ public class BluetoothThermometerClientReceiver extends BroadcastReceiver {
 	{
 		Log.e(TAG, "Registered Handler");
 		handler = handle;
+	}
+	public static void unregisterHandler()
+	{
+		Log.e(TAG, "UnRegister Handler");
+		handler = null;
 	}
 }

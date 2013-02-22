@@ -31,12 +31,14 @@ package com.android.thermometer;
 import java.util.UUID;
 
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothDevicePicker;
 import android.bluetooth.IBluetoothThermometerServices;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
@@ -88,6 +90,10 @@ public class BluetoothThermometerClient extends Activity {
 	public static Button buttonDevice = null;
 
 	public static Button buttonDiscoverSrv = null;
+
+	private BluetoothThermometerClientReceiver receiver = null;
+
+	private IntentFilter inFilter = null;
 
 	private ServiceConnection mConnection = new ServiceConnection() {
 	    // Called when the connection with the service is established
@@ -161,13 +167,20 @@ public class BluetoothThermometerClient extends Activity {
 				startGattService(StringServicesUUID[1]);
 			}
 		});
+
+		inFilter = new IntentFilter();
+		inFilter.addAction(BluetoothDevicePicker.ACTION_DEVICE_SELECTED);
+		inFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+		this.receiver = new BluetoothThermometerClientReceiver();
+		Log.d(TAG, "Registering the receiver");
+		this.registerReceiver(this.receiver, inFilter);
 	}
 
 	@Override
 	public void onPause() {
 		super.onPause();
 		Log.e(TAG, "****the activity is paused*****");
-    }
+	}
 
 	@Override
 	public void onStop() {
@@ -177,7 +190,15 @@ public class BluetoothThermometerClient extends Activity {
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
-		Log.e(TAG, "****the activity is destroyed*****");
+		Log.e(TAG, "****Thermometer activity is destroyed*****");
+		BluetoothThermometerClientReceiver.unregisterHandler();
+        if (this.receiver != null) {
+            try {
+                this.unregisterReceiver(this.receiver);
+            } catch (Exception e) {
+                Log.e(TAG, "Error while unregistering the receiver");
+            }
+        }
 		close();
 	}
 

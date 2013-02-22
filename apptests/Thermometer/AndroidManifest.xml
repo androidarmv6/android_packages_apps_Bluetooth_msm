@@ -46,9 +46,6 @@
         </activity>
         <receiver
             android:name="BluetoothThermometerClientReceiver">
-            <intent-filter>
-                <action android:name="android.bluetooth.devicepicker.action.DEVICE_SELECTED" />
-            </intent-filter>
         </receiver>
         <activity android:name=".BluetoothThermometerServicesScreen"
                   android:label="@string/app_name">
