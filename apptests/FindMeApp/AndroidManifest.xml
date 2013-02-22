@@ -47,9 +47,6 @@
         </activity>
         <receiver
             android:name="LEFindMeClientReceiver">
-            <intent-filter>
-                <action android:name="android.bluetooth.devicepicker.action.DEVICE_SELECTED" />
-            </intent-filter>
         </receiver>
    </application>
 </manifest>
