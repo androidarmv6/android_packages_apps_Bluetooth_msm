@@ -17,9 +17,6 @@
             </intent-filter>
         </activity>
         <receiver android:name="LEProximityClientReceiver">
-            <intent-filter>
-                <action android:name="android.bluetooth.devicepicker.action.DEVICE_SELECTED" />
-            </intent-filter>
         </receiver>
        <activity android:name=".LEProximityServicesScreen"
                  android:label="@string/proximity_app_name" />
