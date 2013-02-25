@@ -41,6 +41,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -89,6 +90,10 @@ public class LEFindMeClient extends Activity {
     public static ParcelUuid selectedCharUUID;
 
     public static String alertLevelValue = null;
+
+    private IntentFilter inFilter = null;
+
+    private LEFindMeClientReceiver receiver = null;
 
     private ServiceConnection mConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -177,6 +182,12 @@ public class LEFindMeClient extends Activity {
                 }
             }
         });
+        inFilter = new IntentFilter();
+        inFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+        inFilter.addAction(BluetoothDevicePicker.ACTION_DEVICE_SELECTED);
+        this.receiver = new LEFindMeClientReceiver();
+        Log.d(TAG, "Registering the receiver");
+        this.registerReceiver(this.receiver, inFilter);
     }
 
     @Override
@@ -193,7 +204,15 @@ public class LEFindMeClient extends Activity {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        Log.e(TAG, "****the activity is destroyed*****");
+        Log.e(TAG, "****the Find me activity is destroyed*****");
+        LEFindMeClientReceiver.unregisterHandler();
+        if (this.receiver != null) {
+            try {
+                this.unregisterReceiver(this.receiver);
+            } catch (Exception e) {
+                Log.e(TAG, "Error while unregistering the receiver");
+            }
+        }
         close();
     }
 

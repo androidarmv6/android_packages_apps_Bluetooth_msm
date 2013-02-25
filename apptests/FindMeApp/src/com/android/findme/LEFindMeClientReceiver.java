@@ -65,7 +65,9 @@ public class LEFindMeClientReceiver extends BroadcastReceiver {
             Bundle b = new Bundle();
             b.putParcelable(LEFindMeClient.REMOTE_DEVICE, remoteDevice);
             msg.setData(b);
-            handler.sendMessage(msg);
+            if(handler != null) {
+                handler.sendMessage(msg);
+            }
         }
     }
 
@@ -73,5 +75,10 @@ public class LEFindMeClientReceiver extends BroadcastReceiver {
     {
         Log.e(TAG, "Registered Handler");
         handler = handle;
+    }
+    public static void unregisterHandler()
+    {
+        Log.e(TAG, "UnRegister Handler");
+        handler = null;
     }
 }
