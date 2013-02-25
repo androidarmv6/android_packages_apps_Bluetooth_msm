@@ -1787,6 +1787,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
     private String bldSmsBmsg(long msgHandle, Context context, Cursor cr,
                 BluetoothMasAppParams bluetoothMasAppParams) {
         String str = null;
+        int body_length = 0;
         if (cr.getCount() > 0) {
             cr.moveToFirst();
             String containingFolder = getContainingFolder(msgHandle);
@@ -1840,16 +1841,36 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
                 smsBody = getSMSDeliverPdu(smsBodyUnicode, cr.getString(cr.getColumnIndex("date")),
                         vcard.tel);
             }
-
-            bmsg.setBody_length(22 + smsBody.length());
-
+            if (V) {
+              Log.v(TAG, "Unicode String Length :: " + smsBody.length());
+            }
+            try {
+               switch ((int)bluetoothMasAppParams.Charset) {
+               case 1:
+                   byte[] b = smsBody.getBytes("UTF-8");
+                   body_length = b.length;
+                   break;
+               case 0:
+               default:
+                   body_length = smsBody.length();
+                   break;
+               }
+            }catch (Exception e) {
+               if (V) {
+                   Log.v(TAG, "Exception::Getting String UTF-8 Length:: " + smsBody.length());
+               }
+               body_length = smsBody.length();
+            }
+            if (V) {
+               Log.v(TAG, "BT SMS Total length :: 22 + " + body_length);
+            }
+            bmsg.setBody_length(22 + body_length);
             bmsg.setBody_msg(smsBody);
             cr.close();
-
             // Send a bMessage
-            if (V){
-                Log.v(TAG, "bMessageSMS test\n");
-                Log.v(TAG, "=======================\n\n");
+           if (V){
+               Log.v(TAG, "bMessageSMS test\n");
+               Log.v(TAG, "=======================\n\n");
             }
             str = MapUtils.toBmessageSMS(bmsg);
         }
