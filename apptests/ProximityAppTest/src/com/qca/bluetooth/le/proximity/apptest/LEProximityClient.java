@@ -31,12 +31,14 @@ package com.qca.bluetooth.le.proximity.apptest;
 import java.util.UUID;
 
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothDevicePicker;
 import android.bluetooth.IBluetoothLEProximityServices;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
@@ -87,6 +89,10 @@ public class LEProximityClient extends Activity {
     public static Button buttonImmAlert = null;
 
     public static Button buttonTxPower = null;
+
+    private IntentFilter inFilter = null;
+
+    private LEProximityClientReceiver receiver = null;
 
     private ServiceConnection mConnection = new ServiceConnection() {
 
@@ -161,11 +167,17 @@ public class LEProximityClient extends Activity {
         buttonTxPower.setEnabled(false);
         buttonTxPower.setClickable(false);
         buttonTxPower.setOnClickListener(new View.OnClickListener() {
-                                             public void onClick(View v) {
-                                                 Log.d(TAG, "Clicked TX button");
-                                                 startGattService(StringServicesUUID[2]);
-                                             }
-                                         });
+            public void onClick(View v) {
+                Log.d(TAG, "Clicked TX button");
+                startGattService(StringServicesUUID[2]);
+            }
+        });
+        inFilter = new IntentFilter();
+        inFilter.addAction("android.bluetooth.devicepicker.action.DEVICE_SELECTED");
+        inFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+        this.receiver = new LEProximityClientReceiver();
+        Log.d(TAG, "Registering the receiver");
+        this.registerReceiver(this.receiver, inFilter);
     }
 
     @Override
@@ -182,7 +194,15 @@ public class LEProximityClient extends Activity {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        Log.e(TAG, "****the activity is destroyed*****");
+        Log.e(TAG, "****Proximity activity is destroyed*****");
+        LEProximityClientReceiver.unregisterHandler();
+        if (this.receiver != null) {
+            try {
+                this.unregisterReceiver(this.receiver);
+            } catch (Exception e) {
+                Log.e(TAG, "Error while unregistering the receiver");
+            }
+        }
         close();
     }
 

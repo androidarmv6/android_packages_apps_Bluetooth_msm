@@ -72,7 +72,9 @@ public class LEProximityClientReceiver extends BroadcastReceiver {
             Bundle b = new Bundle();
             b.putParcelable(LEProximityClient.REMOTE_DEVICE, remoteDevice);
             msg.setData(b);
-            handler.sendMessage(msg);
+            if(handler != null) {
+                handler.sendMessage(msg);
+            }
         }
     }
 
@@ -80,5 +82,10 @@ public class LEProximityClientReceiver extends BroadcastReceiver {
     {
         Log.e(TAG, "Registered Handler");
         handler = handle;
+    }
+    public static void unregisterHandler()
+    {
+        Log.e(TAG, "UnRegister Handler");
+        handler = null;
     }
 }
