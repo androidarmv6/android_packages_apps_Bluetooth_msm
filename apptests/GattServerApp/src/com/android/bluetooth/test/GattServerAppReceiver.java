@@ -101,7 +101,9 @@ public class GattServerAppReceiver extends BroadcastReceiver{
             Bundle b = new Bundle();
             b.putParcelable(GattServerAppService.REMOTE_DEVICE, remoteDevice);
             msg.setData(b);
-            handler.sendMessage(msg);
+            if(handler != null) {
+                handler.sendMessage(msg);
+            }
         }
         else if (action.equals(BluetoothDevice.ACTION_LE_CONN_PARAMS)) {
             int connInterval = intent.getIntExtra(BluetoothDevice.EXTRA_CONN_INTERVAL, 0);
@@ -121,12 +123,18 @@ public class GattServerAppReceiver extends BroadcastReceiver{
             Bundle b = new Bundle();
             b.putParcelable(GattServerAppService.REMOTE_DEVICE, remoteDevice);
             msg.setData(b);
-            handler.sendMessage(msg);
+            if(handler != null) {
+                handler.sendMessage(msg);
+            }
         }
     }
     public static void registerHandler(Handler handle) {
         Log.d(TAG, "Registered Handler");
         handler = handle;
+    }
+    public static void unregisterHandler() {
+        Log.d(TAG, "Unregistering Handler");
+        handler = null;
     }
     public static void onAddDeviceToPreferredList(int result){
         Message msg = new Message();
