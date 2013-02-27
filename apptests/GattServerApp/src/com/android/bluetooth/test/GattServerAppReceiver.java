@@ -113,18 +113,44 @@ public class GattServerAppReceiver extends BroadcastReceiver{
             Log.d(TAG, "Received ACTION_ACL_CONNECTED intent");
             BluetoothDevice remoteDevice = intent
                                            .getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+            if(remoteDevice != null) {
+                if(GattServerAppService.connectedDevicesList != null
+                        && GattServerAppService.connectedDevicesList.size() > 0) {
+                    for(int i=0; i < GattServerAppService.connectedDevicesList.size(); i++) {
+                        BluetoothDevice deviceObj = GattServerAppService.connectedDevicesList.get(i);
+                        if(deviceObj.getAddress().equalsIgnoreCase(remoteDevice.getAddress())) {
+                            String connDevAddr = remoteDevice.getAddress();
+                            Log.d(TAG, "Received ACTION_ACL_CONNECTED, bt device: "
+                                    + connDevAddr);
 
-            String connDevAddr = remoteDevice.getAddress();
-            Log.d(TAG, "Received ACTION_ACL_CONNECTED, bt device: "
-                 + connDevAddr);
-
-            Message msg = new Message();
-            msg.what = GattServerAppService.DEVICE_CONNECTED_PLIST;
-            Bundle b = new Bundle();
-            b.putParcelable(GattServerAppService.REMOTE_DEVICE, remoteDevice);
-            msg.setData(b);
-            if(handler != null) {
-                handler.sendMessage(msg);
+                            Message msg = new Message();
+                            msg.what = GattServerAppService.DEVICE_CONNECTED_PLIST;
+                            Bundle b = new Bundle();
+                            b.putParcelable(GattServerAppService.REMOTE_DEVICE, remoteDevice);
+                            msg.setData(b);
+                            if(handler != null) {
+                                handler.sendMessage(msg);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        else if (action.equals(BluetoothDevice.ACTION_ACL_DISCONNECTED)) {
+            Log.d(TAG, "Received ACTION_ACL_DISCONNECTED intent");
+            BluetoothDevice remoteDevice = intent
+                    .getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+            if(remoteDevice != null) {
+                if((GattServerAppService.connectedDevicesList != null) && (GattServerAppService.connectedDevicesList.size() > 0)) {
+                    for(int i=0; i < GattServerAppService.connectedDevicesList.size(); i++) {
+                        BluetoothDevice deviceObj = GattServerAppService.connectedDevicesList.get(i);
+                        if(deviceObj.getAddress().equalsIgnoreCase(remoteDevice.getAddress())) {
+                            GattServerAppService.connectedDevicesList.remove(i);
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
