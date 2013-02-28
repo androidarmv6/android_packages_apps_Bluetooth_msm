@@ -187,6 +187,8 @@ public class GattServerAppService extends Service {
             CharSequence text = null;
             int duration = 0;
             Toast toast = null;
+            int devCnt =0;
+            boolean isDevPresent = false;
             switch (msg.what) {
                 // Register Gatt Server configuration.
                 case MSG_REG_GATT_SERVER_CONFIG:
@@ -247,7 +249,19 @@ public class GattServerAppService extends Service {
                     }
                     else {
                         if(connReqDevicesList != null && connReqDevicesList.size() > 0) {
-                            if(!connReqDevicesList.contains(remoteDevice.getAddress())) {
+                            devCnt = 0;
+                            isDevPresent = false;
+                            for(int i=0; i < connReqDevicesList.size(); i++) {
+                                BluetoothDevice deviceObj = connReqDevicesList.get(i);
+                                if(deviceObj.getAddress().equalsIgnoreCase(remoteDevice.getAddress())) {
+                                    isDevPresent = true;
+                                    break;
+                                }
+                                else {
+                                    devCnt++;
+                                }
+                            }
+                            if(!isDevPresent && (devCnt == connReqDevicesList.size())) {
                                 connReqDevicesList.add(remoteDevice);
                             }
                         }
@@ -283,7 +297,19 @@ public class GattServerAppService extends Service {
                     toast.show();
                     //Add device to list of connected devices
                     if(connectedDevicesList != null && connectedDevicesList.size() > 0) {
-                        if(!connectedDevicesList.contains(remoteDevice.getAddress())) {
+                        devCnt = 0;
+                        isDevPresent = false;
+                        for(int i=0; i < connectedDevicesList.size(); i++) {
+                            BluetoothDevice deviceObj = connectedDevicesList.get(i);
+                            if(deviceObj.getAddress().equalsIgnoreCase(remoteDevice.getAddress())) {
+                                isDevPresent = true;
+                                break;
+                            }
+                            else {
+                                devCnt++;
+                            }
+                        }
+                        if(!isDevPresent && (devCnt == connectedDevicesList.size())) {
                             connectedDevicesList.add(remoteDevice);
                         }
                     }
@@ -488,6 +514,7 @@ public class GattServerAppService extends Service {
         inFilter.addAction(BluetoothDevicePicker.ACTION_DEVICE_SELECTED);
         inFilter.addAction(BluetoothDevice.ACTION_LE_CONN_PARAMS);
         inFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
+        inFilter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
         this.receiver = new GattServerAppReceiver();
         Log.d(TAG, "Registering the receiver");
         this.registerReceiver(this.receiver, inFilter);
@@ -582,9 +609,36 @@ public class GattServerAppService extends Service {
             new IBluetoothPreferredDeviceListCallback.Stub() {
             @Override
             public void onAddDeviceToPreferredList(int result) {
+                int devCnt = 0;
+                boolean isDevPresent = false;
                 // TODO Auto-generated method stub
                 try{
                     Log.d(TAG, "onAddDeviceToPreferredList::"+result);
+                    if(result == 0) {
+                        if(connectedDevicesList != null && connectedDevicesList.size() > 0) {
+                            devCnt = 0;
+                            isDevPresent = false;
+                            if(remoteDevice != null) {
+                                for(int i=0; i < connectedDevicesList.size(); i++) {
+                                    BluetoothDevice deviceObj = connectedDevicesList.get(i);
+                                    if(deviceObj.getAddress().equalsIgnoreCase(remoteDevice.getAddress())) {
+                                        isDevPresent = true;
+                                        break;
+                                    }
+                                    else {
+                                        devCnt++;
+                                    }
+                                }
+                                if(!isDevPresent && (devCnt == connectedDevicesList.size())) {
+                                    connectedDevicesList.add(remoteDevice);
+                                }
+                            }
+                        }
+                        else {
+                            connectedDevicesList = new ArrayList<BluetoothDevice>();
+                            connectedDevicesList.add(remoteDevice);
+                        }
+                    }
                     GattServerAppReceiver.onAddDeviceToPreferredList(result);
                 }
                 catch(Exception e) {
@@ -637,8 +691,35 @@ public class GattServerAppService extends Service {
             }
             public void onGattAutoConnect(int result) {
                 // TODO Auto-generated method stub
+                int devCnt = 0;
+                boolean isDevPresent = false;
                 try{
                     Log.d(TAG, "onGattAutoConnect::"+result);
+                    if(result == 0) {
+                        if(connectedDevicesList != null && connectedDevicesList.size() > 0) {
+                            devCnt = 0;
+                            isDevPresent = false;
+                            if(remoteDevice != null) {
+                                for(int i=0; i < connectedDevicesList.size(); i++) {
+                                    BluetoothDevice deviceObj = connectedDevicesList.get(i);
+                                    if(deviceObj.getAddress().equalsIgnoreCase(remoteDevice.getAddress())) {
+                                        isDevPresent = true;
+                                        break;
+                                    }
+                                    else {
+                                        devCnt++;
+                                    }
+                                }
+                                if(!isDevPresent && (devCnt == connectedDevicesList.size())) {
+                                    connectedDevicesList.add(remoteDevice);
+                                }
+                            }
+                        }
+                        else {
+                            connectedDevicesList = new ArrayList<BluetoothDevice>();
+                            connectedDevicesList.add(remoteDevice);
+                        }
+                    }
                     GattServerAppReceiver.onGattAutoConnect(result);
                 }
                 catch(Exception e) {
@@ -3164,6 +3245,8 @@ public class GattServerAppService extends Service {
     }
     private void connectLEDevice() {
         int status = -1;
+        int devCnt = 0;
+        boolean isDevPresent = false;
         if (gattProfile != null && remoteDevice != null) {
             status = gattProfile.
                     gattConnectLe(remoteDevice.getAddress(),(byte)0,(byte)0,
@@ -3180,7 +3263,19 @@ public class GattServerAppService extends Service {
             }
             if(status == BluetoothDevice.GATT_RESULT_SUCCESS) {
                 if(connectedDevicesList != null && connectedDevicesList.size() > 0) {
-                    if(!connectedDevicesList.contains(remoteDevice.getAddress())) {
+                    devCnt = 0;
+                    isDevPresent = false;
+                    for(int i=0; i < connectedDevicesList.size(); i++) {
+                        BluetoothDevice deviceObj = connectedDevicesList.get(i);
+                        if(deviceObj.getAddress().equalsIgnoreCase(remoteDevice.getAddress())) {
+                            isDevPresent = true;
+                            break;
+                        }
+                        else {
+                            devCnt++;
+                        }
+                    }
+                    if(!isDevPresent && (devCnt == connectedDevicesList.size())) {
                         connectedDevicesList.add(remoteDevice);
                     }
                 }
