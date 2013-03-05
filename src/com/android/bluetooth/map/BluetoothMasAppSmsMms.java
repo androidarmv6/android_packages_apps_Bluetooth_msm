@@ -1016,8 +1016,8 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
     /**
      * Obtain the MMS message Date
      */
-    private String getMmsMsgDate(long msgID) {
-        String text = "0";
+    private Date getMmsMsgDate(long msgID) {
+        long  date = 0;
         String whereClause = " _id= " + msgID;
         Uri uri = Uri.parse("content://mms/");
         ContentResolver cr = mContext.getContentResolver();
@@ -1025,11 +1025,12 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         if (cursor != null) {
             if (cursor.moveToFirst()) {
                 int dateInd = cursor.getColumnIndex("date");
-                text = cursor.getString(dateInd);
+                date = 1000 * cursor.getLong(dateInd);
             }
             cursor.close();
         }
-        return text;
+        if (V) Log.v(TAG, "DATE:millisces "+ date);
+        return new Date(date);
 
     }
 
@@ -1329,8 +1330,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
                 }
             }
             StringBuilder sb = new StringBuilder();
-            Date date = new Date(Integer.valueOf(getMmsMsgDate(msgID)));
-            sb.append("Date: ").append(date.toString()).append("\r\n");
+            sb.append("Date: ").append(getMmsMsgDate(msgID).toString()).append("\r\n");
 
             boolean MIME = true;
             boolean msgFormat = MIME;
@@ -2243,10 +2243,8 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
                     }
                 }
 
-                String datetime = getMmsMsgDate(msgId);
                 Time time = new Time();
-                Date dt = new Date(Long.valueOf(datetime));
-                time.set((dt.getTime() * 1000));
+                time.set(getMmsMsgDate(msgId).getTime());
 
                 String datetimeStr = time.toString().substring(0, 15);
 
