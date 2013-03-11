@@ -71,6 +71,8 @@ public class LEFindMeServices extends Service {
 
     public static final int GATT_DEVICE_CONNECTED = 2;
 
+    public static final int GATT_DEVICE_DISCONNECTED = 3;
+
     public static final String ACTION_GATT_SERVICE_EXTRA_OBJ = "ACTION_GATT_SERVICE_EXTRA_OBJ";
 
     public static final String IMMEDIATE_ALERT_SERVICE_UUID = "0000180200001000800000805f9b34fb";
@@ -152,6 +154,21 @@ public class LEFindMeServices extends Service {
             case GATT_DEVICE_CONNECTED:
                 remoteDevice = (BluetoothDevice) msg.getData().getParcelable(REMOTE_DEVICE);
                 callFindMeFunctions(convertStrToParcelUUID(IMMEDIATE_ALERT_SERVICE_UUID), remoteDevice);
+                break;
+            case GATT_DEVICE_DISCONNECTED:
+                Log.d(TAG, "Received GATT_SERVICE_DISCONNECTED message");
+                remoteDevice = (BluetoothDevice) msg.getData().getParcelable(REMOTE_DEVICE);
+
+                if (mDevice.BDevice.getAddress().equals(remoteDevice.getAddress())) {
+                    Log.d(TAG,
+                          " received  GATT_SERVICE_DISCONNECTED for device : "
+                          + remoteDevice.getAddress());
+
+                    if(mDevice.BDevice.getBondState() != BluetoothDevice.BOND_BONDED) {
+                        Log.d(TAG, "Unbonded device. Clear the cache");
+                        clearProfileCache();
+                    }
+                }
                 break;
             default:
                 break;
@@ -238,9 +255,30 @@ public class LEFindMeServices extends Service {
         mDevice = null;
     }
 
+    private void removeServiceFromCache(ParcelUuid srvUuid) {
+        Log.d(TAG, "removing Gatt service for UUID : " + srvUuid);
+        mDevice.uuidGattSrvMap.remove(srvUuid);
+        String srvUuidStr = srvUuid + ":" + srvUuid;
+        Log.d(TAG, "find objPath from uuidObjPathMap key: " + srvUuidStr);
+        String objPath = mDevice.uuidObjPathMap.get(srvUuidStr);
+        Log.d(TAG, "removing objPath from uuidObjPathMap : " + objPath);
+        mDevice.objPathUuidMap.remove(objPath);
+        mDevice.uuidObjPathMap.remove(srvUuidStr);
+    }
+
+    private void clearProfileCache() {
+        Log.d(TAG, "Clearing profile cache");
+        mDevice.uuidGattSrvMap.clear();
+        mDevice.objPathUuidMap.clear();
+        mDevice.uuidObjPathMap.clear();
+    }
+
     private boolean closeFindMeService() {
         boolean closeImmAlert = closeService(convertStrToParcelUUID(IMMEDIATE_ALERT_SERVICE_UUID));
         Log.d(TAG, "Closing the Immediate Alert  service : " + closeImmAlert);
+        if(closeImmAlert) {
+            clearProfileCache();
+        }
         return closeImmAlert;
     }
 
@@ -252,7 +290,7 @@ public class LEFindMeServices extends Service {
                     Log.d(TAG, "Calling gattService.close()");
                     gattService.close();
                     Log.d(TAG, "removing Gatt service for UUID : " + srvUuid);
-                    mDevice.uuidGattSrvMap.remove(srvUuid);
+                    removeServiceFromCache(srvUuid);
                     return true;
                 } catch (Exception e) {
                     Log.e(TAG,
