@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -78,7 +78,7 @@ import static com.android.bluetooth.map.MapUtils.SmsMmsUtils.SENT;
 
 public class BluetoothMasAppEmail extends BluetoothMasAppIf {
     public final String TAG = "BluetoothMasAppEmail";
-    public final boolean V = BluetoothMasService.VERBOSE;;
+    public final boolean V = BluetoothMasService.VERBOSE;
 
     private ContentObserver mObserver;
     private static final int[] SPECIAL_MAILBOX_TYPES
@@ -142,38 +142,59 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
 
     @Override
     protected List<String> getCompleteFolderList() {
-        if (V) Log.v(TAG, "getCompleteFolderList");
+        if (V) Log.v(TAG, "getCompleteFolderList mCurrentPath: " + mCurrentPath);
         long id = EmailUtils.getAccountId(mMasId);
-        List<String> list = EmailUtils.getEmailFolderList(mContext, id);
+        List<String> list;
+        String splitStrings[] = mCurrentPath.split("/");
         ArrayList<String> finalList = new ArrayList<String>();
         String name;
         int type;
         int curType;
-        for (int i = 0; i < SPECIAL_MAILBOX_TYPES.length; i ++) {
-            curType = SPECIAL_MAILBOX_TYPES[i];
-            if (V) Log.v(TAG, " getCompleteFolderList: Current Type: " + curType);
-            for (String str : list) {
-                type = EmailUtils.getTypeForFolder(mContext, id, str);
-                if (V) Log.v(TAG, " getCompleteFolderList: type: " + type);
-                if (type == curType) {
-                    if (V) Log.v(TAG, " getCompleteFolderList: removing folder : " + str);
-                    list.remove(str);
-                    break;
+        int len =splitStrings.length;
+        if (V) Log.v(TAG, "getCompleteFolderList splitStrings.len = " + splitStrings.length);
+        //Get Default List at "/telecom/msg/"
+        if(len < 3 &&  (mCurrentPath.equalsIgnoreCase("telecom") ||
+                mCurrentPath.equalsIgnoreCase("telecom/msg"))) {
+            list = EmailUtils.getEmailFolderListAtPath(mContext, id, "");
+            for (int i = 0; i < SPECIAL_MAILBOX_TYPES.length; i ++) {
+                curType = SPECIAL_MAILBOX_TYPES[i];
+                if (V) Log.v(TAG, " getCompleteFolderList: Current Type: " + curType);
+                for (String str : list) {
+                    type = EmailUtils.getTypeForFolder(mContext, id, str);
+                    if (V) Log.v(TAG, " getCompleteFolderList: type: " + type);
+                    if (type == curType) {
+                        if (V) Log.v(TAG, " getCompleteFolderList: removing folder : " + str);
+                        list.remove(str);
+                        break;
+                   }
+                }
+                if (!list.contains(SPECIAL_MAILBOX_MAP_NAME[i])) {
+                    if (V) Log.v(TAG, " getCompleteFolderList: adding default folder : "
+                        + SPECIAL_MAILBOX_MAP_NAME[i]);
+                    list.add(SPECIAL_MAILBOX_MAP_NAME[i]);
                 }
             }
-            if (!list.contains(SPECIAL_MAILBOX_MAP_NAME[i])) {
-                if (V) Log.v(TAG, " getCompleteFolderList: adding default folder : "
-                    + SPECIAL_MAILBOX_MAP_NAME[i]);
-                list.add(SPECIAL_MAILBOX_MAP_NAME[i]);
+            for (String str : list) {
+                type = EmailUtils.getTypeForFolder(mContext, id, str);
+                if (type <= ((EmailUtils.TYPE_DELETED) + 1)) {
+                    if (V) Log.v(TAG, " getCompleteFolderList: Adding a valid folder:" + str);
+                    finalList.add(str);
+                }
             }
         }
-        for (String str : list) {
-            type = EmailUtils.getTypeForFolder(mContext, id, str);
-            if (V) Log.v(TAG, " getCompleteFolderList: Processing type: " + type
-                + " for Folder : " + str);
-            if (type <= ((EmailUtils.TYPE_DELETED) + 1)) {
-                if (V) Log.v(TAG, " getCompleteFolderList: Adding a valid folder:" + str);
-                finalList.add(str);
+        else {
+            //Remove length of "telecom/msg" -> 11 from mCurrentPath , Get folders and subfodlers
+            String path = mCurrentPath.substring(12);
+            list = EmailUtils.getEmailFolderListAtPath(mContext, id, path);
+            for (String str : list) {
+                if (V) Log.v(TAG, " getCompleteFolderList: Processing SerId: " + str);
+                String folderStr = str.substring(path.length()+ 1);
+                String folder[] = folderStr.split("/");
+                if(folder.length == 1){
+                    type = EmailUtils.getTypeForFolder(mContext, id, folder[0]);
+                    if (V) Log.v(TAG, " getCompleteFolderList: Add Folder:" + folder[0]);
+                    finalList.add(folder[0]);
+                }
             }
         }
         if (V) Log.v(TAG, "Returning from CompleteFolderList");
@@ -224,10 +245,10 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
             Log.v(TAG, "appParams.FilterMessageType ::"+ appParams.FilterMessageType);
             Log.v(TAG, "Condition result:"+ (appParams.FilterMessageType & 0x04));
         }
-        // TODO: Take care of subfolders
         String splitStrings[] = fullPath.split("/");
-        if ((splitStrings.length == 3 || splitStrings.length == 4)) {
-            // TODO: Take care of subfolders
+        int len = splitStrings.length;
+        //Add folders and subfolders
+        if (len >= 3) {
             if (CommonUtils.validateFilterPeriods(appParams) == 0) {
                 rsp.rsp = ResponseCodes.OBEX_HTTP_BAD_REQUEST;
                 bmlr.rsp = rsp;
@@ -248,8 +269,7 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
                         bmlr.rsp = rsp;
                         return bmlr;
                     }
-                    if (V) Log.v(TAG, "splitStrings[2] = " + splitStrings[2]);
-                    // TODO: Take care of subfolders
+                    if (V) Log.v(TAG, "splitStrings[len-1] = " + splitStrings[len-1]);
 
                     folderName = EmailUtils.getFolderName(splitStrings);
                     int index = 0;
@@ -268,10 +288,10 @@ public class BluetoothMasAppEmail extends BluetoothMasAppIf {
                             break;
                         }
                     }
-                    if (index == SPECIAL_MAILBOX_MAP_NAME.length) {
+                    //Add NON SPECIAL FOLDERS
+                    if (index >= SPECIAL_MAILBOX_MAP_NAME.length) {
                         msgList = getListEmailFromFolder(folderName, rsp, appParams);
                     }
-
                     rsp.rsp = ResponseCodes.OBEX_HTTP_OK;
                     bmlr.messageListingSize = rsp.msgListingSize;
                     bmlr.rsp = rsp;

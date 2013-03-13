@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -93,7 +93,7 @@ public class CommonUtils {
                     tempPath = CurrentPath + "/" + child;
                 }
             }
-            else if (CurrentPath.equals("telecom/msg")) {
+            else { //Get Path for any folder or subfolder
                 for (String folder : folderList) { //TODO NEED TO LOOK INTO THIS
                     if(child.toUpperCase().contains("GMAIL")){
                         if (folder.equalsIgnoreCase(child)

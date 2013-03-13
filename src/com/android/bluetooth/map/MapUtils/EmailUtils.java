@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -169,16 +169,12 @@ public class EmailUtils {
     }
 
     public static String getFolderName(String[] splitStringsEmail) {
-        String folderName;
+        String folderName=" ";
+        int len = splitStringsEmail.length;
         if (V){
             Log.v(TAG, ":: Split Strings Array in getFolderName ::"+ splitStringsEmail);
         }
-        if(splitStringsEmail[2].trim().equalsIgnoreCase("[Gmail]") || splitStringsEmail[2].trim().contains("Gmail")){
-            folderName = splitStringsEmail[2]+"/"+splitStringsEmail[3];
-        }
-        else{
-            folderName = splitStringsEmail[2];
-        }
+        folderName = splitStringsEmail[len -1];
         if (V){
             Log.v(TAG, "folderName :: " + folderName);
         }
@@ -716,6 +712,7 @@ public class EmailUtils {
     public static final Uri EMAIL_MESSAGE_URI = Uri.withAppendedPath(EMAIL_URI, "message");
     public static final String RECORD_ID = "_id";
     public static final String DISPLAY_NAME = "displayName";
+    public static final String SERVER_ID = "serverId";
     public static final String ACCOUNT_KEY = "accountKey";
     public static final String MAILBOX_KEY = "mailboxKey";
     public static final String EMAIL_ADDRESS = "emailAddress";
@@ -924,6 +921,35 @@ public class EmailUtils {
         return list;
     }
 
+    /**
+     * Return Email sub folder list for the id and serverId path
+     * @param context the calling Context
+     * @param id the email account id
+     * @return the list of  server id's of Email sub folder
+     */
+    public static List<String> getEmailFolderListAtPath(Context context, long id, String path) {
+        if (V) Log.v(TAG, "getEmailFolderListAtPath: id = " + id + "path: " + path);
+        StringBuilder sb = new StringBuilder();
+        if (id > 0) {
+            sb.append(ACCOUNT_KEY);
+            sb.append("=");
+            sb.append(id);
+            sb.append(" AND ");
+        }
+        //Return Default List for no path
+        if(path.equals("")) {
+            sb.append(SERVER_ID);
+            sb.append("=");
+            sb.append(DISPLAY_NAME);
+        }
+        else {
+            sb.append(SERVER_ID);
+            sb.append(" LIKE '");
+            sb.append(path);
+            sb.append("/%'");
+        }
+        return SqlHelper.getListForColumn(context, EMAIL_BOX_URI, SERVER_ID, sb.toString(), null);
+    }
     /**
      * Return Email folder list for the id
      * @param context the calling Context

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -171,27 +171,26 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
 
         boolean Result = false;
         switch (splitStrings.length) {
+        case 0:
+            Result=false;
+            break;
         case 1:
             if (name.equals(MSG)) {
                 mCurrentPath += (setPathFlag) ? ("/" + name) : "";
                 Result = true;
             }
             break;
-        case 2:
+        //Handle folders and subfolders
+        default:
             List<String> completeFolderList = getCompleteFolderList();
             for (String FolderName : completeFolderList) {
                 //added second condition for gmail sent folder
                 if (FolderName.equalsIgnoreCase(name)) {
                     mCurrentPath += (setPathFlag) ? ("/" + name) : "";
-                    Result = true;
                     break;
                 }
             }
-            break;
-            // TODO: SUBFOLDERS: Add check for sub-folders (add more cases)
-
-        default:
-            Result = false;
+            Result = true;
             break;
         }
         return Result;
@@ -223,15 +222,10 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
             // at root -> telecom, only msg folder should be present
             return 1;
         }
+        //Add folders and subfolders
+        List<String> completeFolderList = getCompleteFolderList();
+        return completeFolderList.size();
 
-        if (mCurrentPath.equals(TELECOM + "/" + MSG)) {
-            // at root -> telecom -> msg, FolderList should be present
-            List<String> completeFolderList = getCompleteFolderList();
-            return completeFolderList.size();
-        }
-        // TODO: SUBFOLDERS: Add check for sub-folders
-
-        return 0;
     }
 
     /**
@@ -249,21 +243,19 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
             if (appParam.ListStartOffset == 0) {
                 list.add(TELECOM);
             }
-            return MapUtils.folderListingXML(list);
-        }
-
-        if (mCurrentPath.equals(TELECOM)) {
+        }else  if (mCurrentPath.equals(TELECOM)) {
             // at root -> telecom, only msg folder should be present
             if (appParam.ListStartOffset == 0) {
                 list.add(MSG);
             }
-            return MapUtils.folderListingXML(list);
-        }
-
-        if (mCurrentPath.equals(TELECOM + "/" + MSG)) {
+        } else  if (!(mCurrentPath.equals(TELECOM + "/" + MSG + "/" + INBOX) ||
+                mCurrentPath.equals(TELECOM + "/" + MSG + "/" + OUTBOX) ||
+                mCurrentPath.equals(TELECOM + "/" + MSG + "/" + DRAFT) ||
+                mCurrentPath.equals(TELECOM + "/" + MSG + "/" + DELETED) ||
+                mCurrentPath.equals(TELECOM + "/" + MSG + "/" + SENT))) {
+            //Add folders and subfolders NOT for SPECIAL FOLDERS
             int offset = 0;
             int added = 0;
-            // at root -> telecom -> msg, FolderList should be present
             List<String> completeFolderList = getCompleteFolderList();
             for (String Folder : completeFolderList) {
                 offset++;
@@ -273,26 +265,10 @@ public abstract class BluetoothMasAppIf implements IBluetoothMasApp {
                     added++;
                 }
             }
-            return MapUtils.folderListingXML(list);
         }
 
-        if (mCurrentPath.equals(TELECOM + "/" + MSG + "/" + INBOX) ||
-                mCurrentPath.equals(TELECOM + "/" + MSG + "/" + OUTBOX) ||
-                mCurrentPath.equals(TELECOM + "/" + MSG + "/" + DRAFT) ||
-                mCurrentPath.equals(TELECOM + "/" + MSG + "/" + DELETED) ||
-                mCurrentPath.equals(TELECOM + "/" + MSG + "/" + SENT)
-        ) {
-            return MapUtils.folderListingXML(list);
-        } else {
-            List<String> completeFolderList = getCompleteFolderList();
-            for (String Folder : completeFolderList) {
-                if (mCurrentPath.equalsIgnoreCase(TELECOM + "/" + MSG + "/" + Folder)) {
-                    return MapUtils.folderListingXML(list);
-                }
-            }
-        }
+        return MapUtils.folderListingXML(list);
 
-        return null;
     }
 
     static final int PHONELOOKUP_ID_COLUMN_INDEX = 0;
