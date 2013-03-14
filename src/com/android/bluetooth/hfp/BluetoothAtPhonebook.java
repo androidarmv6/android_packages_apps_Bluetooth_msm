@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (C) 2013 The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,7 +89,7 @@ public class BluetoothAtPhonebook {
     // package and class name to which we send intent to check phone book access permission
     private static final String ACCESS_AUTHORITY_PACKAGE = "com.android.settings";
     private static final String ACCESS_AUTHORITY_CLASS =
-        "com.android.settings.bluetooth.BluetoothPermissionRequest";
+        "com.qualcomm.settings.bluetooth.BluetoothPermissionRequest";
     private static final String BLUETOOTH_ADMIN_PERM = android.Manifest.permission.BLUETOOTH_ADMIN;
 
     private final HashMap<String, PhonebookResult> mPhonebooks =
