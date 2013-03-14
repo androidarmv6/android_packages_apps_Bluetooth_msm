@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -250,6 +250,20 @@ public class BluetoothPbapService extends Service {
                 closeService();
             } else {
                 removeTimeoutMsg = false;
+            }
+        } else if (action.equals(BluetoothDevice.ACTION_ACL_DISCONNECTED) &&
+                                 isWaitingAuthorization) {
+            BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+            if (mRemoteDevice == null || device == null) {
+               Log.e(TAG, "Unexpected error!");
+               return;
+            }
+
+            if (mRemoteDevice.equals(device) && (mSessionStatusHandler != null)) {
+               /* Let the user timeout handle this case as well */
+               mSessionStatusHandler.sendMessage(mSessionStatusHandler
+                   .obtainMessage(USER_TIMEOUT));
+               removeTimeoutMsg = false;
             }
         } else if (action.equals(BluetoothDevice.ACTION_CONNECTION_ACCESS_REPLY)) {
             if (!isWaitingAuthorization) {
