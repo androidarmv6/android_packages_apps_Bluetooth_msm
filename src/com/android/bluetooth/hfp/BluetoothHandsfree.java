@@ -360,6 +360,14 @@ public class BluetoothHandsfree {
         public void onServiceConnected(ComponentName className, IBinder service) {
             if (DBG) Log.d(TAG, "Proxy object connected");
             mPhoneProxy = IBluetoothHeadsetPhone.Stub.asInterface(service);
+            if(mPhoneProxy != null){
+                try {
+                    log("Try to query the phonestate on bind");
+                    mPhoneProxy.queryPhoneState();
+                } catch (RemoteException e) {
+                    Log.e(TAG, Log.getStackTraceString(new Throwable()));
+                }
+            } else Log.e(TAG, " phone proxy null for query phone state");
         }
 
         public void onServiceDisconnected(ComponentName className) {
@@ -830,6 +838,14 @@ public class BluetoothHandsfree {
             mIncomingScoThread.setName("incomingScoAcceptThread");
             mIncomingScoThread.start();
         }
+        if(mPhoneProxy != null){
+            try {
+                log("Try to query the phonestate on BT ON");
+                mPhoneProxy.queryPhoneState();
+            } catch (RemoteException e) {
+                Log.e(TAG, Log.getStackTraceString(new Throwable()));
+            }
+        } else Log.e(TAG, " BT ON:phone proxy null for query phone state");
     }
 
     /* package */ synchronized void onBluetoothDisabled() {
@@ -1229,7 +1245,8 @@ public class BluetoothHandsfree {
                     sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_INCOMING);
                     result.addResult(ring());
                 }
-                sendURC(result.toString());
+                if(sendUpdate())
+                    sendURC(result.toString());
             } else if (callState == HeadsetHalConstants.CALL_STATE_DIALING){
                 log("Dialing a outgoing call");
                 sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_OUTGOING);
