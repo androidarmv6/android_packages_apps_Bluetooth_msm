@@ -673,6 +673,16 @@ public class BluetoothHandsfree {
          synchronized (ScoSocketDisconnectThread.class) {
              if (mConnectedSco == null) {
                  if (DBG) Log.d(TAG,"SCO audio is already disconnected");
+                 if (!mPendingScoForA2dp) {
+                     if (mA2dpSuspended) {
+                         if (DBG) log("resuming A2DP stream after SCO disconnect");
+                         mA2dp.resumeSink(mA2dpDevice);
+                         mA2dpSuspended = false;
+                     }
+                 } else { // already suspendSink is in progress, so wait for issuing resume
+                     mPendingA2dpResume = true;
+                 }
+                 mPendingScoForA2dp = false;
                  return;
              }
 
