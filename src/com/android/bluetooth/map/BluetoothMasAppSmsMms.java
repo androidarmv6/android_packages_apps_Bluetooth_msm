@@ -131,9 +131,7 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
 
     private void cleanUp() {
         // Remove the deleted item entries
-        mContext.getContentResolver().delete(Uri.parse("content://sms/"),
-                "thread_id = " + DELETED_THREAD_ID, null);
-        mContext.getContentResolver().delete(Uri.parse("content://mms/"),
+        mContext.getContentResolver().delete(Uri.parse("content://mms-sms/conversations/"),
                 "thread_id = " + DELETED_THREAD_ID, null);
     }
 
