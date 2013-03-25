@@ -584,40 +584,43 @@ public class EmailUtils {
             bmsg.setVcard_version("2.1");
 
             String senderName = null;
-            senderName = cr1.getString(cr1.getColumnIndex("fromList"));
-            if(senderName.contains("")){
-                String[] senderStr = senderName.split("");
-                if(senderStr !=null && senderStr.length > 0){
-                    bmsg.setOriginatorVcard_name(senderStr[1].trim());
-                    bmsg.setOriginatorVcard_email(senderStr[0].trim());
+            if((senderName = cr1.getString(cr1.getColumnIndex("fromList"))) != null ){
+                if(senderName.contains("")){
+                    String[] senderStr = senderName.split("");
+                    if(senderStr !=null && senderStr.length > 0){
+                        bmsg.setOriginatorVcard_name(senderStr[1].trim());
+                        bmsg.setOriginatorVcard_email(senderStr[0].trim());
+                    }
+                }
+                else{
+                    bmsg.setOriginatorVcard_name(senderName.trim());
+                    bmsg.setOriginatorVcard_email(senderName.trim());
                 }
             }
-            else{
-                bmsg.setOriginatorVcard_name(senderName.trim());
-                bmsg.setOriginatorVcard_email(senderName.trim());
-            }
-
             String recipientName = null;
             String multiRecepients = null;
-            recipientName = cr1.getString(cr1.getColumnIndex("toList"));
-            if(recipientName.contains("")){
-                String[] recepientStr = recipientName.split("");
-                if(recepientStr !=null && recepientStr.length > 0){
-                    bmsg.setRecipientVcard_name(recepientStr[1].trim());
-                    bmsg.setRecipientVcard_email(recepientStr[0].trim());
+            if((recipientName = cr1.getString(cr1.getColumnIndex("toList"))) != null){
+                if(recipientName.contains("")){
+                    String[] recepientStr = recipientName.split("");
+                    if(recepientStr !=null && recepientStr.length > 0){
+                        bmsg.setRecipientVcard_name(recepientStr[1].trim());
+                        bmsg.setRecipientVcard_email(recepientStr[0].trim());
+                    }
                 }
-            }
-            else if(recipientName.contains("")){
-                multiRecepients = recipientName.replace('', ';');
-                if (V){
-                    Log.v(TAG, " ::Recepient name :: " + multiRecepients);
+                else if(recipientName.contains("")){
+                    multiRecepients = recipientName.replace('', ';');
+                    if(multiRecepients != null){
+                        if (V){
+                            Log.v(TAG, " ::Recepient name :: " + multiRecepients);
+                        }
+                        bmsg.setRecipientVcard_name(multiRecepients.trim());
+                        bmsg.setRecipientVcard_email(multiRecepients.trim());
+                    }
                 }
-                bmsg.setRecipientVcard_name(multiRecepients.trim());
-                bmsg.setRecipientVcard_email(multiRecepients.trim());
-            }
-            else{
-                bmsg.setRecipientVcard_name(recipientName.trim());
-                bmsg.setRecipientVcard_email(recipientName.trim());
+                else{
+                    bmsg.setRecipientVcard_name(recipientName.trim());
+                    bmsg.setRecipientVcard_email(recipientName.trim());
+                }
             }
         }
         if (cr1 != null) {
