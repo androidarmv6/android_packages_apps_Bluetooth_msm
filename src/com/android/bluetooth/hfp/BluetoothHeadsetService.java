@@ -327,6 +327,14 @@ public class BluetoothHeadsetService extends Service {
                         } catch (RemoteException e) {}
                     }
                     break;
+                case BluetoothAdapter.STATE_OFF:
+                    Log.d(TAG,"Bluetooth is TURNEDOFF...Stop AG");
+                    if ((state == BluetoothProfile.STATE_CONNECTING) ||
+                        (state == BluetoothProfile.STATE_DISCONNECTING)) {
+                        Log.d(TAG,"Headset state::" +state+ "device::" +currDevice);
+                        setState(currDevice, BluetoothProfile.STATE_DISCONNECTED);
+                    }
+                    break;
                 }
             }
 
