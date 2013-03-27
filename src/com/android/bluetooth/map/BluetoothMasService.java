@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008-2009, Motorola, Inc. All rights reserved.
- * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -54,6 +54,11 @@ import com.android.bluetooth.map.MapUtils.EmailUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.FileInputStream;
+import java.io.DataInputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.FileNotFoundException;
 
 import javax.btobex.ServerSession;
 
@@ -169,6 +174,9 @@ public class BluetoothMasService extends Service {
 
     private boolean mHasStarted = false;
     private int mStartId = -1;
+
+    private boolean mIsEmailEnabled = true;
+
     /**
      * The flag indicating MAP request has been notified.
      * This is set on when initiate notification and set off after accept/time out
@@ -207,6 +215,47 @@ public class BluetoothMasService extends Service {
 
     private ContentObserver mEmailAccountObserver;
 
+    private static final String CONF_FILE_PATH =
+            "/etc/bluetooth/main.conf";
+
+    public void CheckEmailEnabled() {
+        Log.v(TAG, " CheckEmailEnabled: Loading from conf");
+        FileInputStream fstream = null;
+        try {
+            fstream = new FileInputStream(CONF_FILE_PATH);
+            DataInputStream in = new DataInputStream(fstream);
+            BufferedReader file = new BufferedReader(new InputStreamReader(in));
+            String line;
+            while((line = file.readLine()) != null) {
+                line = line.trim();
+                if (line.length() == 0 || line.startsWith("#")) continue;
+                String[] value = line.split(" = ");
+                if (value != null && value.length == 2) {
+                    if (value[0].equalsIgnoreCase("BluetoothMapEmailEnabled")) {
+                        if (value[1].equalsIgnoreCase("false")) {
+                            mIsEmailEnabled = false;
+                        }
+                        else {
+                            mIsEmailEnabled = true;
+                        }
+                        Log.v(TAG, "CheckEmailEnabled: IsEmailEnabled: " + mIsEmailEnabled);
+                    }
+                }
+            }
+        } catch (FileNotFoundException e) {
+            Log.e(TAG, "Main.conf File Not found");
+        } catch (IOException e) {
+            Log.e(TAG, "IOException: read Main.conf File " + e);
+        } finally {
+            if (fstream != null) {
+                try {
+                    fstream.close();
+                } catch (IOException e) {
+                }
+            }
+        }
+    }
+
     private void updateEmailAccount() {
         if (VERBOSE) Log.v(TAG, "updateEmailAccount()");
         List<Long> list = EmailUtils.getEmailAccountIdList(this);
@@ -227,13 +276,17 @@ public class BluetoothMasService extends Service {
     }
 
     public BluetoothMasService() {
+        CheckEmailEnabled();
         mConnectionManager = new BluetoothMasObexConnectionManager();
-        mEmailAccountObserver = new ContentObserver(null) {
-            @Override
-            public void onChange(boolean selfChange) {
-                updateEmailAccount();
-            }
-        };
+        Log.v(TAG, "BluetoothMasService: mIsEmailEnabled: " + mIsEmailEnabled);
+        if(mIsEmailEnabled) {
+            mEmailAccountObserver = new ContentObserver(null) {
+                @Override
+                public void onChange(boolean selfChange) {
+                    updateEmailAccount();
+                }
+            };
+        }
     }
 
     @Override
@@ -256,8 +309,11 @@ public class BluetoothMasService extends Service {
                 Log.v(TAG, "BT is not ON, no start");
             }
         }
-        getContentResolver().registerContentObserver(
+        Log.v(TAG, "onCreate: mIsEmailEnabled: " + mIsEmailEnabled);
+        if(mIsEmailEnabled) {
+            getContentResolver().registerContentObserver(
                 EmailUtils.EMAIL_ACCOUNT_URI, true, mEmailAccountObserver);
+        }
     }
 
     @Override
@@ -298,8 +354,11 @@ public class BluetoothMasService extends Service {
                 closeService();
             } else {
                 removeTimeoutMsg = false;
-                if (state == BluetoothAdapter.STATE_ON) {
-                    updateEmailAccount();
+                Log.v(TAG, "parseIntent 1: mIsEmailEnabled: " + mIsEmailEnabled);
+                if(mIsEmailEnabled) {
+                    if (state == BluetoothAdapter.STATE_ON) {
+                        updateEmailAccount();
+                    }
                 }
             }
         } else if (action.equals(BluetoothDevice.ACTION_CONNECTION_ACCESS_REPLY)) {
@@ -315,7 +374,10 @@ public class BluetoothMasService extends Service {
                         Log.e(TAG, "No BluetoothDevice from intent");
                     }
                 }
-                updateEmailAccount();
+                Log.v(TAG, "parseIntent 2: mIsEmailEnabled: " + mIsEmailEnabled);
+                if(mIsEmailEnabled) {
+                    updateEmailAccount();
+                }
                 mConnectionManager.initiateObexServerSession(device);
             } else {
                 mConnectionManager.stopObexServerSessionWaiting();
@@ -342,8 +404,11 @@ public class BluetoothMasService extends Service {
             Log.v(TAG, "Map Service onDestroy");
 
         super.onDestroy();
-        getContentResolver().unregisterContentObserver(mEmailAccountObserver);
-        EmailUtils.clearMapTable();
+        Log.v(TAG, "onDestroy: mIsEmailEnabled: " + mIsEmailEnabled);
+        if(mIsEmailEnabled) {
+            getContentResolver().unregisterContentObserver(mEmailAccountObserver);
+            EmailUtils.clearMapTable();
+        }
         closeService();
     }
 
@@ -379,7 +444,8 @@ public class BluetoothMasService extends Service {
             if (VERBOSE) Log.v(TAG, "Handler(): got msg=" + msg.what);
             Context context = getApplicationContext();
             if (mnsClient == null) {
-                mnsClient = new BluetoothMns(context);
+                Log.v(TAG, "handleMessage: mIsEmailEnabled" + mIsEmailEnabled);
+                mnsClient = new BluetoothMns(context, mIsEmailEnabled);
             }
 
             switch (msg.what) {
@@ -498,7 +564,12 @@ public class BluetoothMasService extends Service {
                 new ArrayList<BluetoothMasObexConnection>();
 
         public BluetoothMasObexConnectionManager() {
-            for (int i = 0; i < MAX_INSTANCES; i ++) {
+            int numberOfSupportedInstances = MAX_INSTANCES;
+            Log.e(TAG, "BluetoothMasObexConnectionManager: mIsEmailEnabled: " + mIsEmailEnabled);
+            if(!mIsEmailEnabled) {
+                numberOfSupportedInstances = 1; /*Email instance not supported*/
+            }
+            for (int i = 0; i < numberOfSupportedInstances; i ++) {
                 mConnections.add(new BluetoothMasObexConnection(
                         MAS_INS_INFO[i].mSupportedMessageTypes, i, MAS_INS_INFO[i].mRfcommPort));
             }
