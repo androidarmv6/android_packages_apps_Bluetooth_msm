@@ -13,7 +13,7 @@ LOCAL_JAVA_LIBRARIES := javax.btobex
 LOCAL_JAVA_LIBRARIES += mms-common
 LOCAL_JAVA_LIBRARIES += telephony-common
 LOCAL_STATIC_JAVA_LIBRARIES := com.android.vcard
-
+LOCAL_REQUIRED_MODULES := javax.btobex mms-common telephony-common
 LOCAL_CERTIFICATE := platform
 
 LOCAL_PROGUARD_FLAG_FILES := proguard.flags
