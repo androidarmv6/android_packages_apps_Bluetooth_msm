@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -1163,6 +1163,9 @@ public class BluetoothMasAppSmsMms extends BluetoothMasAppIf {
         String text = "";
         String whereClause = " address != \"insert-address-token\"";
         Uri uri = Uri.parse("content://mms/" + msgID + "/addr");
+        //FOR INCOMING MMS ONLY "FROM" ADDRESS IS REQUIRED
+        if (isOutgoingMMSMessage(msgID) == false)
+            whereClause = " address != \"insert-address-token\" AND type=137";
         ContentResolver cr = mContext.getContentResolver();
         Cursor cursor = cr.query(uri, null, whereClause, null, null);
         if (cursor != null) {
