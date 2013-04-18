@@ -1323,6 +1323,13 @@ public class BluetoothHandsfree {
             sendCallHeldCiev(HeadsetHalConstants.CALL_CIEV_ACTIVE_AND_HELD);
             log("Call swapped");
         }
+        // Handling case when an Active & a Held call drops simultaneously.
+        if (((numActive + numHeld) == 0) &&
+            ((prevNumActive + prevNumHeld) == 2)){
+            log("Both an Active and a Held call dropped, sending +CIEV:2,0");
+            //Send +CIEV:2,0
+            sendCallCiev(HeadsetHalConstants.CALL_CIEV_INACTIVE);
+        }
         //Save the current values
         mPhoneState.setNumActiveCall(numActive);
         mPhoneState.setCallState(callState);
