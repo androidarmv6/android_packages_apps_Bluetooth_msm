@@ -469,9 +469,10 @@ public class BluetoothMns implements MessageNotificationListener {
      */
     public int findLocationMceInitiatedOperation( String msgHandle) {
         int location = -1;
-
         Time currentTime = new Time();
         currentTime.setToNow();
+
+        if (V) Log.v(TAG, "findLocationMceInitiatedOperation " + msgHandle);
 
         List<BluetoothMnsMsgHndlMceInitOp> staleOpList = new ArrayList<BluetoothMnsMsgHndlMceInitOp>();
         for (BluetoothMnsMsgHndlMceInitOp op: opList) {
@@ -502,6 +503,7 @@ public class BluetoothMns implements MessageNotificationListener {
                 }
             }
         }
+        if (V) Log.v(TAG, "findLocationMce loc" + location);
         return location;
     }
 
@@ -528,7 +530,17 @@ public class BluetoothMns implements MessageNotificationListener {
         if (msg.equals(MEMORY_AVAILABLE) || msg.equals(MEMORY_FULL)) {
             location = -1;
         } else {
+            /* Consider SENDING_SUCESS as non MCE Initiated operation and remove
+             * message handle from MCE Initiated OpList when MmsContentObserver
+             * is not triggered for both OUTBOX and SENT folder even though
+             * message is pushed sucessfully.
+             */
             location = findLocationMceInitiatedOperation(handle);
+            if (location != -1 && msg.equals(SENDING_SUCCESS)) {
+               if (V) Log.v(TAG, "Handle Pending MCE Initiated list " + location);
+               removeMceInitiatedOperation(location);
+               location = -1;
+            }
         }
 
         if (location == -1) {
@@ -536,6 +548,7 @@ public class BluetoothMns implements MessageNotificationListener {
             if (V) Log.v(TAG, "Notification to MAS " + masId + ", msgType = " + msgType);
             mSessionHandler.obtainMessage(MNS_SEND_EVENT, masId, -1, str).sendToTarget();
         } else {
+            if (V) Log.v(TAG, "REMOVE location" + location);
             removeMceInitiatedOperation(location);
         }
     }
