@@ -395,6 +395,7 @@ public class BluetoothPbapService extends Service {
             if (VERBOSE) Log.v(TAG, "closeSocket : set mInterrupted");
             if (mServerSocket != null) {
                 mServerSocket.close();
+                mServerSocket = null;
             }
         }
 
@@ -532,6 +533,10 @@ public class BluetoothPbapService extends Service {
         public void run() {
             while (!stopped) {
                 try {
+                    if (mServerSocket == null) {
+                        Log.e(TAG, "mServerSocket has been closed already");
+                        break;
+                    }
                     mConnSocket = mServerSocket.accept();
 
                     mRemoteDevice = mConnSocket.getRemoteDevice();
