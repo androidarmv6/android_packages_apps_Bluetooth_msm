@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008-2009, Motorola, Inc.
- * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -33,6 +33,7 @@ import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PowerManager;
 import android.text.format.Time;
 import android.util.Log;
 
@@ -85,6 +86,8 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
     public Context mContext;
 
     public static boolean sIsAborted = false;
+
+    private PowerManager.WakeLock mWakeLock = null;
 
     public enum MasState {
         MAS_SERVER_CONNECTING,
@@ -553,6 +556,15 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
 
     @Override
     public int onConnect(final HeaderSet request, HeaderSet reply) {
+        if (V) Log.v(TAG, "BluetoothMasObexServer: onConnect");
+        acquireMasLock();
+        int retVal = onConnectInternal(request, reply);
+        if (V) Log.v(TAG, "BluetoothMasObexServer: exiting from onConnect");
+        releaseMasLock();
+        return retVal;
+    }
+
+    private int onConnectInternal(final HeaderSet request, HeaderSet reply) {
         if (D) Log.d(TAG, "onConnect()");
         try {
             byte[] uuid = (byte[]) request.getHeader(HeaderSet.TARGET);
@@ -611,6 +623,14 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
 
     @Override
     public void onDisconnect(final HeaderSet req, final HeaderSet resp) {
+        if (V) Log.v(TAG, "BluetoothMasObexServer: onDisconnect");
+        acquireMasLock();
+        onDisconnectInternal(req, resp);
+        if (V) Log.v(TAG, "BluetoothMasObexServer: exiting from onDisconnect");
+        releaseMasLock();
+    }
+
+    private void onDisconnectInternal(final HeaderSet req, final HeaderSet resp) {
         if (D) Log.d(TAG, "onDisconnect(): enter");
         mAppIf.onDisconnect();
 
@@ -636,6 +656,16 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
 
     @Override
     public int onSetPath(final HeaderSet request, final HeaderSet reply,
+            final boolean backup, final boolean create) {
+        if (V) Log.v(TAG, "BluetoothMasObexServer: onSetPath");
+        acquireMasLock();
+        int retVal = onSetPathInternal(request, reply, backup, create);
+        if (V) Log.v(TAG, "BluetoothMasObexServer: exiting from onSetPath");
+        releaseMasLock();
+        return retVal;
+    }
+
+    private int onSetPathInternal(final HeaderSet request, final HeaderSet reply,
             final boolean backup, final boolean create) {
 
         if (D) Log.d(TAG, "onSetPath(): supports SetPath request.");
@@ -683,6 +713,14 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
 
     @Override
     public void onClose() {
+        if (V) Log.v(TAG, "BluetoothMasObexServer: onClose");
+        acquireMasLock();
+        onCloseInternal();
+        if (V) Log.v(TAG, "BluetoothMasObexServer: exiting from onClose");
+        releaseMasLock();
+    }
+
+    public void onCloseInternal() {
         mAppIf.stopMnsSession(mRemoteDevice);
 
         if (mCallback != null) {
@@ -696,6 +734,15 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
 
     @Override
     public int onGet(Operation op) {
+        if (V) Log.v(TAG, "BluetoothMasObexServer: onGet");
+        acquireMasLock();
+        int retVal = onGetInternal(op);
+        if (V) Log.v(TAG, "BluetoothMasObexServer: exiting from onGet");
+        releaseMasLock();
+        return retVal;
+    }
+
+    private int onGetInternal(Operation op) {
 
         byte[] appParams = null;
         boolean retVal = true;
@@ -859,6 +906,15 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
 
     @Override
     public int onPut(Operation op) {
+        if (V) Log.v(TAG, "BluetoothMasObexServer: onPut");
+        acquireMasLock();
+        int retVal = onPutInternal(op);
+        if (V) Log.v(TAG, "BluetoothMasObexServer: exiting from onPut");
+        releaseMasLock();
+        return retVal;
+    }
+
+    private int onPutInternal(Operation op) {
 
         byte[] appParams = null;
         boolean retVal = true;
@@ -1232,6 +1288,34 @@ public class BluetoothMasObexServer extends ServerRequestHandler {
             returnvalue = false;
         }
         return returnvalue;
+    }
+
+    private void acquireMasLock() {
+        if (V) Log.v(TAG, "About to acquire Mas:mWakeLock");
+        if (mWakeLock == null) {
+            PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
+            mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MasPartialWakeLock");
+            mWakeLock.setReferenceCounted(false);
+            mWakeLock.acquire();
+            if (V) Log.v(TAG, "Mas:mWakeLock acquired");
+        }
+        else
+        {
+            Log.e(TAG, "Mas:mWakeLock already acquired");
+        }
+    }
+
+    private void releaseMasLock() {
+        if (V) Log.v(TAG, "About to release Mas:mWakeLock");
+        if (mWakeLock != null) {
+            if (mWakeLock.isHeld()) {
+                mWakeLock.release();
+                if (V) Log.v(TAG, "Mas:mWakeLock released");
+            } else {
+                if (V) Log.v(TAG, "Mas:mWakeLock already released");
+            }
+            mWakeLock = null;
+        }
     }
 };
 
