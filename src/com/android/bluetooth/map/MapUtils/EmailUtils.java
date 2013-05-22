@@ -658,7 +658,7 @@ public class EmailUtils {
                 sb.append("Content-Transfer-Encoding: 8bit").append("\r\n");
                 // BMW 14692 carkit accepts Date format in "EEE, dd MMM yyyy HH:mm:ss Z"
                 sb.append("Date:");
-                sb.append(new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z, Locale.US").format(date));
+                sb.append(new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.US).format(date));
                 sb.append("\r\n");
                 sb.append("Subject:").append(subjectText).append("\r\n").append("\r\n");
                 sb.append(emailBody).append("\r\n");
@@ -698,11 +698,12 @@ public class EmailUtils {
                 Log.v(TAG, "=======================\n\n");
             }
             str = MapUtils.toBmessageEmail(bmsg);
-            if (V){
-                Log.v(TAG, str);
-                Log.v(TAG, "\n\n");
-            }
             cr2.close();
+        }
+        if (V){
+            Log.v(TAG, "======FINAL BMSG=================\n\n");
+            Log.v(TAG, str);
+            Log.v(TAG, "\n\n");
         }
         return str;
     }
