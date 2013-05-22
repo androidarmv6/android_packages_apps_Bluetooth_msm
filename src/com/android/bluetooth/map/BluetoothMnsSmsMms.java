@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -180,6 +180,8 @@ public class BluetoothMnsSmsMms extends MnsClient {
             if (init) {
                 clearSms();
             }
+
+           if(V) Log.v(TAG, "MNS_SMS: updateSMS");
             final ContentResolver resolver = mContext.getContentResolver();
             Cursor crSms = resolver.query(Sms.CONTENT_URI, SMS_PROJECTION, null, null, null);
             if (crSms != null) {
@@ -194,11 +196,12 @@ public class BluetoothMnsSmsMms extends MnsClient {
                         if (type > 0 && type < MSG_TO_MAP.length) {
                             final Message msg = new Message(id, MSG_TO_MAP[type], type, threadId,
                                     date);
+                            if(V) Log.v(TAG, "MNS_SMS: Found: id: " + id+ "  type: " + type + " threadId: " + threadId + " date: " + date +"\n");
                             newSmsList.put(id, msg);
                             if (oldSmsList.containsKey(id)) {
                                 Message old_msg = oldSmsList.remove(id);
                                 if (msg.mType != old_msg.mType) {
-                                    if(V) Log.v(TAG, "MNS_SMS: Add to mSmsAddedList");
+                                    if(V) Log.v(TAG, "MNS_SMS: Add to mSmsAddedList from old");
                                     mSmsAddedList.put(id, msg);
                                 }
                             }
