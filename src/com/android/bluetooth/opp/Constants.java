@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  * Copyright (c) 2008-2009, Motorola, Inc.
  *
  * All rights reserved.
@@ -206,11 +206,14 @@ public class Constants {
         "text/x-vcard",
         "text/plain",
         "text/html",
+        "text/comma-separated-values",
         "application/zip",
         "application/vnd.ms-excel",
         "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/vnd.ms-powerpoint",
         "application/pdf",
+        "application/vnd.android.package-archive",
     };
 
     /**
