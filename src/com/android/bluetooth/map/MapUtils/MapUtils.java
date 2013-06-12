@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
- * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -1790,6 +1789,20 @@ public class MapUtils {
         String mVersion = "";
         String mCurrentProperty = "";
 
+        /* This is a workaround to replace predifined XML escaping entities
+         * with original characters from VCardInterpreter to handle the XML
+         * parsing limitation of MCE (Denso Carkit).
+         * TODO: Above limitaion MUST be handled @MCE itself.
+        */
+        private static String replaceSpecialVcardString(String input) {
+                String str = input;
+                if(str != null){
+                    str = str.toLowerCase().replace("&lt;", "<");
+                    str = str.toLowerCase().replace("&gt;", ">");
+                }
+                return str;
+        }
+
         public void end() {
             if (V) Log.v(TAG, "end()");
         }
@@ -1826,7 +1839,10 @@ public class MapUtils {
                 Log.e(TAG, "NULL Value List received");
                 return;
             }
-
+            /* TODO: replaceSpecialVcardString() is a temporary fix bought to
+             * overcome the limitation of XML parsing with MCE (Denso Carkit)
+             * and later this must to be handled  from MCE itself.
+             */
             // The first appeared property in a vCard will be used
             if (PROPERTY_N.equals(property.getName()) && mName.length() == 0) {
                 StringBuilder sb = new StringBuilder();
@@ -1837,16 +1853,16 @@ public class MapUtils {
                     sb.append(", ");
                     sb.append(values.get(i));
                 }
-                mName = sb.toString();
+                mName = RecipientVCard.replaceSpecialVcardString(sb.toString());
                 if (V) Log.v(TAG, PROPERTY_N + ": " + mName);
             } else if (PROPERTY_TEL.equals(property.getName()) && mTel.length() == 0) {
-                mTel = values.get(0);
+                mTel = RecipientVCard.replaceSpecialVcardString(values.get(0));
                 if (V) Log.v(TAG, PROPERTY_TEL + ": " + mTel);
             } else if (PROPERTY_EMAIL.equals(property.getName()) && mEmail.length() == 0) {
-                mEmail = values.get(0);
+                mEmail = RecipientVCard.replaceSpecialVcardString(values.get(0));
                 if (V) Log.v(TAG, PROPERTY_EMAIL + ": " + mEmail);
             } else if (PROPERTY_FN.equals(property.getName()) && mFormattedName.length() == 0) {
-                mFormattedName = values.get(0);
+                mFormattedName = RecipientVCard.replaceSpecialVcardString(values.get(0));
                 if (V) Log.v(TAG, PROPERTY_FN + ": " + mFormattedName);
             }
         }
@@ -1878,6 +1894,10 @@ public class MapUtils {
 
         public void propertyValues(List<String> values) {
             if (V) Log.v(TAG, "propertyValues(" + values.toString() + "), Property=" + mCurrentProperty);
+            /* TODO: replaceSpecialVcardString() is a temporary fix bought to
+             * overcome the limitation of XML parsing with MCE (Denso Carkit)
+             * and later this must to be handled  from MCE itself.
+             */
             // The first appeared property in a vCard will be used
             if (PROPERTY_N.equals(mCurrentProperty) && mName.length() == 0) {
                 StringBuilder sb = new StringBuilder();
@@ -1887,16 +1907,16 @@ public class MapUtils {
                     sb.append(", ");
                     sb.append(values.get(i));
                 }
-                mName = sb.toString();
+                mName = RecipientVCard.replaceSpecialVcardString(sb.toString());
                 if (V) Log.v(TAG, PROPERTY_N + ": " + mName);
             } else if (PROPERTY_TEL.equals(mCurrentProperty) && mTel.length() == 0) {
-                mTel = values.get(0);
+                mTel = RecipientVCard.replaceSpecialVcardString(values.get(0));
                 if (V) Log.v(TAG, PROPERTY_TEL + ": " + mTel);
             } else if (PROPERTY_EMAIL.equals(mCurrentProperty) && mEmail.length() == 0) {
-                mEmail = values.get(0);
+                 mEmail = RecipientVCard.replaceSpecialVcardString(values.get(0));
                 if (V) Log.v(TAG, PROPERTY_EMAIL + ": " + mEmail);
             } else if (PROPERTY_FN.equals(mCurrentProperty) && mFormattedName.length() == 0) {
-                mFormattedName = values.get(0);
+                mFormattedName = RecipientVCard.replaceSpecialVcardString(values.get(0));
                 if (V) Log.v(TAG, PROPERTY_FN + ": " + mFormattedName);
             }
         }
