@@ -40,6 +40,8 @@ import javax.btobex.ObexHelper;
 import javax.btobex.ObexTransport;
 import javax.btobex.ResponseCodes;
 
+import com.android.bluetooth.R;
+
 import android.bluetooth.BluetoothSocket;
 import android.content.ContentValues;
 import android.content.Context;
@@ -375,14 +377,16 @@ public class BluetoothOppObexClientSession implements BluetoothOppObexSession {
          */
         private BluetoothOppSendFileInfo processShareInfo() {
             if (V) Log.v(TAG, "Client thread processShareInfo() " + mInfo.mId);
-            int icon = android.R.drawable.stat_sys_upload;
-            CharSequence tickerText = "Preparing Bluetooth Share";
-            long when = System.currentTimeMillis();
             Context context = mContext1;
-            CharSequence contentTitle = "Bluetooth Share";
-            CharSequence contentText = "Preparing...";
 
-            Notification n = new Notification(icon, tickerText, when);
+            CharSequence tickerText = context.getText(R.string.bluetooth_share_info_message);
+            CharSequence contentTitle = context.getText(R.string.bluetooth_share_info_title);
+            CharSequence contentText = context.getText(R.string.bluetooth_share_info_text);
+
+            Notification n = new Notification();
+            n.icon = android.R.drawable.stat_sys_upload;
+            n.tickerText = tickerText;
+            n.when = System.currentTimeMillis();
 
             Intent intent = new Intent(Constants.ACTION_LIST);
             PendingIntent contentIntent = PendingIntent.getActivity(context, 0, intent, 0);

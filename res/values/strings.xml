@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Copyright (C) 2007 The Android Open Source Project
-     Copyright (c) 2012, The Linux Foundation. All rights reserved.
+     Copyright (c) 2012,2013, The Linux Foundation. All rights reserved.
 
      Licensed under the Apache License, Version 2.0 (the "License");
      you may not use this file except in compliance with the License.
@@ -231,5 +231,10 @@
     <string name="sharedUserId" translate="false"><xliff:g id="x" /></string>
     <!-- Do not translate. android:process of this application. -->
     <string name="process" translate="false"><xliff:g id="x" /></string>
+
+    <!-- Bluetooth Share Info Dialogue. -->
+    <string name="bluetooth_share_info_message">Preparing Bluetooth Share</string>
+    <string name="bluetooth_share_info_title">Bluetooth Share</string>
+    <string name="bluetooth_share_info_text">Preparing...</string>
 
 </resources>
