@@ -38,6 +38,7 @@ import android.util.Log;
 public class BluetoothHeadsetReceiver extends BroadcastReceiver {
     private static final String TAG = "BluetoothHeadsetReceiver";
     private static boolean started = false;
+    public static final String BOOT_COMPLETE = "android.intent.action.BOOT_COMPLETED";
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.d(TAG, "BluetoothHeadsetReceiver onReceive :" + intent.getAction());
@@ -67,6 +68,12 @@ public class BluetoothHeadsetReceiver extends BroadcastReceiver {
                    context.startService(in);
                    started = true;
                }
+           }
+        } else if(BOOT_COMPLETE.equals(action)) {
+           if (started == false) {
+               Log.d(TAG,"BOOT_COMPLETE..Start HeadsetService");
+               context.startService(in);
+               started = true;
            }
         }
     }
