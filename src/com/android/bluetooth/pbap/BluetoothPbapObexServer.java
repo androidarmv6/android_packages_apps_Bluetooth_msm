@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008-2009, Motorola, Inc.
- * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved
+ * Copyright (c) 2010-2013, The Linux Foundation. All rights reserved
  *
  * All rights reserved.
  *
@@ -672,7 +672,7 @@ public class BluetoothPbapObexServer extends ServerRequestHandler {
                         itemsFound < requestSize; pos++) {
                     currentValue = nameList.get(pos);
                     if (D) Log.d(TAG, "currentValue=" + currentValue);
-                    if (currentValue.startsWith(compareValue)) {
+                    if (currentValue.equals(compareValue)) {
                         itemsFound++;
                         result.append("<card handle=\"" + pos + ".vcf\" name=\""
                                 + currentValue + "\"" + "/>");
