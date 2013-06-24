@@ -436,19 +436,33 @@ public class BluetoothHandsfree {
                         if (DBG) Log.d(TAG,"A2DP suspended, completing SCO");
                         if ((0x0 != (mRemoteBrsf & BRSF_HF_CODEC_NEGOTIATION)) &&
                             (0x0 != (mLocalBrsf & BRSF_AG_CODEC_NEGOTIATION))) {
-                            if (0x0 != (mRemoteAvailableCodecs & CODEC_MSBC)) {
-                                if (DBG) Log.d(TAG, "+BCS:2");
-                                mLocalCodec = CODEC_MSBC;
-                                sendURC("+BCS:2");
+                            if (0x0 == mRemoteCodec) {
+                                if (0x0 != (mRemoteAvailableCodecs & CODEC_MSBC)) {
+                                    if (DBG) Log.d(TAG, "+BCS:2");
+                                    mLocalCodec = CODEC_MSBC;
+                                    sendURC("+BCS:2");
+                                } else {
+                                    if (DBG) Log.d(TAG, "+BCS:1");
+                                    mLocalCodec = CODEC_CVSD;
+                                    sendURC("+BCS:1");
+                                }
+                                mPendingScoForWbs = true;
+                                mExpectingBCS = true;
+                                Message msg = mHandler.obtainMessage(
+                                                      CODEC_CONNECTION_SETUP_TIMEOUT);
+                                mHandler.sendMessageDelayed(msg,
+                                                    CODEC_NEGOTIATION_SETUP_TIMEOUT_VALUE);
                             } else {
-                                if (DBG) Log.d(TAG, "+BCS:1");
-                                mLocalCodec = CODEC_CVSD;
-                                sendURC("+BCS:1");
+                                if ((0x0 != (mRemoteAvailableCodecs & CODEC_MSBC))
+                                    && (CODEC_MSBC == mRemoteCodec)) {
+                                    mAudioManager.setParameters(HEADSET_SAMPLERATE + "=16000");
+                                    connectScoThread(true); //Start SCO for mSBC
+                                }
+                                else {
+                                    mAudioManager.setParameters(HEADSET_SAMPLERATE + "=8000");
+                                    connectScoThread(false); //Start SCO for CVSD
+                                }
                             }
-                            mPendingScoForWbs = true;
-                            mExpectingBCS = true;
-                            Message msg = mHandler.obtainMessage(CODEC_CONNECTION_SETUP_TIMEOUT);
-                            mHandler.sendMessageDelayed(msg, CODEC_NEGOTIATION_SETUP_TIMEOUT_VALUE);
                         } else {
                             mAudioManager.setParameters(HEADSET_SAMPLERATE + "=8000");
                             connectScoThread(false); //Start SCO for CVSD
@@ -1039,7 +1053,8 @@ public class BluetoothHandsfree {
                             mHandler.sendMessageDelayed(codec_msg,
                                      CODEC_NEGOTIATION_SETUP_TIMEOUT_VALUE);
                         } else {
-                            if (0x0 != (mRemoteAvailableCodecs & CODEC_MSBC)) {
+                            if ((0x0 != (mRemoteAvailableCodecs & CODEC_MSBC))
+                                && (CODEC_MSBC == mRemoteCodec)) {
                                 mAudioManager.setParameters(HEADSET_SAMPLERATE + "=16000");
                                 connectScoThread(true); //Start SCO for mSBC
                             } else {
@@ -1098,17 +1113,25 @@ public class BluetoothHandsfree {
     }
 
     void fallbackNb() {
-        if ((0x0 != (mLocalBrsf & BRSF_AG_CODEC_NEGOTIATION)) &&
-            (0x0 != (mRemoteBrsf & BRSF_HF_CODEC_NEGOTIATION)) &&
-            mRemoteCodec == CODEC_MSBC) {
-            // fallback to try NB while trying WBS
-            mRemoteCodec = 0;
-            mLocalCodec = CODEC_CVSD;
-            if (DBG) Log.d(TAG,"SCO_FAILED, sending +BCS:1 to try NB");
-            mExpectingBCS = true;
-            sendURC("+BCS:1");
-            Message msg = mHandler.obtainMessage(CODEC_CONNECTION_SETUP_TIMEOUT);
-            mHandler.sendMessageDelayed(msg, CODEC_NEGOTIATION_SETUP_TIMEOUT_VALUE);
+        //fallback only when needed
+        if (mPhoneState.isInCallAudio() || isVoiceRecognitionInProgress()
+            || mVirtualCallStarted){
+            if ((0x0 != (mLocalBrsf & BRSF_AG_CODEC_NEGOTIATION)) &&
+                (0x0 != (mRemoteBrsf & BRSF_HF_CODEC_NEGOTIATION)) &&
+                mRemoteCodec == CODEC_MSBC) {
+                // fallback to try NB while trying WBS
+                mRemoteCodec = 0;
+                mLocalCodec = CODEC_CVSD;
+                if (DBG) Log.d(TAG,"SCO_FAILED, sending +BCS:1 to try NB");
+                mExpectingBCS = true;
+                sendURC("+BCS:1");
+                Message msg = mHandler.obtainMessage(CODEC_CONNECTION_SETUP_TIMEOUT);
+                mHandler.sendMessageDelayed(msg, CODEC_NEGOTIATION_SETUP_TIMEOUT_VALUE);
+            }
+        } else {
+            //post disconnect SCO
+            setAudioState(BluetoothHeadset.STATE_AUDIO_DISCONNECTED,
+                          mHeadset.getRemoteDevice());
         }
     }
 
@@ -1573,7 +1596,8 @@ public class BluetoothHandsfree {
                     mHandler.sendMessageDelayed(msg,
                              CODEC_NEGOTIATION_SETUP_TIMEOUT_VALUE);
                 } else {
-                    if (0x0 != (mRemoteAvailableCodecs & CODEC_MSBC)) {
+                    if ((0x0 != (mRemoteAvailableCodecs & CODEC_MSBC))
+                        && (CODEC_MSBC == mRemoteCodec)) {
                         mAudioManager.setParameters(HEADSET_SAMPLERATE + "=16000");
                         connectScoThread(true); //Start SCO for mSBC
                     }
