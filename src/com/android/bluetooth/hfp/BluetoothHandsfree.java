@@ -1326,6 +1326,9 @@ public class BluetoothHandsfree {
             log("Active call state changed");
             if((numHeld + prevNumHeld) == 0) {
                 sendCallCiev(numActive);
+            } else {
+                if ((numActive == 0) && (numHeld == 1))
+                sendCallHeldCiev(HeadsetHalConstants.CALL_CIEV_HELD_NOACTIVE);
             }
             if (callConnected == true) {
                 sendCallsetupCiev(HeadsetHalConstants.CALLSETUP_CIEV_IDLE);
