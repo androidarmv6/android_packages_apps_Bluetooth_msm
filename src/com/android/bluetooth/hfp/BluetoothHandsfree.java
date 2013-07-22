@@ -2867,8 +2867,7 @@ public class BluetoothHandsfree {
         }
 
         // 2. Perform outgoing call setup procedure
-        //TODO add below check
-        if (/*mBluetoothPhoneState.sendUpdate() && */!isVirtualCallInProgress()) {
+        if (sendUpdate() && !isVirtualCallInProgress()) {
             AtCommandResult result = new AtCommandResult(AtCommandResult.UNSOLICITED);
             // outgoing call
             result.addResponse("+CIEV: 3,2");
@@ -2905,8 +2904,7 @@ public class BluetoothHandsfree {
         audioOff();
 
         // 2. terminate call-setup
-        //TODO add below check
-        if (/*mBluetoothPhoneState.sendUpdate()*/ DBG) {
+        if (sendUpdate()) {
             AtCommandResult result = new AtCommandResult(AtCommandResult.UNSOLICITED);
             // outgoing call
             result.addResponse("+CIEV: 2,0");
