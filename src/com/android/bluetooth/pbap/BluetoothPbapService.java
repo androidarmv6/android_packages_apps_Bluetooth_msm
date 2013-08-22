@@ -402,6 +402,7 @@ public class BluetoothPbapService extends Service {
         if (accept == true) {
             if (mConnSocket != null) {
                 mConnSocket.close();
+                mConnSocket = null;
             }
         }
     }
@@ -537,7 +538,12 @@ public class BluetoothPbapService extends Service {
                         Log.e(TAG, "mServerSocket has been closed already");
                         break;
                     }
+
                     mConnSocket = mServerSocket.accept();
+                    if (mConnSocket == null) {
+                        Log.e(TAG, "mConnSocket has been closed already");
+                        break;
+                    }
 
                     mRemoteDevice = mConnSocket.getRemoteDevice();
                     if (mRemoteDevice == null) {
