@@ -68,7 +68,7 @@ class HeadsetPhoneState {
 
     private int mMicVolume = 0;
     private int mClip = 0; //CLIP info
-    private String mPhoneNumber;
+    private String mPhoneNumber = "";
     private int mPhoneType;
     private boolean mVirtualCallStarted = false;
     private boolean mListening = false;
