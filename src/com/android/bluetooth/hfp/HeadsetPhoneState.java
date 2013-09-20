@@ -334,7 +334,7 @@ class HeadsetPhoneState {
         @Override
         public void onSignalStrengthsChanged(SignalStrength signalStrength) {
             int prevSignal = mSignal;
-            Log.d(TAG, "onServiceStateChanged..for signal  " );
+            //Log.d(TAG, "onServiceStateChanged..for signal  " );
             if (signalStrength.isGsm()) {
                 mSignal = gsmAsuToSignal(signalStrength);
             } else {
@@ -342,7 +342,7 @@ class HeadsetPhoneState {
             }
             // network signal strength is scaled to BT 1-5 levels.
             // This results in a lot of duplicate messages, hence this check
-            Log.d(TAG, "onServiceStateChanged..for signal change : " + mSignal);
+            //Log.d(TAG, "onServiceStateChanged..for signal change : " + mSignal);
             mRssi = signalToRssi(mSignal);  // no unsolicited CSQ
             if (prevSignal != mSignal)
                 mHandsfree.updateSignalState(mSignal);
