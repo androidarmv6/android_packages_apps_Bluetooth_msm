@@ -2745,6 +2745,11 @@ public class BluetoothHandsfree {
 
     /* package */ boolean startVoiceRecognition() {
 
+        if (!isBluetoothVoiceDialingEnabled()) {
+            Log.e(TAG, "startVoiceRecognition: remote doesn't support VR");
+            return false;
+        }
+
         if  ((isCellularCallInProgress()) ||
              (isVirtualCallInProgress()) ||
              mVoiceRecognitionStarted) {
@@ -2773,6 +2778,11 @@ public class BluetoothHandsfree {
     }
 
     /* package */ boolean stopVoiceRecognition() {
+
+        if (!isBluetoothVoiceDialingEnabled()) {
+            Log.e(TAG, "stopVoiceRecognition: remote doesn't support VR");
+            return false;
+        }
 
         if (!isVoiceRecognitionInProgress()) {
             return false;
